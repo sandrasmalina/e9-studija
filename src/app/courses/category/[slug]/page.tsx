@@ -7,7 +7,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from('categories')
     .select('name_en, name_lv')
@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function CategoryPage({ params }: Props) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: category } = await supabase
     .from('categories')

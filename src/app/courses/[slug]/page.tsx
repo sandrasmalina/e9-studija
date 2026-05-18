@@ -9,7 +9,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from('courses')
     .select('title_en, title_lv, short_description_en, meta_title, meta_description')
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function CourseSlugPage({ params }: Props) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: course, error } = await supabase
     .from('courses')
