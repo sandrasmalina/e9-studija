@@ -223,24 +223,55 @@ CREATE POLICY "Instructor write sections" ON sections FOR ALL TO authenticated
   ));
 
 -- ============================================================
--- 6. LECTURES
+-- 6. ENROLLMENTS (moved before lectures — lectures RLS references this table)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS enrollments (
+  id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                   uuid NOT NULL REFERENCES profiles ON DELETE CASCADE,
+  course_id                 uuid NOT NULL REFERENCES courses ON DELETE CASCADE,
+  stripe_payment_intent_id  text,
+  amount_paid               numeric(10,2),
+  currency                  text,
+  status                    text NOT NULL DEFAULT 'active', -- active | refunded | expired
+  enrolled_at               timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(user_id, course_id)
+);
+
+ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Own enrollments" ON enrollments;
+CREATE POLICY "Own enrollments" ON enrollments FOR SELECT TO authenticated
+  USING (
+    auth.uid() = user_id OR
+    EXISTS (
+      SELECT 1 FROM courses c WHERE c.id = course_id AND c.instructor_id = auth.uid()
+    ) OR
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+  );
+
+DROP POLICY IF EXISTS "System insert enrollment" ON enrollments;
+CREATE POLICY "System insert enrollment" ON enrollments FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================
+-- 7. LECTURES
 -- ============================================================
 CREATE TABLE IF NOT EXISTS lectures (
-  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  section_id            uuid NOT NULL REFERENCES sections ON DELETE CASCADE,
-  course_id             uuid NOT NULL REFERENCES courses ON DELETE CASCADE,
-  title_en              text NOT NULL,
-  title_lv              text,
-  description_en        text,
-  description_lv        text,
-  sort_order            int NOT NULL DEFAULT 0,
-  video_url             text,
-  video_type            text, -- 'vimeo' | 'youtube'
+  id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  section_id             uuid NOT NULL REFERENCES sections ON DELETE CASCADE,
+  course_id              uuid NOT NULL REFERENCES courses ON DELETE CASCADE,
+  title_en               text NOT NULL,
+  title_lv               text,
+  description_en         text,
+  description_lv         text,
+  sort_order             int NOT NULL DEFAULT 0,
+  video_url              text,
+  video_type             text, -- 'vimeo' | 'youtube'
   video_duration_seconds int NOT NULL DEFAULT 0,
-  is_preview            bool NOT NULL DEFAULT false,
-  content_type          text NOT NULL DEFAULT 'video', -- video | text | quiz
-  text_content          text,
-  created_at            timestamptz NOT NULL DEFAULT now()
+  is_preview             bool NOT NULL DEFAULT false,
+  content_type           text NOT NULL DEFAULT 'video', -- video | text | quiz
+  text_content           text,
+  created_at             timestamptz NOT NULL DEFAULT now()
 );
 
 ALTER TABLE lectures ENABLE ROW LEVEL SECURITY;
@@ -276,7 +307,7 @@ CREATE POLICY "Instructor write lectures" ON lectures FOR ALL TO authenticated
   ));
 
 -- ============================================================
--- 7. LECTURE RESOURCES
+-- 8. LECTURE RESOURCES
 -- ============================================================
 CREATE TABLE IF NOT EXISTS lecture_resources (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -297,37 +328,6 @@ CREATE POLICY "Enrolled read resources" ON lecture_resources FOR SELECT TO authe
     JOIN enrollments e ON e.course_id = l.course_id
     WHERE l.id = lecture_id AND e.user_id = auth.uid() AND e.status = 'active'
   ));
-
--- ============================================================
--- 8. ENROLLMENTS
--- ============================================================
-CREATE TABLE IF NOT EXISTS enrollments (
-  id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id                   uuid NOT NULL REFERENCES profiles ON DELETE CASCADE,
-  course_id                 uuid NOT NULL REFERENCES courses ON DELETE CASCADE,
-  stripe_payment_intent_id  text,
-  amount_paid               numeric(10,2),
-  currency                  text,
-  status                    text NOT NULL DEFAULT 'active', -- active | refunded | expired
-  enrolled_at               timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(user_id, course_id)
-);
-
-ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Own enrollments" ON enrollments;
-CREATE POLICY "Own enrollments" ON enrollments FOR SELECT TO authenticated
-  USING (
-    auth.uid() = user_id OR
-    EXISTS (
-      SELECT 1 FROM courses c WHERE c.id = course_id AND c.instructor_id = auth.uid()
-    ) OR
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-  );
-
-DROP POLICY IF EXISTS "System insert enrollment" ON enrollments;
-CREATE POLICY "System insert enrollment" ON enrollments FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
 
 -- ============================================================
 -- 9. LECTURE PROGRESS
