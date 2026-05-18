@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
@@ -15,7 +15,7 @@ interface Project {
   id: string; title: string; category: string; client_name: string;
   overview: string; goals: string; process: string; features: string;
   results: string; thumbnail_url: string; gallery_urls: string[];
-  testimonial_text: string; testimonial_author: string;
+  testimonial_text: string; testimonial_author: string; project_url: string;
 }
 
 export default function ProjectPage() {
@@ -64,7 +64,20 @@ export default function ProjectPage() {
             )}
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-bold text-white mb-10">{project.title}</h1>
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-6">{project.title}</h1>
+
+          {project.project_url && (
+            <div className="mb-10">
+              <a
+                href={project.project_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent/80 transition-colors"
+              >
+                <ExternalLink size={14} /> View Live Project
+              </a>
+            </div>
+          )}
 
           <div className="space-y-10">
             {project.overview && (

@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS projects (
   testimonial          TEXT DEFAULT '',
   gallery_images       JSONB DEFAULT '[]',
   is_featured          BOOLEAN DEFAULT false,
+  project_url          TEXT DEFAULT '',
   published            BOOLEAN DEFAULT false,
   created_at           TIMESTAMPTZ DEFAULT NOW()
 );

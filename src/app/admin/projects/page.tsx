@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, Star, Eye, EyeOff, X, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Star, Eye, EyeOff, X, Upload, ExternalLink } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -12,12 +12,13 @@ interface Project {
   short_description: string;
   short_description_lv: string;
   thumbnail_url: string;
+  project_url: string;
   is_featured: boolean;
   published: boolean;
   created_at: string;
 }
 
-const emptyForm = { title: '', title_lv: '', category: '', short_description: '', short_description_lv: '', thumbnail_url: '', is_featured: false, published: true };
+const emptyForm = { title: '', title_lv: '', category: '', short_description: '', short_description_lv: '', thumbnail_url: '', project_url: '', is_featured: false, published: true };
 
 export default function AdminProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -31,7 +32,7 @@ export default function AdminProjects() {
 
   const load = async () => {
     const { data } = await supabase.from('projects')
-      .select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url,is_featured,published,created_at')
+      .select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url,project_url,is_featured,published,created_at')
       .order('created_at', { ascending: false });
     setProjects(data ?? []);
     setLoading(false);
@@ -41,7 +42,7 @@ export default function AdminProjects() {
 
   const openAdd = () => { setForm({ ...emptyForm }); setModal({ open: true }); setFormError(''); };
   const openEdit = (p: Project) => {
-    setForm({ title: p.title||'', title_lv: p.title_lv||'', category: p.category||'', short_description: p.short_description||'', short_description_lv: p.short_description_lv||'', thumbnail_url: p.thumbnail_url||'', is_featured: p.is_featured, published: p.published });
+    setForm({ title: p.title||'', title_lv: p.title_lv||'', category: p.category||'', short_description: p.short_description||'', short_description_lv: p.short_description_lv||'', thumbnail_url: p.thumbnail_url||'', project_url: p.project_url||'', is_featured: p.is_featured, published: p.published });
     setModal({ open: true, editing: p }); setFormError('');
   };
   const closeModal = () => setModal({ open: false });
@@ -116,7 +117,10 @@ export default function AdminProjects() {
                       <div className="flex items-center gap-3">
                         {p.thumbnail_url ? <img src={p.thumbnail_url} alt="" className="w-10 h-7 rounded-lg object-cover bg-zinc-800 shrink-0" /> : <div className="w-10 h-7 rounded-lg bg-zinc-800 shrink-0" />}
                         <div>
-                          <p className="text-white font-medium truncate max-w-[160px]">{p.title || '—'}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-white font-medium truncate max-w-[150px]">{p.title || '—'}</p>
+                            {p.project_url && <a href={p.project_url} target="_blank" rel="noopener noreferrer" title="View live" className="text-zinc-600 hover:text-accent transition-colors shrink-0" onClick={e => e.stopPropagation()}><ExternalLink size={11} /></a>}
+                          </div>
                           {p.title_lv && <p className="text-zinc-600 text-xs truncate max-w-[160px]">{p.title_lv}</p>}
                         </div>
                       </div>
@@ -177,6 +181,10 @@ export default function AdminProjects() {
                   <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Apraksts (LV)</label>
                   <textarea value={form.short_description_lv} onChange={e => setForm({...form, short_description_lv: e.target.value})} rows={3} className={`${inp} resize-none`} placeholder="Latvian description" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Live Project URL <span className="text-zinc-600 font-normal">(optional)</span></label>
+                <input value={form.project_url} onChange={e => setForm({...form, project_url: e.target.value})} className={inp} placeholder="https://your-project.com" />
               </div>
               <div>
                 <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Project Image</label>

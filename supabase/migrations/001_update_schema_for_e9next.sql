@@ -66,6 +66,7 @@ END$$;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS title_lv             TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS short_description_lv TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS is_featured          BOOLEAN DEFAULT false;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_url          TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_projects_is_featured ON projects(is_featured);
 
