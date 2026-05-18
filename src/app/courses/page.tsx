@@ -1,79 +1,180 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ExternalLink, BookOpen, Brain, Sparkles, Target, ArrowRight } from 'lucide-react';
+import { Search, ArrowRight, BookOpen } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { createClient } from '@/lib/supabase/client';
 import Button from '@/components/Button';
+import CourseCard, { CourseCardData } from '@/components/courses/CourseCard';
 
-const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
-const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
+const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
+const stagger = { visible: { transition: { staggerChildren: 0.08 } } };
 
-const courses = [
-  { id: 1, title: 'Self-Healing & Personal Growth', description: 'Transform your life through evidence-based self-healing techniques and mindfulness practices.', icon: Sparkles, tags: ['Marketing', 'Personal Growth'], url: 'https://example.learnworlds.com/self-healing' },
-  { id: 2, title: 'Business Innovation & Strategy', description: 'Master modern business strategies and leadership skills to drive growth.', icon: Target, tags: ['Business', 'Leadership'], url: 'https://example.learnworlds.com/business' },
-  { id: 3, title: 'Creative Design Mastery', description: 'Unlock your creative potential with comprehensive design principles and tools.', icon: BookOpen, tags: ['Creativity', 'Design'], url: 'https://example.learnworlds.com/design' },
-  { id: 4, title: 'AI & Technology Skills', description: 'Learn to leverage artificial intelligence and automation tools to enhance productivity.', icon: Brain, tags: ['AI Skills', 'Technology'], url: 'https://example.learnworlds.com/ai' },
-  { id: 5, title: 'Instructional Design & Education', description: 'Become an expert in creating engaging learning experiences and curriculum development.', icon: BookOpen, tags: ['Education', 'Instructional Design'], url: 'https://example.learnworlds.com/instructional' },
-  { id: 6, title: 'Digital Product Development', description: 'Learn end-to-end product development from ideation to launch.', icon: Target, tags: ['Business', 'Technology'], url: 'https://example.learnworlds.com/product' },
-];
-
-const filterKeys = ['all', 'marketing', 'business', 'creativity', 'education', 'ai', 'technology', 'personal'];
+interface Category {
+  id: string;
+  slug: string;
+  name_en: string;
+  name_lv: string | null;
+  icon: string | null;
+  sort_order: number;
+}
 
 export default function CoursesPage() {
-  const { t } = useLanguage();
-  const [activeFilter, setActiveFilter] = useState('all');
+  const { t, language } = useLanguage();
+  const [courses, setCourses] = useState<CourseCardData[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const filtered = activeFilter === 'all'
-    ? courses
-    : courses.filter(c => c.tags.some(tag => tag.toLowerCase() === activeFilter));
+  const supabase = createClient();
+
+  const fetchCourses = useCallback(async (categorySlug: string, query: string) => {
+    setLoading(true);
+    let req = supabase
+      .from('courses')
+      .select(`
+        id, slug, title_en, title_lv,
+        short_description_en, short_description_lv,
+        thumbnail_url, price, discount_price, currency,
+        is_free, level, total_duration_minutes,
+        total_lectures, enrollment_count, rating_avg, rating_count,
+        instructor:profiles!instructor_id(full_name, avatar_url),
+        category:categories!category_id(name_en, name_lv, slug)
+      `)
+      .eq('status', 'published')
+      .order('enrollment_count', { ascending: false });
+
+    if (categorySlug !== 'all') {
+      // Filter by joining category slug
+      req = req.eq('category.slug', categorySlug);
+    }
+
+    const { data, error } = await req;
+    if (error) { setLoading(false); return; }
+
+    let filtered = (data ?? []) as unknown as CourseCardData[];
+
+    // Client-side filter when category is not 'all' (supabase may not filter foreign key eq properly)
+    if (categorySlug !== 'all') {
+      filtered = filtered.filter(c => c.category?.slug === categorySlug);
+    }
+
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      filtered = filtered.filter(c =>
+        c.title_en.toLowerCase().includes(q) ||
+        (c.title_lv?.toLowerCase().includes(q)) ||
+        (c.short_description_en?.toLowerCase().includes(q))
+      );
+    }
+
+    setCourses(filtered);
+    setLoading(false);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    supabase.from('categories')
+      .select('id, slug, name_en, name_lv, icon, sort_order')
+      .eq('is_active', true)
+      .order('sort_order')
+      .then(({ data }) => { if (data) setCategories(data); });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchCourses(activeCategory, search);
+    }, search ? 300 : 0);
+    return () => clearTimeout(timeout);
+  }, [activeCategory, search, fetchCourses]);
+
+  const categoryLabel = (cat: Category) =>
+    language === 'lv' && cat.name_lv ? cat.name_lv : cat.name_en;
 
   return (
     <div className="min-h-screen bg-bg pt-28 pb-24">
       <div className="max-w-7xl mx-auto px-6">
-        <motion.div initial="hidden" animate="visible" variants={stagger} className="text-center mb-16">
-          <motion.h1 variants={fadeUp} className="text-4xl md:text-6xl font-bold text-white mb-4">{t('courses.title')}</motion.h1>
-          <motion.p variants={fadeUp} className="text-neutral-400 max-w-2xl mx-auto">{t('courses.subtitle')}</motion.p>
+
+        {/* Header */}
+        <motion.div initial="hidden" animate="visible" variants={stagger} className="text-center mb-14">
+          <motion.p variants={fadeUp} className="text-accent text-sm font-medium tracking-widest uppercase mb-3">
+            {t('courses.eyebrow')}
+          </motion.p>
+          <motion.h1 variants={fadeUp} className="text-4xl md:text-6xl font-bold text-white mb-4">
+            {t('courses.title')}
+          </motion.h1>
+          <motion.p variants={fadeUp} className="text-neutral-400 max-w-2xl mx-auto text-lg">
+            {t('courses.subtitle')}
+          </motion.p>
         </motion.div>
 
-        {/* Filters */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="flex flex-wrap gap-2 justify-center mb-12">
-          {filterKeys.map((key) => (
+        {/* Search */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+          className="max-w-xl mx-auto mb-10 relative">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+          <input
+            type="search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('courses.search.placeholder')}
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-accent/50 transition-colors"
+          />
+        </motion.div>
+
+        {/* Category tabs */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+          className="flex flex-wrap gap-2 justify-center mb-12">
+          <button
+            onClick={() => setActiveCategory('all')}
+            className={`px-4 py-2 rounded-full text-xs font-medium transition-all border ${
+              activeCategory === 'all'
+                ? 'bg-accent text-white border-accent'
+                : 'border-white/8 text-neutral-400 hover:border-accent/30 hover:text-white'
+            }`}
+          >
+            {t('courses.filter.all')}
+          </button>
+          {categories.map(cat => (
             <button
-              key={key}
-              onClick={() => setActiveFilter(key)}
-              className={`px-4 py-2 rounded-full text-xs font-medium transition-all border ${
-                activeFilter === key
+              key={cat.slug}
+              onClick={() => setActiveCategory(cat.slug)}
+              className={`px-4 py-2 rounded-full text-xs font-medium transition-all border flex items-center gap-1.5 ${
+                activeCategory === cat.slug
                   ? 'bg-accent text-white border-accent'
                   : 'border-white/8 text-neutral-400 hover:border-accent/30 hover:text-white'
               }`}
             >
-              {t(`courses.filter.${key}`)}
+              {cat.icon && <span>{cat.icon}</span>}
+              {categoryLabel(cat)}
             </button>
           ))}
         </motion.div>
 
-        <motion.div initial="hidden" animate="visible" variants={stagger} className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
-          {filtered.map((course) => (
-            <motion.div key={course.id} variants={fadeUp} className="p-8 rounded-2xl border border-white/8 bg-bg-card hover:border-accent/30 transition-all group flex flex-col">
-              <div className="p-3 rounded-xl bg-accent/10 w-fit mb-5 group-hover:bg-accent/20 transition-colors">
-                <course.icon size={20} className="text-accent" />
-              </div>
-              <h3 className="text-white font-semibold mb-3">{course.title}</h3>
-              <p className="text-neutral-500 text-sm leading-relaxed flex-1 mb-5">{course.description}</p>
-              <div className="flex flex-wrap gap-2 mb-5">
-                {course.tags.map(tag => (
-                  <span key={tag} className="px-2 py-1 rounded-md bg-bg-secondary text-neutral-500 text-xs">{tag}</span>
-                ))}
-              </div>
-              <a href={course.url} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-accent text-sm font-medium hover:underline mt-auto">
-                Enroll Now <ExternalLink size={12} />
-              </a>
-            </motion.div>
-          ))}
-        </motion.div>
+        {/* Course grid */}
+        {loading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-white/8 bg-[#0f0c1e] aspect-[4/5] animate-pulse" />
+            ))}
+          </div>
+        ) : courses.length === 0 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="text-center py-24 flex flex-col items-center gap-4">
+            <BookOpen size={40} className="text-neutral-700" />
+            <p className="text-neutral-500">{t('courses.empty')}</p>
+          </motion.div>
+        ) : (
+          <motion.div initial="hidden" animate="visible" variants={stagger}
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
+            {courses.map(course => (
+              <motion.div key={course.id} variants={fadeUp}>
+                <CourseCard course={course} />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
 
         {/* Custom CTA */}
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
