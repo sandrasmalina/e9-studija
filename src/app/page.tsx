@@ -63,14 +63,14 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{background: '#07060e'}}>
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{background: '#06041a'}>
         {/* Mesh gradient */}
         <div className="absolute inset-0 gradient-mesh pointer-events-none" />
         {/* Dot grid */}
         <div className="absolute inset-0 bg-grid opacity-60 pointer-events-none" />
         {/* Orbs */}
-        <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[140px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-teal/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-accent/20 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-pink/15 rounded-full blur-[100px] pointer-events-none" />
         {/* Fade to body bg */}
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#09090b] to-transparent pointer-events-none" />
         <motion.div className="relative z-10 max-w-5xl mx-auto px-6 text-center" initial="hidden" animate="visible" variants={stagger}>
@@ -91,7 +91,7 @@ export default function HomePage() {
       </section>
 
       {/* Services */}
-      <section className="py-24 bg-bg" style={{background: '#09090b'}}>
+      <section className="py-24" style={{background: '#0b0915'}}>
         <div className="max-w-7xl mx-auto px-6">
           <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
             {t('whatwedo.title')}
@@ -111,7 +111,7 @@ export default function HomePage() {
       </section>
 
       {/* Why Choose Us */}
-      <section className="py-24" style={{background: '#0c0b12'}}>
+      <section className="py-24" style={{background: '#0f0c1e'}}>
         <div className="max-w-7xl mx-auto px-6">
           <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
             {t('whychooseus.title')}
@@ -128,7 +128,7 @@ export default function HomePage() {
       </section>
 
       {/* Featured Projects */}
-      <section className="py-24" style={{background: '#09090b'}}>
+      <section className="py-24" style={{background: '#0b0915'}}>
         <div className="max-w-7xl mx-auto px-6">
           <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-bold text-white">{t('featured.title')}</h2>
@@ -166,18 +166,55 @@ export default function HomePage() {
       </section>
 
       {/* How We Work */}
-      <section className="py-24" style={{background: '#0c0b12'}}>
+      <section className="py-24" style={{background: '#0f0c1e'}}>
         <div className="max-w-7xl mx-auto px-6">
-          <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
-            {t('howwework.title')}
-          </motion.h2>
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger} className="flex flex-col gap-4 max-w-3xl mx-auto">
+          <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold" style={{color:'#f0eeff'}}>{t('howwework.title')}</h2>
+          </motion.div>
+
+          {/* Desktop: horizontal connected timeline */}
+          <div className="hidden md:block">
+            <div className="relative">
+              {/* Connecting line through circle centers (circles are w-14=56px, centered, top-0) */}
+              <div className="absolute left-[10%] right-[10%] top-7 h-px z-0"
+                style={{background: 'linear-gradient(90deg, transparent, rgba(168,85,247,0.5) 20%, rgba(236,72,153,0.6) 50%, rgba(168,85,247,0.5) 80%, transparent)'}} />
+
+              <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger}
+                className="grid grid-cols-5 gap-4">
+                {steps.map((step) => (
+                  <motion.div key={step.num} variants={fadeUp} className="flex flex-col items-center text-center">
+                    {/* Numbered circle */}
+                    <div className="relative z-10 w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-base mb-6"
+                      style={{
+                        background: 'linear-gradient(135deg, #e040fb 0%, #a855f7 50%, #7c3aed 100%)',
+                        boxShadow: '0 8px 32px rgba(168,85,247,0.45), 0 0 0 4px rgba(168,85,247,0.12)'
+                      }}>
+                      {step.num}
+                    </div>
+                    {/* Card */}
+                    <div className="glass-card card-highlight rounded-2xl p-5 w-full">
+                      <div className="w-8 h-0.5 mx-auto mb-3 rounded-full" style={{background: 'linear-gradient(90deg, #e040fb, #7c3aed)'}} />
+                      <h3 className="font-bold text-sm mb-2" style={{color:'#f0eeff'}}>{step.title}</h3>
+                      <p className="text-xs leading-relaxed" style={{color:'#9b8fb8'}}>{step.desc}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Mobile: vertical stack */}
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger}
+            className="flex flex-col gap-4 md:hidden">
             {steps.map((step) => (
-              <motion.div key={step.num} variants={fadeUp} className="flex items-start gap-6 p-6 rounded-xl border border-white/8 bg-bg-card">
-                <span className="text-3xl font-bold text-accent/30 tabular-nums">{step.num}</span>
-                <div>
-                  <h3 className="text-white font-semibold mb-1">{step.title}</h3>
-                  <p className="text-neutral-500 text-sm">{step.desc}</p>
+              <motion.div key={step.num} variants={fadeUp} className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center text-white font-bold text-sm"
+                  style={{background: 'linear-gradient(135deg, #e040fb, #7c3aed)', boxShadow: '0 4px 16px rgba(168,85,247,0.4)'}}>
+                  {step.num}
+                </div>
+                <div className="glass-card card-highlight rounded-xl p-4 flex-1">
+                  <h3 className="font-bold text-sm mb-1" style={{color:'#f0eeff'}}>{step.title}</h3>
+                  <p className="text-xs" style={{color:'#9b8fb8'}}>{step.desc}</p>
                 </div>
               </motion.div>
             ))}
@@ -206,7 +243,7 @@ export default function HomePage() {
       )}
 
       {/* CTA */}
-      <section className="py-24 relative overflow-hidden" style={{background: '#07060e'}}>
+      <section className="py-24 relative overflow-hidden" style={{background: '#06041a'}}>
         <div className="absolute inset-0 gradient-mesh pointer-events-none" />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-[600px] h-[300px] bg-accent/12 rounded-full blur-[120px]" />

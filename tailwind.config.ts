@@ -9,8 +9,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: { DEFAULT: '#09090b', secondary: '#0c0b12', card: '#141420' },
+        bg: { DEFAULT: '#0b0915', secondary: '#0f0c1e', card: '#16122a' },
         accent: { DEFAULT: '#a855f7', dark: '#7c3aed' },
+        pink: { DEFAULT: '#ec4899', light: '#f472b6' },
         teal: { DEFAULT: '#06b6d4', light: '#67e8f9' },
       },
       fontFamily: {
