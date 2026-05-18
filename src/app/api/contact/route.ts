@@ -3,9 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { name, email, message, time_slot } = body;
+  const { name, email, phone, message, time_slot } = body;
 
-  if (!name?.trim() || !email?.trim() || !message?.trim()) {
+  if (!name?.trim() || !email?.trim() || !phone?.trim() || !message?.trim()) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const { error } = await supabase.from('contact_submissions').insert([{ name, email, message, time_slot }]);
+  const { error } = await supabase.from('contact_submissions').insert([{ name, email, phone, message, time_slot }]);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Telegram notification (optional — set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID in Vercel env vars)
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
       '',
       `👤 *Name:* ${name}`,
       `📧 *Email:* ${email}`,
+      `📞 *Phone:* ${phone}`,
       time_slot ? `🕐 *Time slot:* ${time_slot}` : '',
       '',
       `💬 *Message:*\n${message}`,

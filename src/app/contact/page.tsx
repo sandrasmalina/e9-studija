@@ -16,6 +16,7 @@ export default function ContactPage() {
   const { t, language } = useLanguage();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [selectedSlot, setSelectedSlot] = useState('');
   const [slots, setSlots] = useState<TimeSlot[]>([]);
@@ -29,7 +30,7 @@ export default function ContactPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || !message.trim()) {
+    if (!name.trim() || !email.trim() || !phone.trim() || !message.trim()) {
       setErrorMsg(t('contact.error.fields'));
       return;
     }
@@ -38,11 +39,11 @@ export default function ContactPage() {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, message, time_slot: selectedSlot }),
+        body: JSON.stringify({ name, email, phone, message, time_slot: selectedSlot }),
       });
       if (!res.ok) throw new Error();
       setStatus('success');
-      setName(''); setEmail(''); setMessage(''); setSelectedSlot('');
+      setName(''); setEmail(''); setPhone(''); setMessage(''); setSelectedSlot('');
     } catch {
       setStatus('error');
       setErrorMsg(t('contact.error.failed'));
@@ -101,6 +102,14 @@ export default function ContactPage() {
                 <input
                   type="email" value={email} onChange={e => { setEmail(e.target.value); setErrorMsg(''); }}
                   placeholder={t('contact.email.placeholder')}
+                  className="w-full bg-bg border border-white/8 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-neutral-400 text-sm mb-2">{t('contact.phone')}</label>
+                <input
+                  type="tel" value={phone} onChange={e => { setPhone(e.target.value); setErrorMsg(''); }}
+                  placeholder={t('contact.phone.placeholder')}
                   className="w-full bg-bg border border-white/8 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none transition-colors"
                 />
               </div>

@@ -138,6 +138,7 @@ END$$;
 -- └──────────────────────────────────────────────────────┘
 
 ALTER TABLE contact_submissions ADD COLUMN IF NOT EXISTS time_slot TEXT;
+ALTER TABLE contact_submissions ADD COLUMN IF NOT EXISTS phone TEXT;
 
 -- Add auth write policy so admin can delete submissions
 DO $$
