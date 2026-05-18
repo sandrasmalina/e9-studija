@@ -63,7 +63,7 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{background: '#06041a'}>
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{background: '#06041a'}}>
         {/* Mesh gradient */}
         <div className="absolute inset-0 gradient-mesh pointer-events-none" />
         {/* Dot grid */}
