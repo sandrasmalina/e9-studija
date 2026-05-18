@@ -54,10 +54,20 @@ export default function HomePage() {
   ];
 
   useEffect(() => {
-    supabase.from('projects').select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url')
+    supabase.from('projects').select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url,sort_order')
       .eq('published', true).eq('is_featured', true)
-      .order('created_at', { ascending: false }).limit(6)
-      .then(({ data }) => { if (data && data.length > 0) setFeaturedProjects(data); });
+      .order('sort_order', { ascending: true }).limit(6)
+      .then(({ data, error }) => {
+        if (error) {
+          // sort_order column may not exist yet — fallback to created_at
+          supabase.from('projects').select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url')
+            .eq('published', true).eq('is_featured', true)
+            .order('created_at', { ascending: true }).limit(6)
+            .then(({ data: d2 }) => { if (d2 && d2.length > 0) setFeaturedProjects(d2); });
+        } else if (data && data.length > 0) {
+          setFeaturedProjects(data);
+        }
+      });
     supabase.from('testimonials').select('*').order('created_at', { ascending: false })
       .then(({ data }) => { if (data) setTestimonials(data); });
   }, [language]);
