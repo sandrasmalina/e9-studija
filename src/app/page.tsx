@@ -245,7 +245,7 @@ export default function HomePage() {
       </section>
 
       {/* Why Choose Us */}
-      <section className="py-24" style={{background: '#0f0c1e'}}>
+      <section className="relative z-20 py-24" style={{background: '#0f0c1e'}}>
         <div className="max-w-7xl mx-auto px-6">
           <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
             {t('whychooseus.title')}
@@ -262,7 +262,7 @@ export default function HomePage() {
       </section>
 
       {/* Featured Projects */}
-      <section className="py-24" style={{background: '#0b0915'}}>
+      <section className="relative z-20 py-24" style={{background: '#0b0915'}}>
         <div className="max-w-7xl mx-auto px-6">
           <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="flex items-center justify-between mb-12">
             <div>
@@ -320,7 +320,7 @@ export default function HomePage() {
       </section>
 
       {/* How We Work */}
-      <section className="py-24" style={{background: '#0f0c1e'}}>
+      <section className="relative z-20 py-24" style={{background: '#0f0c1e'}}>
         <div className="max-w-7xl mx-auto px-6">
           <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-bold" style={{color:'#f0eeff'}}>{t('howwework.title')}</h2>
@@ -378,7 +378,7 @@ export default function HomePage() {
 
       {/* Testimonials Slider */}
       <section
-        className="py-24"
+        className="relative z-20 py-24"
         style={{ background: '#16122a' }}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
@@ -455,7 +455,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 relative overflow-hidden" style={{background: '#06041a'}}>
+      <section className="relative z-20 py-24 overflow-hidden" style={{background: '#06041a'}}>
         <div className="absolute inset-0 gradient-mesh pointer-events-none" />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-[600px] h-[300px] bg-accent/12 rounded-full blur-[120px]" />
