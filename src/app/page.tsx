@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Brain, GraduationCap, ChevronRight, Lightbulb, Target, Users, ArrowRight, Quote, ImageIcon, Rocket, BookOpen, Bot, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Brain, GraduationCap, ChevronRight, Lightbulb, Target, Users, ArrowRight, Quote, ImageIcon, Rocket, BookOpen, Bot, CheckCircle2, Monitor, Zap, GitBranch } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
@@ -75,9 +75,12 @@ export default function HomePage() {
   const displayedProjects = featuredProjects.length > 0 ? featuredProjects : demoProjects;
 
   const services = [
-    { icon: Sparkles, title: t('whatwedo.interactive.title'), desc: t('whatwedo.interactive.desc') },
-    { icon: Brain, title: t('whatwedo.ai.title'), desc: t('whatwedo.ai.desc') },
-    { icon: GraduationCap, title: t('whatwedo.education.title'), desc: t('whatwedo.education.desc') },
+    { icon: Monitor,      title: t('whatwedo.saas.title'),       desc: t('whatwedo.saas.desc'),       tags: [t('whatwedo.saas.tag1'),       t('whatwedo.saas.tag2'),       t('whatwedo.saas.tag3')] },
+    { icon: GitBranch,    title: t('whatwedo.structure.title'),  desc: t('whatwedo.structure.desc'),  tags: [t('whatwedo.structure.tag1'),  t('whatwedo.structure.tag2'),  t('whatwedo.structure.tag3')] },
+    { icon: Zap,          title: t('whatwedo.automation.title'), desc: t('whatwedo.automation.desc'), tags: [t('whatwedo.automation.tag1'), t('whatwedo.automation.tag2'), t('whatwedo.automation.tag3')] },
+    { icon: Sparkles,     title: t('whatwedo.interactive.title'),desc: t('whatwedo.interactive.desc'),tags: [t('whatwedo.interactive.tag1'),t('whatwedo.interactive.tag2'),t('whatwedo.interactive.tag3')] },
+    { icon: Brain,        title: t('whatwedo.ai.title'),         desc: t('whatwedo.ai.desc'),         tags: [t('whatwedo.ai.tag1'),         t('whatwedo.ai.tag2'),         t('whatwedo.ai.tag3')] },
+    { icon: GraduationCap,title: t('whatwedo.education.title'),  desc: t('whatwedo.education.desc'),  tags: [t('whatwedo.education.tag1'),  t('whatwedo.education.tag2'),  t('whatwedo.education.tag3')] },
   ];
   const steps = [
     { num: '01', title: t('howwework.discovery'), desc: t('howwework.discovery.desc') },
@@ -305,23 +308,68 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Services */}
-      <section className="relative z-20 py-24" style={{background: '#0b0915'}}>
+      {/* Services — premium agency row layout */}
+      <section className="relative z-20 py-28 overflow-hidden" style={{background: '#0b0915'}}>
         <div className="max-w-7xl mx-auto px-6">
-          <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
-            {t('whatwedo.title')}
-          </motion.h2>
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger} className="grid md:grid-cols-3 gap-6">
-            {services.map((s) => (
-              <motion.div key={s.title} variants={fadeUp} className="p-8 rounded-2xl bg-bg-card border border-white/8 hover:border-accent/30 transition-all group glow-hover">
-                <div className="p-3 rounded-xl bg-accent/10 w-fit mb-5 group-hover:bg-accent/20 transition-colors">
-                  <s.icon size={22} className="text-accent" />
+
+          {/* Section header */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
+            className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-0 pb-10 border-b border-white/[0.06]"
+          >
+            <div>
+              <span className="text-xs font-semibold tracking-[0.2em] uppercase text-accent">{t('whatwedo.eyebrow')}</span>
+              <h2 className="text-4xl md:text-6xl font-bold text-white mt-4">{t('whatwedo.title')}</h2>
+            </div>
+            <p className="text-neutral-500 max-w-xs leading-relaxed md:text-right text-sm">{t('whatwedo.subtitle')}</p>
+          </motion.div>
+
+          {/* Service rows */}
+          <div>
+            {services.map((s, i) => (
+              <motion.div
+                key={s.title}
+                initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.45, delay: i * 0.06 }}
+                className="group relative flex flex-col md:flex-row md:items-center gap-5 md:gap-8 py-9 border-b border-white/[0.06] hover:pl-5 transition-all duration-300 cursor-default"
+              >
+                {/* left accent stripe */}
+                <div className="absolute left-0 top-8 bottom-8 w-[2px] rounded-full bg-gradient-to-b from-accent to-pink-500/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                {/* Ghost number */}
+                <span className="font-black text-[3.5rem] leading-none text-white/[0.05] group-hover:text-accent/[0.13] transition-colors w-14 shrink-0 select-none tabular-nums">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+
+                {/* Icon */}
+                <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] group-hover:bg-accent/15 group-hover:border-accent/35 transition-all duration-300 shrink-0">
+                  <s.icon size={20} className="text-accent" />
                 </div>
-                <h3 className="text-white font-semibold text-lg mb-3">{s.title}</h3>
-                <p className="text-neutral-500 text-sm leading-relaxed">{s.desc}</p>
+
+                {/* Title + desc */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-bold text-xl md:text-2xl mb-1.5 group-hover:text-white/95 transition-colors">
+                    {s.title}
+                  </h3>
+                  <p className="text-neutral-500 text-sm leading-relaxed max-w-lg group-hover:text-neutral-400 transition-colors">
+                    {s.desc}
+                  </p>
+                </div>
+
+                {/* Tag bullets */}
+                <div className="shrink-0 flex flex-col gap-2 md:w-60">
+                  {s.tags.map((tag) => (
+                    <div key={tag} className="flex items-center gap-2.5">
+                      <div className="w-1 h-1 rounded-full bg-accent/50 shrink-0" />
+                      <span className="text-xs text-neutral-600 group-hover:text-neutral-400 transition-colors leading-snug">{tag}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Arrow indicator */}
+                <ArrowRight size={16} className="text-neutral-700 group-hover:text-accent group-hover:translate-x-1.5 transition-all duration-300 shrink-0 hidden md:block" />
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
