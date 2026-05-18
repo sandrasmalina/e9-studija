@@ -180,9 +180,12 @@ export default function HomePage() {
               return (
                 <div key={p.id} className="shrink-0 w-80 md:w-96">
                   <Link href={p.id.startsWith('d') ? '/projects' : `/projects/${p.id}`} className="block rounded-2xl overflow-hidden glass-card card-highlight hover:border-accent/40 transition-all duration-300 group glow-hover h-full">
-                    <div className="aspect-video overflow-hidden bg-white/[0.02] flex items-center justify-center">
+                    <div className="relative aspect-video overflow-hidden bg-white/[0.02] flex items-center justify-center">
                       {p.thumbnail_url ? (
-                        <img src={p.thumbnail_url} alt={title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
+                        <>
+                          <img src={p.thumbnail_url} alt={title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
+                          <div className="absolute inset-0 bg-gradient-to-br from-violet-700/30 to-fuchsia-600/20 mix-blend-overlay pointer-events-none" />
+                        </>
                       ) : (
                         <div className="w-full h-full gradient-mesh flex items-center justify-center">
                           <ImageIcon size={40} className="text-accent/30" />

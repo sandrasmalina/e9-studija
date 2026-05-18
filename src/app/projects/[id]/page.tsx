@@ -56,8 +56,9 @@ export default function ProjectPage() {
           </Link>
 
           {project.thumbnail_url && (
-            <div className="aspect-video rounded-2xl overflow-hidden mb-10 border border-white/8">
+            <div className="relative aspect-video rounded-2xl overflow-hidden mb-10 border border-white/8">
               <img src={project.thumbnail_url} alt={language === 'lv' && project.title_lv ? project.title_lv : project.title} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-700/30 to-fuchsia-600/20 mix-blend-overlay pointer-events-none" />
             </div>
           )}
 
