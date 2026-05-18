@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase';
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const stagger = { visible: { transition: { staggerChildren: 0.12 } } };
 
-interface TeamMember { id: string; name: string; position_en: string; position_lv: string; bio_en: string; bio_lv: string; photo_url: string; sort_order: number; }
+interface TeamMember { id: string; name: string; position_en: string; position_lv: string; bio_en: string; bio_lv: string; photo_url: string; sort_order: number; role?: string; bio?: string; image_url?: string; }
 
 const fallbackMembers: TeamMember[] = [
   { id: '1', name: 'Anna Kovaļevska', position_en: 'Founder & Creative Director', position_lv: 'Dibinātāja un Radošā Direktore', bio_en: 'With over 15 years of experience in digital design and education, Anna leads our creative vision and client strategy.', bio_lv: 'Ar vairāk nekā 15 gadu pieredzi digitālajā dizainā un izglītībā, Anna vada mūsu radošo vīziju.', photo_url: '', sort_order: 0 },
@@ -23,10 +23,30 @@ const fallbackMembers: TeamMember[] = [
 export default function TeamPage() {
   const { t, language } = useLanguage();
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    supabase.from('team_members').select('*').order('sort_order', { ascending: true })
-      .then(({ data }) => { setMembers(data && data.length > 0 ? data : fallbackMembers); });
+    const fetchMembers = async () => {
+      // Try with sort_order first, fall back to created_at if column missing
+      let { data, error } = await supabase
+        .from('team_members')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        // sort_order column may not exist yet — retry with created_at
+        ({ data, error } = await supabase
+          .from('team_members')
+          .select('*')
+          .order('created_at', { ascending: true }));
+      }
+
+      if (!error && data && data.length > 0) {
+        setMembers(data);
+      }
+      setLoaded(true);
+    };
+    fetchMembers();
   }, []);
 
   const displayMembers = members.length > 0 ? members : fallbackMembers;
@@ -63,21 +83,27 @@ export default function TeamPage() {
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
           className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
           {displayMembers.map((m) => {
-            const position = language === 'lv' && m.position_lv ? m.position_lv : m.position_en;
-            const bio = language === 'lv' && m.bio_lv ? m.bio_lv : m.bio_en;
             return (
               <motion.div key={m.id} variants={fadeUp}
                 className="p-6 rounded-2xl border border-white/8 bg-bg-card hover:border-accent/30 transition-all group text-center">
-                {m.photo_url ? (
-                  <img src={m.photo_url} alt={m.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-4 border-2 border-accent/20" />
+                {(m.photo_url || m.image_url) ? (
+                  <img src={m.photo_url || m.image_url} alt={m.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-4 border-2 border-accent/20" />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent/30 to-accent-dark/30 flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl group-hover:from-accent/40 group-hover:to-accent-dark/40 transition-all">
                     {m.name?.charAt(0) || '?'}
                   </div>
                 )}
                 <h3 className="text-white font-semibold mb-1">{m.name}</h3>
-                <p className="text-accent text-xs font-medium mb-3">{position}</p>
-                <p className="text-neutral-500 text-sm leading-relaxed">{bio}</p>
+                <p className="text-accent text-xs font-medium mb-3">
+                  {language === 'lv'
+                    ? (m.position_lv || m.position_en || m.role || '')
+                    : (m.position_en || m.role || '')}
+                </p>
+                <p className="text-neutral-500 text-sm leading-relaxed">
+                  {language === 'lv'
+                    ? (m.bio_lv || m.bio_en || m.bio || '')
+                    : (m.bio_en || m.bio || '')}
+                </p>
               </motion.div>
             );
           })}
