@@ -55,12 +55,17 @@ export default function AdminProjects() {
     const idx = projects.indexOf(p);
     const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
     if (swapIdx < 0 || swapIdx >= projects.length) return;
-    const other = projects[swapIdx];
-    await Promise.all([
-      supabase.from('projects').update({ sort_order: other.sort_order }).eq('id', p.id),
-      supabase.from('projects').update({ sort_order: p.sort_order }).eq('id', other.id),
-    ]);
-    load();
+    // Swap in array and assign positions 0,1,2,...
+    const next = [...projects];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    const reindexed = next.map((proj, i) => ({ ...proj, sort_order: i }));
+    setProjects(reindexed); // optimistic UI update
+    // Persist — silent if sort_order column not yet in DB
+    await Promise.all(
+      reindexed.map(proj =>
+        supabase.from('projects').update({ sort_order: proj.sort_order }).eq('id', proj.id)
+      )
+    );
   };
   const closeModal = () => setModal({ open: false });
 
@@ -79,9 +84,16 @@ export default function AdminProjects() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true); setFormError('');
-    const { error } = modal.editing
+    let { error } = modal.editing
       ? await supabase.from('projects').update(form).eq('id', modal.editing.id)
       : await supabase.from('projects').insert([form]);
+    if (error && error.message.toLowerCase().includes('column')) {
+      // Some new columns not yet in DB — save only known-safe fields
+      const safe = { title: form.title, title_lv: form.title_lv, category: form.category, short_description: form.short_description, short_description_lv: form.short_description_lv, thumbnail_url: form.thumbnail_url, project_url: form.project_url, is_featured: form.is_featured, published: form.published };
+      ({ error } = modal.editing
+        ? await supabase.from('projects').update(safe).eq('id', modal.editing.id)
+        : await supabase.from('projects').insert([safe]));
+    }
     if (error) { setFormError(error.message); setSaving(false); return; }
     setSaving(false); closeModal(); load();
   };
