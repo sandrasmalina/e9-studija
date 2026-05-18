@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Brain, GraduationCap, ChevronRight, Lightbulb, Target, Users, ArrowRight, Quote } from 'lucide-react';
+import { Sparkles, Brain, GraduationCap, ChevronRight, Lightbulb, Target, Users, ArrowRight, Quote, ImageIcon } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
@@ -185,7 +185,7 @@ export default function HomePage() {
                         <img src={p.thumbnail_url} alt={title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
                       ) : (
                         <div className="w-full h-full gradient-mesh flex items-center justify-center">
-                          <div className="w-12 h-12 rounded-xl bg-accent/20 border border-accent/20" />
+                          <ImageIcon size={40} className="text-accent/30" />
                         </div>
                       )}
                     </div>

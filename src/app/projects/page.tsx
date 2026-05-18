@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ImageIcon } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
 
@@ -54,7 +54,9 @@ export default function ProjectsPage() {
                     {p.thumbnail_url ? (
                       <img src={p.thumbnail_url} alt={p.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-accent/10 to-bg-secondary" />
+                      <div className="w-full h-full bg-gradient-to-br from-accent/10 to-bg-secondary flex items-center justify-center">
+                        <ImageIcon size={40} className="text-accent/30" />
+                      </div>
                     )}
                   </div>
                   <div className="p-6">
