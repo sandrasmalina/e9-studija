@@ -48,8 +48,11 @@ export default function Navigation() {
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-            <Image src="/logo-512.png" alt="E9 Studija" width={40} height={40} className="object-contain" priority />
+          <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+            <Image src="/logo-512.png" alt="E9 Studija" width={38} height={38} className="object-contain" priority />
+            <span className="text-white font-semibold text-lg tracking-tight" style={{ fontFamily: 'var(--font-jakarta, sans-serif)' }}>
+              Studija
+            </span>
           </Link>
 
           {/* Desktop nav */}

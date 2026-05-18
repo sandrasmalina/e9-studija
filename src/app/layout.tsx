@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import "./globals.css";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-jakarta',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: "E9 Studija — AI & Digital Studio",
@@ -24,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased bg-bg text-neutral-400">
+      <body className={`antialiased bg-bg text-neutral-400 ${plusJakarta.variable}`}>
         <LanguageProvider>
           <Navigation />
           <main>{children}</main>
