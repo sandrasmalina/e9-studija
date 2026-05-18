@@ -6,12 +6,18 @@ import { supabase } from '@/lib/supabase';
 import AdminNav from '@/components/AdminNav';
 
 const pageTitles: Record<string, string> = {
-  '/admin/dashboard': 'Dashboard',
-  '/admin/projects':  'Projects',
-  '/admin/team':      'Team Members',
-  '/admin/contacts':  'Contacts',
-  '/admin/social':    'Social Links',
-  '/admin/courses':   'Courses',
+  '/admin/dashboard':   'Dashboard',
+  '/admin/projects':    'Projects',
+  '/admin/team':        'Team Members',
+  '/admin/contacts':    'Contacts',
+  '/admin/social':      'Social Links',
+  '/admin/testimonials':'Testimonials',
+  '/admin/courses':     'Courses',
+  '/admin/categories':  'Categories',
+  '/admin/users':       'Students & Users',
+  '/admin/instructors': 'Instructor Applications',
+  '/admin/invitations': 'Invitations',
+  '/admin/settings':    'Platform Settings',
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

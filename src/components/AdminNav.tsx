@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const navGroups = [
@@ -11,16 +11,26 @@ const navGroups = [
     items: [
       { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
       { href: '/admin/projects',  icon: FolderKanban,    label: 'Projects' },
-      { href: '/admin/team',          icon: Users,           label: 'Team Members' },
-      { href: '/admin/testimonials',   icon: Quote,           label: 'Testimonials' },
-      { href: '/admin/courses',        icon: BookOpen,        label: 'Courses', comingSoon: true },
+      { href: '/admin/team',      icon: Users,           label: 'Team Members' },
+      { href: '/admin/testimonials', icon: Quote,        label: 'Testimonials' },
+    ],
+  },
+  {
+    label: 'Courses Platform',
+    items: [
+      { href: '/admin/courses',     icon: BookOpen,    label: 'Courses' },
+      { href: '/admin/categories',  icon: Tag,         label: 'Categories' },
+      { href: '/admin/users',       icon: GraduationCap, label: 'Students & Users' },
+      { href: '/admin/instructors', icon: UserCheck,   label: 'Instructor Apps' },
+      { href: '/admin/invitations', icon: Send,        label: 'Invitations' },
     ],
   },
   {
     label: 'Communication',
     items: [
-      { href: '/admin/contacts', icon: Mail,   label: 'Contacts' },
-      { href: '/admin/social',   icon: Share2, label: 'Social Links' },
+      { href: '/admin/contacts', icon: Mail,     label: 'Contacts' },
+      { href: '/admin/social',   icon: Share2,   label: 'Social Links' },
+      { href: '/admin/settings', icon: Settings, label: 'Platform Settings' },
     ],
   },
 ];
@@ -63,17 +73,17 @@ export default function AdminNav() {
               {group.label}
             </p>
             <div className="space-y-1">
-              {group.items.map(({ href, icon: Icon, label, comingSoon }) => {
+              {group.items.map(({ href, icon: Icon, label }) => {
                 const active = pathname.startsWith(href);
                 return (
                   <Link
                     key={href}
-                    href={comingSoon ? '#' : href}
+                    href={href}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all group relative ${
                       active
                         ? 'bg-accent/10 text-accent font-medium'
                         : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
-                    } ${comingSoon ? 'pointer-events-none opacity-35' : ''}`}
+                    }`}
                   >
                     {active && (
                       <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />
