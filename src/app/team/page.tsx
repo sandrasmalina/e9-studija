@@ -1,34 +1,44 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Button from '@/components/Button';
 import { ArrowRight } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const stagger = { visible: { transition: { staggerChildren: 0.12 } } };
 
-export default function TeamPage() {
-  const { t } = useLanguage();
+interface TeamMember { id: string; name: string; position_en: string; position_lv: string; bio_en: string; bio_lv: string; photo_url: string; sort_order: number; }
 
-  const members = [
-    { key: 'member1', initials: 'AK' },
-    { key: 'member2', initials: 'ML' },
-    { key: 'member3', initials: 'LB' },
-    { key: 'member4', initials: 'JK' },
-  ];
+const fallbackMembers: TeamMember[] = [
+  { id: '1', name: 'Anna Kovaļevska', position_en: 'Founder & Creative Director', position_lv: 'Dibinātāja un Radošā Direktore', bio_en: 'With over 15 years of experience in digital design and education, Anna leads our creative vision and client strategy.', bio_lv: 'Ar vairāk nekā 15 gadu pieredzi digitālajā dizainā un izglītībā, Anna vada mūsu radošo vīziju.', photo_url: '', sort_order: 0 },
+  { id: '2', name: 'Māris Liepiņš', position_en: 'Lead AI Engineer', position_lv: 'Galvenais AI Inženieris', bio_en: 'Māris specialises in AI integrations and automation, bringing cutting-edge technology to our clients.', bio_lv: 'Māris specializējas AI integrācijās un automatizācijā.', photo_url: '', sort_order: 1 },
+  { id: '3', name: 'Laura Bērziņa', position_en: 'UX/UI Designer', position_lv: 'UX/UI Dizainere', bio_en: 'Laura creates beautiful, intuitive interfaces that delight users across all platforms.', bio_lv: 'Laura rada skaistu, intuitīvu saskarni visās platformās.', photo_url: '', sort_order: 2 },
+  { id: '4', name: 'Jānis Kalniņš', position_en: 'Education Technology Specialist', position_lv: 'Izglītības Tehnoloģiju Speciālists', bio_en: 'Jānis designs and implements comprehensive learning systems that transform educational experiences.', bio_lv: 'Jānis projektē un ievieš visaptverošas mācību sistēmas.', photo_url: '', sort_order: 3 },
+];
+
+export default function TeamPage() {
+  const { t, language } = useLanguage();
+  const [members, setMembers] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    supabase.from('team_members').select('*').order('sort_order', { ascending: true })
+      .then(({ data }) => { setMembers(data && data.length > 0 ? data : fallbackMembers); });
+  }, []);
+
+  const displayMembers = members.length > 0 ? members : fallbackMembers;
 
   return (
     <div className="min-h-screen bg-bg pt-28 pb-24">
       <div className="max-w-7xl mx-auto px-6">
-        {/* Header */}
         <motion.div initial="hidden" animate="visible" variants={stagger} className="text-center mb-20">
           <motion.h1 variants={fadeUp} className="text-4xl md:text-6xl font-bold text-white mb-4">{t('team.title')}</motion.h1>
           <motion.p variants={fadeUp} className="text-neutral-400 max-w-2xl mx-auto">{t('team.subtitle')}</motion.p>
         </motion.div>
 
-        {/* Who We Are */}
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
           className="grid md:grid-cols-2 gap-12 items-center mb-24">
           <div>
@@ -47,26 +57,32 @@ export default function TeamPage() {
           </motion.div>
         </motion.div>
 
-        {/* Team Members */}
         <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className="text-3xl font-bold text-white text-center mb-12">{t('team.meetteam')}</motion.h2>
 
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
           className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
-          {members.map((m) => (
-            <motion.div key={m.key} variants={fadeUp}
-              className="p-6 rounded-2xl border border-white/8 bg-bg-card hover:border-accent/30 transition-all group text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent/30 to-accent-dark/30 flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl group-hover:from-accent/40 group-hover:to-accent-dark/40 transition-all">
-                {m.initials}
-              </div>
-              <h3 className="text-white font-semibold mb-1">{t(`team.${m.key}.name`)}</h3>
-              <p className="text-accent text-xs font-medium mb-3">{t(`team.${m.key}.position`)}</p>
-              <p className="text-neutral-500 text-sm leading-relaxed">{t(`team.${m.key}.bio`)}</p>
-            </motion.div>
-          ))}
+          {displayMembers.map((m) => {
+            const position = language === 'lv' && m.position_lv ? m.position_lv : m.position_en;
+            const bio = language === 'lv' && m.bio_lv ? m.bio_lv : m.bio_en;
+            return (
+              <motion.div key={m.id} variants={fadeUp}
+                className="p-6 rounded-2xl border border-white/8 bg-bg-card hover:border-accent/30 transition-all group text-center">
+                {m.photo_url ? (
+                  <img src={m.photo_url} alt={m.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-4 border-2 border-accent/20" />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent/30 to-accent-dark/30 flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl group-hover:from-accent/40 group-hover:to-accent-dark/40 transition-all">
+                    {m.name?.charAt(0) || '?'}
+                  </div>
+                )}
+                <h3 className="text-white font-semibold mb-1">{m.name}</h3>
+                <p className="text-accent text-xs font-medium mb-3">{position}</p>
+                <p className="text-neutral-500 text-sm leading-relaxed">{bio}</p>
+              </motion.div>
+            );
+          })}
         </motion.div>
 
-        {/* CTA */}
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className="p-10 rounded-2xl border border-accent/20 bg-accent/5 text-center relative overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, FolderKanban, BookOpen, LogOut, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, LogOut, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const navItems = [
   { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/projects', icon: FolderKanban, label: 'Projects' },
+  { href: '/admin/team', icon: Users, label: 'Team Members' },
+  { href: '/admin/contacts', icon: Mail, label: 'Contacts' },
   { href: '/admin/courses', icon: BookOpen, label: 'Courses', comingSoon: true },
 ];
 

@@ -35,8 +35,12 @@ export default function ContactPage() {
     }
     setStatus('sending');
     try {
-      const { error } = await supabase.from('contact_submissions').insert([{ name, email, message, time_slot: selectedSlot }]);
-      if (error) throw error;
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, message, time_slot: selectedSlot }),
+      });
+      if (!res.ok) throw new Error();
       setStatus('success');
       setName(''); setEmail(''); setMessage(''); setSelectedSlot('');
     } catch {

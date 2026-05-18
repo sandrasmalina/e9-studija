@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Sparkles, Brain, GraduationCap, ChevronRight, Lightbulb, Target, Users, ArrowRight } from 'lucide-react';
@@ -14,24 +14,31 @@ const fadeUp = {
 };
 const stagger = { visible: { transition: { staggerChildren: 0.12 } } };
 
-interface Project { id: string; title: string; category: string; short_description: string; thumbnail_url: string; }
+interface Project { id: string; title: string; title_lv: string; category: string; short_description: string; short_description_lv: string; thumbnail_url: string; }
 interface Testimonial { id: string; client_name: string; client_role: string; content_en: string; content_lv: string; }
 
 export default function HomePage() {
   const { t, language } = useLanguage();
   const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  const scrollCarousel = (dir: 'left' | 'right') => {
+    if (!carouselRef.current) return;
+    const w = carouselRef.current.offsetWidth;
+    carouselRef.current.scrollBy({ left: dir === 'right' ? w * 0.75 : -w * 0.75, behavior: 'smooth' });
+  };
 
   const demoProjects: Project[] = [
-    { id: 'd1', title: 'AI Customer Support Agent', category: 'AI Automation', short_description: 'Intelligent chat agent that handles support tickets with context-aware responses and seamless human handoff.', thumbnail_url: '' },
-    { id: 'd2', title: 'Interactive Learning Platform', category: 'Education', short_description: 'Custom LMS with gamification, progress tracking and AI-powered personalised learning paths.', thumbnail_url: '' },
-    { id: 'd3', title: 'Digital Product Catalogue', category: 'Interactive Design', short_description: 'Immersive product experience with 3D previews, guided tours and embedded video storytelling.', thumbnail_url: '' },
+    { id: 'd1', title: 'AI Customer Support Agent', title_lv: 'AI Klientu Atbalsta Aģents', category: 'AI Automation', short_description: 'Intelligent chat agent that handles support tickets with context-aware responses and seamless human handoff.', short_description_lv: 'Inteliģents tērzēšanas aģents, kas apstrādā atbalsta pieprasījumus ar kontekstam atbilstošām atbildēm.', thumbnail_url: '' },
+    { id: 'd2', title: 'Interactive Learning Platform', title_lv: 'Interaktīva Mācību Platforma', category: 'Education', short_description: 'Custom LMS with gamification, progress tracking and AI-powered personalised learning paths.', short_description_lv: 'Individuāla LMS ar gamifikāciju, progresa sekošanu un AI personalizētiem mācību ceļiem.', thumbnail_url: '' },
+    { id: 'd3', title: 'Digital Product Catalogue', title_lv: 'Digitālais Produktu Katalogs', category: 'Interactive Design', short_description: 'Immersive product experience with 3D previews, guided tours and embedded video storytelling.', short_description_lv: 'Iegremdējoša produktu pieredze ar 3D priekšskatiem un video stāstījumu.', thumbnail_url: '' },
   ];
 
   useEffect(() => {
-    supabase.from('projects').select('id,title,category,short_description,thumbnail_url')
+    supabase.from('projects').select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url')
       .eq('published', true).eq('is_featured', true)
-      .order('created_at', { ascending: false }).limit(3)
+      .order('created_at', { ascending: false }).limit(6)
       .then(({ data }) => { if (data && data.length > 0) setFeaturedProjects(data); });
     supabase.from('testimonials').select('*').order('created_at', { ascending: false })
       .then(({ data }) => { if (data) setTestimonials(data); });
@@ -130,36 +137,53 @@ export default function HomePage() {
       {/* Featured Projects */}
       <section className="py-24" style={{background: '#0b0915'}}>
         <div className="max-w-7xl mx-auto px-6">
-          <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold text-white">{t('featured.title')}</h2>
-            {featuredProjects.length === 0 && (
-              <p className="text-zinc-600 text-sm mt-3">Sample projects — connect Supabase to show real work</p>
-            )}
+          <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="flex items-center justify-between mb-12">
+            <div>
+              <h2 className="text-3xl md:text-5xl font-bold text-white">{t('featured.title')}</h2>
+              {featuredProjects.length === 0 && (
+                <p className="text-zinc-600 text-sm mt-2">Sample projects — add real ones via Admin</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => scrollCarousel('left')} className="p-2.5 rounded-xl border border-white/10 text-neutral-400 hover:text-white hover:border-accent/40 transition-all">
+                <ChevronRight size={18} className="rotate-180" />
+              </button>
+              <button onClick={() => scrollCarousel('right')} className="p-2.5 rounded-xl border border-white/10 text-neutral-400 hover:text-white hover:border-accent/40 transition-all">
+                <ChevronRight size={18} />
+              </button>
+            </div>
           </motion.div>
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger} className="grid md:grid-cols-3 gap-6 mb-10">
-            {displayedProjects.map((p) => (
-              <motion.div key={p.id} variants={fadeUp}>
-                <Link href={p.id.startsWith('d') ? '/projects' : `/projects/${p.id}`} className="block rounded-2xl overflow-hidden glass-card card-highlight hover:border-accent/40 transition-all duration-300 group glow-hover">
-                  <div className="aspect-video overflow-hidden bg-white/[0.02] flex items-center justify-center">
-                    {p.thumbnail_url ? (
-                      <img src={p.thumbnail_url} alt={p.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
-                    ) : (
-                      <div className="w-full h-full gradient-mesh flex items-center justify-center">
-                        <div className="w-12 h-12 rounded-xl bg-accent/20 border border-accent/20" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-6">
-                    <span className="text-accent text-xs font-medium uppercase tracking-widest">{p.category}</span>
-                    <h3 className="text-white font-semibold mt-2 mb-2">{p.title}</h3>
-                    <p className="text-zinc-500 text-sm line-clamp-2">{p.short_description}</p>
-                    <div className="mt-4 flex items-center gap-1 text-accent text-sm font-medium">{t('projects.view')} <ChevronRight size={14} /></div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
-          <div className="text-center">
+
+          {/* Carousel */}
+          <div ref={carouselRef} className="flex gap-6 overflow-x-auto pb-4 scroll-smooth" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+            {displayedProjects.map((p) => {
+              const title = language === 'lv' && p.title_lv ? p.title_lv : p.title;
+              const desc = language === 'lv' && p.short_description_lv ? p.short_description_lv : p.short_description;
+              return (
+                <div key={p.id} className="shrink-0 w-80 md:w-96">
+                  <Link href={p.id.startsWith('d') ? '/projects' : `/projects/${p.id}`} className="block rounded-2xl overflow-hidden glass-card card-highlight hover:border-accent/40 transition-all duration-300 group glow-hover h-full">
+                    <div className="aspect-video overflow-hidden bg-white/[0.02] flex items-center justify-center">
+                      {p.thumbnail_url ? (
+                        <img src={p.thumbnail_url} alt={title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
+                      ) : (
+                        <div className="w-full h-full gradient-mesh flex items-center justify-center">
+                          <div className="w-12 h-12 rounded-xl bg-accent/20 border border-accent/20" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-6">
+                      <span className="text-accent text-xs font-medium uppercase tracking-widest">{p.category}</span>
+                      <h3 className="text-white font-semibold mt-2 mb-2">{title}</h3>
+                      <p className="text-zinc-500 text-sm line-clamp-2">{desc}</p>
+                      <div className="mt-4 flex items-center gap-1 text-accent text-sm font-medium">{t('projects.view')} <ChevronRight size={14} /></div>
+                    </div>
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="text-center mt-10">
             <Link href="/projects"><Button variant="secondary">{t('featured.viewall')}</Button></Link>
           </div>
         </div>
