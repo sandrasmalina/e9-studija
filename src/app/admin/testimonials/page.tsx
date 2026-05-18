@@ -71,19 +71,22 @@ export default function AdminTestimonials() {
     e.preventDefault();
     setSaving(true);
     setFormError('');
-    // Try full payload first; if schema error, retry with base columns only
-    const payload = { ...form };
-    let { error } = modal.editing
-      ? await supabase.from('testimonials').update(payload).eq('id', modal.editing.id)
-      : await supabase.from('testimonials').insert([payload]);
-    if (error && error.message.includes('column')) {
-      // Columns not yet added — save base fields only until migration is run
-      const base = { client_name: form.client_name, client_role: form.client_role, content_en: form.content_en, content_lv: form.content_lv };
-      ({ error } = modal.editing
-        ? await supabase.from('testimonials').update(base).eq('id', modal.editing.id)
-        : await supabase.from('testimonials').insert([base]));
+
+    // Verify session is still active
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setFormError('Session expired — please log out and log in again.');
+      setSaving(false);
+      return;
     }
+
+    const payload = { ...form };
+    const { data: saved, error } = modal.editing
+      ? await supabase.from('testimonials').update(payload).eq('id', modal.editing.id).select().single()
+      : await supabase.from('testimonials').insert([payload]).select().single();
+
     if (error) { setFormError(error.message); setSaving(false); return; }
+    if (!saved) { setFormError('Save failed silently — run the RLS fix SQL in Supabase (section 7 of migration).'); setSaving(false); return; }
     setSaving(false);
     setModal({ open: false });
     load();

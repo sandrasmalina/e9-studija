@@ -255,3 +255,49 @@ BEGIN
       USING (auth.role() = 'authenticated');
   END IF;
 END$$;
+
+-- ┌──────────────────────────────────────────────────────────────┐
+-- │  7. FIX RLS WRITE POLICIES — use TO authenticated pattern    │
+-- │     (auth.role() check is unreliable for INSERT; this fixes  │
+-- │     silent save failures in the admin panel)                 │
+-- └──────────────────────────────────────────────────────────────┘
+
+-- testimonials
+DROP POLICY IF EXISTS "Auth write testimonials" ON testimonials;
+CREATE POLICY "Auth write testimonials"
+  ON testimonials FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- projects
+DROP POLICY IF EXISTS "Auth write projects" ON projects;
+CREATE POLICY "Auth write projects"
+  ON projects FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- team_members
+DROP POLICY IF EXISTS "Auth write team_members" ON team_members;
+CREATE POLICY "Auth write team_members"
+  ON team_members FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- social_links
+DROP POLICY IF EXISTS "Auth write social_links" ON social_links;
+CREATE POLICY "Auth write social_links"
+  ON social_links FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- contact_submissions
+DROP POLICY IF EXISTS "Auth manage contact_submissions" ON contact_submissions;
+CREATE POLICY "Auth manage contact_submissions"
+  ON contact_submissions FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
