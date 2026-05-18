@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Globe, Menu, X } from 'lucide-react';
+import { Globe, Menu, X, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -77,6 +77,15 @@ export default function Navigation() {
                 LV
               </button>
             </div>
+
+            {/* Admin link */}
+            <Link
+              href="/admin"
+              className="ml-2 pl-4 border-l border-white/8 text-neutral-600 hover:text-accent transition-colors"
+              title="Admin"
+            >
+              <Lock size={14} />
+            </Link>
           </nav>
 
           {/* Mobile toggle */}
