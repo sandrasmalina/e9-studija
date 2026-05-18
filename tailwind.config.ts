@@ -9,9 +9,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: { DEFAULT: '#0a0a0a', secondary: '#111111', card: '#141414' },
+        bg: { DEFAULT: '#09090b', secondary: '#0c0b12', card: '#141420' },
         accent: { DEFAULT: '#a855f7', dark: '#7c3aed' },
-        border: 'rgba(255,255,255,0.08)',
+        teal: { DEFAULT: '#06b6d4', light: '#67e8f9' },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

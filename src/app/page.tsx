@@ -22,14 +22,22 @@ export default function HomePage() {
   const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
 
+  const demoProjects: Project[] = [
+    { id: 'd1', title: 'AI Customer Support Agent', category: 'AI Automation', short_description: 'Intelligent chat agent that handles support tickets with context-aware responses and seamless human handoff.', thumbnail_url: '' },
+    { id: 'd2', title: 'Interactive Learning Platform', category: 'Education', short_description: 'Custom LMS with gamification, progress tracking and AI-powered personalised learning paths.', thumbnail_url: '' },
+    { id: 'd3', title: 'Digital Product Catalogue', category: 'Interactive Design', short_description: 'Immersive product experience with 3D previews, guided tours and embedded video storytelling.', thumbnail_url: '' },
+  ];
+
   useEffect(() => {
     supabase.from('projects').select('id,title,category,short_description,thumbnail_url')
-      .eq('published', true).eq('is_featured', true).eq('language', language)
+      .eq('published', true).eq('is_featured', true)
       .order('created_at', { ascending: false }).limit(3)
-      .then(({ data }) => { if (data) setFeaturedProjects(data); });
+      .then(({ data }) => { if (data && data.length > 0) setFeaturedProjects(data); });
     supabase.from('testimonials').select('*').order('created_at', { ascending: false })
       .then(({ data }) => { if (data) setTestimonials(data); });
   }, [language]);
+
+  const displayedProjects = featuredProjects.length > 0 ? featuredProjects : demoProjects;
 
   const services = [
     { icon: Sparkles, title: t('whatwedo.interactive.title'), desc: t('whatwedo.interactive.desc') },
@@ -55,9 +63,16 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center justify-center bg-bg bg-grid overflow-hidden pt-20">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-bg pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-accent/10 rounded-full blur-[120px] pointer-events-none" />
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{background: '#07060e'}}>
+        {/* Mesh gradient */}
+        <div className="absolute inset-0 gradient-mesh pointer-events-none" />
+        {/* Dot grid */}
+        <div className="absolute inset-0 bg-grid opacity-60 pointer-events-none" />
+        {/* Orbs */}
+        <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-teal/10 rounded-full blur-[100px] pointer-events-none" />
+        {/* Fade to body bg */}
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#09090b] to-transparent pointer-events-none" />
         <motion.div className="relative z-10 max-w-5xl mx-auto px-6 text-center" initial="hidden" animate="visible" variants={stagger}>
           <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-xs font-medium mb-8">
             <Sparkles size={12} /> AI &amp; Digital Studio
@@ -76,7 +91,7 @@ export default function HomePage() {
       </section>
 
       {/* Services */}
-      <section className="py-24 bg-bg">
+      <section className="py-24 bg-bg" style={{background: '#09090b'}}>
         <div className="max-w-7xl mx-auto px-6">
           <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
             {t('whatwedo.title')}
@@ -96,16 +111,16 @@ export default function HomePage() {
       </section>
 
       {/* Why Choose Us */}
-      <section className="py-24 bg-bg-secondary">
+      <section className="py-24" style={{background: '#0c0b12'}}>
         <div className="max-w-7xl mx-auto px-6">
           <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
             {t('whychooseus.title')}
           </motion.h2>
           <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger} className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {reasons.map((r) => (
-              <motion.div key={r.label} variants={fadeUp} className="flex items-center gap-3 p-5 rounded-xl border border-white/8 bg-bg-card">
+              <motion.div key={r.label} variants={fadeUp} className="flex items-center gap-3 p-5 rounded-xl glass-card card-highlight">
                 <r.icon size={18} className="text-accent flex-shrink-0" />
-                <span className="text-neutral-300 text-sm font-medium">{r.label}</span>
+                <span className="text-zinc-300 text-sm font-medium">{r.label}</span>
               </motion.div>
             ))}
           </motion.div>
@@ -113,40 +128,45 @@ export default function HomePage() {
       </section>
 
       {/* Featured Projects */}
-      {featuredProjects.length > 0 && (
-        <section className="py-24 bg-bg">
-          <div className="max-w-7xl mx-auto px-6">
-            <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
-              {t('featured.title')}
-            </motion.h2>
-            <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger} className="grid md:grid-cols-3 gap-6 mb-10">
-              {featuredProjects.map((p) => (
-                <motion.div key={p.id} variants={fadeUp}>
-                  <Link href={`/projects/${p.id}`} className="block rounded-2xl overflow-hidden border border-white/8 bg-bg-card hover:border-accent/30 transition-all group">
-                    {p.thumbnail_url && (
-                      <div className="aspect-video overflow-hidden bg-bg-secondary">
-                        <img src={p.thumbnail_url} alt={p.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
+      <section className="py-24" style={{background: '#09090b'}}>
+        <div className="max-w-7xl mx-auto px-6">
+          <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold text-white">{t('featured.title')}</h2>
+            {featuredProjects.length === 0 && (
+              <p className="text-zinc-600 text-sm mt-3">Sample projects — connect Supabase to show real work</p>
+            )}
+          </motion.div>
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger} className="grid md:grid-cols-3 gap-6 mb-10">
+            {displayedProjects.map((p) => (
+              <motion.div key={p.id} variants={fadeUp}>
+                <Link href={p.id.startsWith('d') ? '/projects' : `/projects/${p.id}`} className="block rounded-2xl overflow-hidden glass-card card-highlight hover:border-accent/40 transition-all duration-300 group glow-hover">
+                  <div className="aspect-video overflow-hidden bg-white/[0.02] flex items-center justify-center">
+                    {p.thumbnail_url ? (
+                      <img src={p.thumbnail_url} alt={p.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
+                    ) : (
+                      <div className="w-full h-full gradient-mesh flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-accent/20 border border-accent/20" />
                       </div>
                     )}
-                    <div className="p-6">
-                      <span className="text-accent text-xs font-medium uppercase tracking-widest">{p.category}</span>
-                      <h3 className="text-white font-semibold mt-2 mb-2">{p.title}</h3>
-                      <p className="text-neutral-500 text-sm line-clamp-2">{p.short_description}</p>
-                      <div className="mt-4 flex items-center gap-1 text-accent text-sm font-medium">View Project <ChevronRight size={14} /></div>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </motion.div>
-            <div className="text-center">
-              <Link href="/projects"><Button variant="secondary">{t('featured.viewall')}</Button></Link>
-            </div>
+                  </div>
+                  <div className="p-6">
+                    <span className="text-accent text-xs font-medium uppercase tracking-widest">{p.category}</span>
+                    <h3 className="text-white font-semibold mt-2 mb-2">{p.title}</h3>
+                    <p className="text-zinc-500 text-sm line-clamp-2">{p.short_description}</p>
+                    <div className="mt-4 flex items-center gap-1 text-accent text-sm font-medium">View Project <ChevronRight size={14} /></div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </motion.div>
+          <div className="text-center">
+            <Link href="/projects"><Button variant="secondary">{t('featured.viewall')}</Button></Link>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* How We Work */}
-      <section className="py-24 bg-bg-secondary">
+      <section className="py-24" style={{background: '#0c0b12'}}>
         <div className="max-w-7xl mx-auto px-6">
           <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
             {t('howwework.title')}
@@ -186,9 +206,10 @@ export default function HomePage() {
       )}
 
       {/* CTA */}
-      <section className="py-24 bg-bg-secondary relative overflow-hidden">
+      <section className="py-24 relative overflow-hidden" style={{background: '#07060e'}}>
+        <div className="absolute inset-0 gradient-mesh pointer-events-none" />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[500px] h-[300px] bg-accent/10 rounded-full blur-[100px]" />
+          <div className="w-[600px] h-[300px] bg-accent/12 rounded-full blur-[120px]" />
         </div>
         <motion.div initial={{ opacity:0, y:30 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="relative z-10 max-w-2xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">{t('cta.title')}</h2>
