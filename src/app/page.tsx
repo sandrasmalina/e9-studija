@@ -224,6 +224,87 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Problems We Solve + Real Results */}
+      <section className="relative z-20 py-28 overflow-hidden" style={{background: '#0f0c1e'}}>
+        {/* decorative blobs */}
+        <div className="absolute top-1/4 -left-32 w-72 h-72 bg-accent/8 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-1/4 -right-32 w-72 h-72 bg-pink-500/8 rounded-full blur-[100px] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-6">
+
+          {/* ── PROBLEMS ── */}
+          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-6">
+            <span className="inline-block text-xs font-semibold tracking-[0.2em] uppercase text-accent px-3 py-1.5 rounded-full border border-accent/30 bg-accent/10">
+              {t('problems.eyebrow')}
+            </span>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }} className="mb-16">
+            <h2 className="text-4xl md:text-6xl font-bold text-white">{t('problems.title')}</h2>
+            <p className="text-neutral-500 mt-3 text-lg">{t('problems.subtitle')}</p>
+          </motion.div>
+
+          {/* Problem cards — 2 col desktop, staggered */}
+          <motion.div
+            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
+            className="grid md:grid-cols-2 gap-4 mb-24"
+          >
+            {[t('problems.1'), t('problems.2'), t('problems.3'), t('problems.4'), t('problems.5')].map((problem, i) => (
+              <motion.div
+                key={i}
+                variants={fadeUp}
+                className={`group relative rounded-2xl border border-white/[0.07] bg-white/[0.025] p-7 overflow-hidden hover:border-accent/25 hover:bg-white/[0.04] transition-all duration-400${i === 4 ? ' md:col-span-2 md:max-w-xl md:mx-auto w-full' : ''}`}
+              >
+                {/* big decorative quote */}
+                <span className="absolute top-3 right-5 text-7xl font-black text-white/[0.04] group-hover:text-accent/8 transition-colors select-none leading-none font-serif">"</span>
+                {/* left accent bar */}
+                <div className="absolute left-0 top-6 bottom-6 w-[3px] rounded-full bg-gradient-to-b from-accent/60 to-pink-500/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <p className="relative text-[1.05rem] md:text-lg text-neutral-300 font-medium leading-snug group-hover:text-white transition-colors">
+                  {problem}
+                </p>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* ── REAL RESULTS ── */}
+          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-6">
+            <span className="inline-block text-xs font-semibold tracking-[0.2em] uppercase text-accent px-3 py-1.5 rounded-full border border-accent/30 bg-accent/10">
+              {t('results.eyebrow')}
+            </span>
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-4xl md:text-6xl font-bold text-white mb-12"
+          >
+            {t('results.title')}
+          </motion.h2>
+
+          <motion.div
+            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
+            className="grid md:grid-cols-2 gap-5"
+          >
+            {[
+              { stat: t('results.1.stat'), text: t('results.1.text'), color: 'from-violet-500 to-purple-700' },
+              { stat: t('results.2.stat'), text: t('results.2.text'), color: 'from-fuchsia-500 to-pink-700' },
+            ].map((r, i) => (
+              <motion.div key={i} variants={fadeUp}
+                className="relative rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 overflow-hidden group hover:border-accent/30 transition-all duration-500"
+              >
+                {/* big quote decorative */}
+                <Quote size={80} className="absolute -top-3 -right-3 text-white/[0.03] group-hover:text-accent/5 transition-colors" />
+                {/* stat badge */}
+                <div className={`inline-block px-4 py-2 rounded-xl bg-gradient-to-r ${r.color} text-white font-black text-2xl mb-5 shadow-lg`}>
+                  {r.stat}
+                </div>
+                <p className="text-neutral-300 text-lg leading-relaxed font-medium group-hover:text-white transition-colors">
+                  {r.text}
+                </p>
+              </motion.div>
+            ))}
+          </motion.div>
+
+        </div>
+      </section>
+
       {/* Services */}
       <section className="relative z-20 py-24" style={{background: '#0b0915'}}>
         <div className="max-w-7xl mx-auto px-6">
