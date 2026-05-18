@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Clock, MessageCircle } from 'lucide-react';
+import { Mail, Clock, MessageCircle, Building2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
@@ -13,7 +13,7 @@ const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
 interface TimeSlot { id: string; label: string; available: boolean; }
 
 export default function ContactPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -133,6 +133,35 @@ export default function ContactPage() {
               </Button>
             </form>
           )}
+        </motion.div>
+
+        {/* Company details */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          className="max-w-2xl mx-auto mt-8 p-6 rounded-2xl border border-white/8 bg-bg-card">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-accent/10"><Building2 size={15} className="text-accent" /></div>
+            <p className="text-xs text-neutral-500 uppercase tracking-widest">
+              {language === 'lv' ? 'Uzņēmuma rekvizīti' : 'Company Details'}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+            <div>
+              <span className="text-neutral-500">{language === 'lv' ? 'Nosaukums' : 'Company'}:</span>
+              <span className="text-white ml-2">SIA E9 Studija</span>
+            </div>
+            <div>
+              <span className="text-neutral-500">{language === 'lv' ? 'Reģ. nr.' : 'Reg. No.'}:</span>
+              <span className="text-white ml-2">44103139391</span>
+            </div>
+            <div>
+              <span className="text-neutral-500">{language === 'lv' ? 'Banka' : 'Bank'}:</span>
+              <span className="text-white ml-2">A/S Swedbank</span>
+            </div>
+            <div>
+              <span className="text-neutral-500">{language === 'lv' ? 'Konts' : 'Account'}:</span>
+              <span className="text-white ml-2 font-mono tracking-wide">LV89HABA0551047910013</span>
+            </div>
+          </div>
         </motion.div>
       </div>
     </div>
