@@ -199,6 +199,7 @@ END$$;
 -- │  6. TESTIMONIALS — client quotes slider                      │
 -- └──────────────────────────────────────────────────────────────┘
 
+-- Create table if it doesn't exist yet
 CREATE TABLE IF NOT EXISTS testimonials (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   client_name TEXT NOT NULL,
@@ -209,6 +210,13 @@ CREATE TABLE IF NOT EXISTS testimonials (
   sort_order  INTEGER DEFAULT 0,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add missing columns for existing tables (safe to run multiple times)
+ALTER TABLE testimonials ADD COLUMN IF NOT EXISTS client_role  TEXT;
+ALTER TABLE testimonials ADD COLUMN IF NOT EXISTS content_lv   TEXT;
+ALTER TABLE testimonials ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT true;
+ALTER TABLE testimonials ADD COLUMN IF NOT EXISTS sort_order   INTEGER DEFAULT 0;
+ALTER TABLE testimonials ADD COLUMN IF NOT EXISTS created_at   TIMESTAMPTZ DEFAULT NOW();
 
 -- Enable RLS
 ALTER TABLE testimonials ENABLE ROW LEVEL SECURITY;
@@ -226,7 +234,7 @@ BEGIN
   END IF;
 END$$;
 
--- Auth write for admin
+-- Auth write for admin (covers SELECT too so admin can see drafts)
 DO $$
 BEGIN
   IF NOT EXISTS (

@@ -32,10 +32,16 @@ export default function AdminTestimonials() {
   const [formError, setFormError] = useState('');
 
   const load = async () => {
-    const { data } = await supabase
+    let { data, error } = await supabase
       .from('testimonials')
       .select('*')
       .order('sort_order', { ascending: true });
+    if (error) {
+      ({ data, error } = await supabase
+        .from('testimonials')
+        .select('*')
+        .order('created_at', { ascending: true }));
+    }
     setItems(data ?? []);
     setLoading(false);
   };
@@ -65,9 +71,18 @@ export default function AdminTestimonials() {
     e.preventDefault();
     setSaving(true);
     setFormError('');
-    const { error } = modal.editing
-      ? await supabase.from('testimonials').update(form).eq('id', modal.editing.id)
-      : await supabase.from('testimonials').insert([form]);
+    // Try full payload first; if schema error, retry with base columns only
+    const payload = { ...form };
+    let { error } = modal.editing
+      ? await supabase.from('testimonials').update(payload).eq('id', modal.editing.id)
+      : await supabase.from('testimonials').insert([payload]);
+    if (error && error.message.includes('column')) {
+      // Columns not yet added — save base fields only until migration is run
+      const base = { client_name: form.client_name, client_role: form.client_role, content_en: form.content_en, content_lv: form.content_lv };
+      ({ error } = modal.editing
+        ? await supabase.from('testimonials').update(base).eq('id', modal.editing.id)
+        : await supabase.from('testimonials').insert([base]));
+    }
     if (error) { setFormError(error.message); setSaving(false); return; }
     setSaving(false);
     setModal({ open: false });
