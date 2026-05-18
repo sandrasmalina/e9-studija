@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Globe, Menu, X, Lock } from 'lucide-react';
+import { Globe, Menu, X, Lock, LayoutDashboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/lib/supabase';
 
 export default function Navigation() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { language, setLanguage, t } = useLanguage();
   const pathname = usePathname();
 
@@ -17,6 +19,14 @@ export default function Navigation() {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setIsAdmin(!!data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setIsAdmin(!!session);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const navItems = [
@@ -79,13 +89,24 @@ export default function Navigation() {
             </div>
 
             {/* Admin link */}
-            <Link
-              href="/admin"
-              className="ml-2 pl-4 border-l border-white/8 text-neutral-600 hover:text-accent transition-colors"
-              title="Admin"
-            >
-              <Lock size={14} />
-            </Link>
+            {isAdmin ? (
+              <Link
+                href="/admin/dashboard"
+                className="ml-2 pl-4 border-l border-white/8 flex items-center gap-1.5 text-accent text-xs font-medium hover:text-white transition-colors"
+                title="Dashboard"
+              >
+                <LayoutDashboard size={14} />
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/admin"
+                className="ml-2 pl-4 border-l border-white/8 text-neutral-600 hover:text-accent transition-colors"
+                title="Admin"
+              >
+                <Lock size={14} />
+              </Link>
+            )}
           </nav>
 
           {/* Mobile toggle */}

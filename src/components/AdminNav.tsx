@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, LogOut, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { href: '/admin/projects', icon: FolderKanban, label: 'Projects' },
   { href: '/admin/team', icon: Users, label: 'Team Members' },
   { href: '/admin/contacts', icon: Mail, label: 'Contacts' },
+  { href: '/admin/social', icon: Share2, label: 'Social Links' },
   { href: '/admin/courses', icon: BookOpen, label: 'Courses', comingSoon: true },
 ];
 
@@ -20,6 +21,11 @@ export default function AdminNav() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/admin');
+  };
+
+  const handleViewSite = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
   };
 
   return (
@@ -50,12 +56,12 @@ export default function AdminNav() {
       </nav>
 
       <div className="mt-auto pt-4 space-y-0.5 border-t border-zinc-900">
-        <Link
-          href="/"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition-colors"
+        <button
+          onClick={handleViewSite}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition-colors w-full"
         >
-          <ExternalLink size={15} /> View Site
-        </Link>
+          <Home size={15} /> Exit to Site
+        </button>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-500 hover:text-red-400 hover:bg-red-950/20 transition-colors w-full"
