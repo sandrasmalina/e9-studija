@@ -82,11 +82,14 @@ export default function AdminTestimonials() {
 
     const payload = { ...form };
     const { data: saved, error } = modal.editing
-      ? await supabase.from('testimonials').update(payload).eq('id', modal.editing.id).select().single()
-      : await supabase.from('testimonials').insert([payload]).select().single();
+      ? await supabase.from('testimonials').update(payload).eq('id', modal.editing.id).select()
+      : await supabase.from('testimonials').insert([payload]).select();
 
     if (error) { setFormError(error.message); setSaving(false); return; }
-    if (!saved) { setFormError('Save failed silently — run the RLS fix SQL in Supabase (section 7 of migration).'); setSaving(false); return; }
+    if (!saved || saved.length === 0) {
+      setFormError('Save blocked — please run the RLS fix SQL in Supabase (Section 7 of migration file).');
+      setSaving(false); return;
+    }
     setSaving(false);
     setModal({ open: false });
     load();
