@@ -153,7 +153,7 @@ export default function HomePage() {
                     <span className="text-accent text-xs font-medium uppercase tracking-widest">{p.category}</span>
                     <h3 className="text-white font-semibold mt-2 mb-2">{p.title}</h3>
                     <p className="text-zinc-500 text-sm line-clamp-2">{p.short_description}</p>
-                    <div className="mt-4 flex items-center gap-1 text-accent text-sm font-medium">View Project <ChevronRight size={14} /></div>
+                    <div className="mt-4 flex items-center gap-1 text-accent text-sm font-medium">{t('projects.view')} <ChevronRight size={14} /></div>
                   </div>
                 </Link>
               </motion.div>

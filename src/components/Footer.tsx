@@ -90,8 +90,11 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-white/8 text-center text-neutral-600 text-sm">
-          © {new Date().getFullYear()} E9 Studija. {t('footer.rights')}
+        <div className="pt-8 border-t border-white/8 flex items-center justify-between text-neutral-600 text-sm flex-wrap gap-2">
+          <span>© {new Date().getFullYear()} E9 Studija. {t('footer.rights')}</span>
+          <Link href="/admin" className="text-neutral-700 hover:text-neutral-500 transition-colors text-xs">
+            Admin
+          </Link>
         </div>
       </div>
     </footer>
