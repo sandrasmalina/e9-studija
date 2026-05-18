@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, Star, Eye, EyeOff, X, Upload, ExternalLink } from 'lucide-react';
+import { Plus, Pencil, Trash2, Star, Eye, EyeOff, X, Upload, ExternalLink, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -15,10 +15,11 @@ interface Project {
   results_en: string; results_lv: string;
   thumbnail_url: string; project_url: string;
   is_featured: boolean; published: boolean;
+  sort_order: number;
   created_at: string;
 }
 
-const emptyForm = { title: '', title_lv: '', category: '', client_name: '', short_description: '', short_description_lv: '', overview_en: '', overview_lv: '', goals_en: '', goals_lv: '', process_en: '', process_lv: '', results_en: '', results_lv: '', thumbnail_url: '', project_url: '', is_featured: false, published: true };
+const emptyForm = { title: '', title_lv: '', category: '', client_name: '', short_description: '', short_description_lv: '', overview_en: '', overview_lv: '', goals_en: '', goals_lv: '', process_en: '', process_lv: '', results_en: '', results_lv: '', thumbnail_url: '', project_url: '', is_featured: false, published: true, sort_order: 0 };
 
 export default function AdminProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -31,10 +32,14 @@ export default function AdminProjects() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
-    const { data } = await supabase.from('projects')
-      .select('id,title,title_lv,category,client_name,short_description,short_description_lv,overview_en,overview_lv,goals_en,goals_lv,process_en,process_lv,results_en,results_lv,thumbnail_url,project_url,is_featured,published,created_at')
-      .order('created_at', { ascending: false });
-    setProjects(data ?? []);
+    const cols = 'id,title,title_lv,category,client_name,short_description,short_description_lv,overview_en,overview_lv,goals_en,goals_lv,process_en,process_lv,results_en,results_lv,thumbnail_url,project_url,is_featured,published,sort_order,created_at';
+    // eslint-disable-next-line prefer-const
+    let { data, error } = await supabase.from('projects').select(cols).order('sort_order', { ascending: true });
+    if (error) {
+      const fallback = await supabase.from('projects').select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url,project_url,is_featured,published,created_at').order('created_at', { ascending: false });
+      data = fallback.data as unknown as typeof data;
+    }
+    setProjects((data ?? []) as Project[]);
     setLoading(false);
   };
 
@@ -42,8 +47,20 @@ export default function AdminProjects() {
 
   const openAdd = () => { setForm({ ...emptyForm }); setModal({ open: true }); setFormError(''); };
   const openEdit = (p: Project) => {
-    setForm({ title: p.title||'', title_lv: p.title_lv||'', category: p.category||'', client_name: p.client_name||'', short_description: p.short_description||'', short_description_lv: p.short_description_lv||'', overview_en: p.overview_en||'', overview_lv: p.overview_lv||'', goals_en: p.goals_en||'', goals_lv: p.goals_lv||'', process_en: p.process_en||'', process_lv: p.process_lv||'', results_en: p.results_en||'', results_lv: p.results_lv||'', thumbnail_url: p.thumbnail_url||'', project_url: p.project_url||'', is_featured: p.is_featured, published: p.published });
+    setForm({ title: p.title||'', title_lv: p.title_lv||'', category: p.category||'', client_name: p.client_name||'', short_description: p.short_description||'', short_description_lv: p.short_description_lv||'', overview_en: p.overview_en||'', overview_lv: p.overview_lv||'', goals_en: p.goals_en||'', goals_lv: p.goals_lv||'', process_en: p.process_en||'', process_lv: p.process_lv||'', results_en: p.results_en||'', results_lv: p.results_lv||'', thumbnail_url: p.thumbnail_url||'', project_url: p.project_url||'', is_featured: p.is_featured, published: p.published, sort_order: p.sort_order ?? 0 });
     setModal({ open: true, editing: p }); setFormError('');
+  };
+
+  const handleReorder = async (p: Project, dir: 'up' | 'down') => {
+    const idx = projects.indexOf(p);
+    const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= projects.length) return;
+    const other = projects[swapIdx];
+    await Promise.all([
+      supabase.from('projects').update({ sort_order: other.sort_order }).eq('id', p.id),
+      supabase.from('projects').update({ sort_order: p.sort_order }).eq('id', other.id),
+    ]);
+    load();
   };
   const closeModal = () => setModal({ open: false });
 
@@ -103,6 +120,7 @@ export default function AdminProjects() {
             <table className="w-full text-sm">
               <thead className="bg-zinc-900/80 border-b border-zinc-800">
                 <tr>
+                  <th className="text-center px-3 py-3 text-zinc-400 font-medium w-10">Order</th>
                   <th className="text-left px-5 py-3 text-zinc-400 font-medium">Project</th>
                   <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">Category</th>
                   <th className="px-4 py-3 text-zinc-400 font-medium text-center">Featured</th>
@@ -111,8 +129,15 @@ export default function AdminProjects() {
                 </tr>
               </thead>
               <tbody>
-                {projects.map((p) => (
+                {projects.map((p, idx) => (
                   <tr key={p.id} className="border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors">
+                    <td className="px-3 py-3.5 text-center">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <button onClick={() => handleReorder(p, 'up')} disabled={idx === 0} className="p-0.5 rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20 transition-colors"><ChevronUp size={13} /></button>
+                        <span className="text-xs text-zinc-500 w-5 text-center">{p.sort_order}</span>
+                        <button onClick={() => handleReorder(p, 'down')} disabled={idx === projects.length - 1} className="p-0.5 rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20 transition-colors"><ChevronDown size={13} /></button>
+                      </div>
+                    </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         {p.thumbnail_url ? <img src={p.thumbnail_url} alt="" className="w-10 h-7 rounded-lg object-cover bg-zinc-800 shrink-0" /> : <div className="w-10 h-7 rounded-lg bg-zinc-800 shrink-0" />}

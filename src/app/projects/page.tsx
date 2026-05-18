@@ -27,12 +27,17 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from('projects').select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url')
-      .eq('published', true).order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setProjects(data && data.length > 0 ? data : demoProjects);
-        setLoading(false);
-      });
+    const run = async () => {
+      let { data, error } = await supabase.from('projects')
+        .select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url')
+        .eq('published', true).order('sort_order', { ascending: true });
+      if (error) ({ data } = await supabase.from('projects')
+        .select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url')
+        .eq('published', true).order('created_at', { ascending: false }));
+      setProjects(data && data.length > 0 ? (data as Project[]) : demoProjects);
+      setLoading(false);
+    };
+    run();
   }, []);
 
   return (
