@@ -24,6 +24,7 @@ export default function TeamPage() {
   const { t, language } = useLanguage();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [imgErrors, setImgErrors] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -91,8 +92,13 @@ export default function TeamPage() {
             return (
               <motion.div key={m.id} variants={fadeUp}
                 className="p-6 rounded-2xl border border-white/8 bg-bg-card hover:border-accent/30 transition-all group text-center">
-                {(m.photo_url || m.image_url) ? (
-                  <img src={m.photo_url || m.image_url} alt={m.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-4 border-2 border-accent/20" />
+                {(m.photo_url || m.image_url) && !imgErrors.has(m.id) ? (
+                  <img
+                    src={m.photo_url || m.image_url}
+                    alt={m.name}
+                    className="w-20 h-20 rounded-full object-cover mx-auto mb-4 border-2 border-accent/20"
+                    onError={() => setImgErrors(prev => { const next = new Set(prev); next.add(m.id); return next; })}
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent/30 to-accent-dark/30 flex items-center justify-center mx-auto mb-4 border-2 border-accent/20 group-hover:from-accent/40 group-hover:to-accent-dark/40 transition-all">
                     <UserRound size={32} className="text-accent/70" />
