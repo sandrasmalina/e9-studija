@@ -6,19 +6,19 @@ import { Plus, Pencil, Trash2, Star, Eye, EyeOff, X, Upload, ExternalLink } from
 
 interface Project {
   id: string;
-  title: string;
-  title_lv: string;
-  category: string;
-  short_description: string;
-  short_description_lv: string;
-  thumbnail_url: string;
-  project_url: string;
-  is_featured: boolean;
-  published: boolean;
+  title: string; title_lv: string;
+  category: string; client_name: string;
+  short_description: string; short_description_lv: string;
+  overview_en: string; overview_lv: string;
+  goals_en: string; goals_lv: string;
+  process_en: string; process_lv: string;
+  results_en: string; results_lv: string;
+  thumbnail_url: string; project_url: string;
+  is_featured: boolean; published: boolean;
   created_at: string;
 }
 
-const emptyForm = { title: '', title_lv: '', category: '', short_description: '', short_description_lv: '', thumbnail_url: '', project_url: '', is_featured: false, published: true };
+const emptyForm = { title: '', title_lv: '', category: '', client_name: '', short_description: '', short_description_lv: '', overview_en: '', overview_lv: '', goals_en: '', goals_lv: '', process_en: '', process_lv: '', results_en: '', results_lv: '', thumbnail_url: '', project_url: '', is_featured: false, published: true };
 
 export default function AdminProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -32,7 +32,7 @@ export default function AdminProjects() {
 
   const load = async () => {
     const { data } = await supabase.from('projects')
-      .select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url,project_url,is_featured,published,created_at')
+      .select('id,title,title_lv,category,client_name,short_description,short_description_lv,overview_en,overview_lv,goals_en,goals_lv,process_en,process_lv,results_en,results_lv,thumbnail_url,project_url,is_featured,published,created_at')
       .order('created_at', { ascending: false });
     setProjects(data ?? []);
     setLoading(false);
@@ -42,7 +42,7 @@ export default function AdminProjects() {
 
   const openAdd = () => { setForm({ ...emptyForm }); setModal({ open: true }); setFormError(''); };
   const openEdit = (p: Project) => {
-    setForm({ title: p.title||'', title_lv: p.title_lv||'', category: p.category||'', short_description: p.short_description||'', short_description_lv: p.short_description_lv||'', thumbnail_url: p.thumbnail_url||'', project_url: p.project_url||'', is_featured: p.is_featured, published: p.published });
+    setForm({ title: p.title||'', title_lv: p.title_lv||'', category: p.category||'', client_name: p.client_name||'', short_description: p.short_description||'', short_description_lv: p.short_description_lv||'', overview_en: p.overview_en||'', overview_lv: p.overview_lv||'', goals_en: p.goals_en||'', goals_lv: p.goals_lv||'', process_en: p.process_en||'', process_lv: p.process_lv||'', results_en: p.results_en||'', results_lv: p.results_lv||'', thumbnail_url: p.thumbnail_url||'', project_url: p.project_url||'', is_featured: p.is_featured, published: p.published });
     setModal({ open: true, editing: p }); setFormError('');
   };
   const closeModal = () => setModal({ open: false });
@@ -172,6 +172,10 @@ export default function AdminProjects() {
                 <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Category</label>
                 <input value={form.category} onChange={e => setForm({...form, category: e.target.value})} className={inp} placeholder="e.g. AI, Design, Education" />
               </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Client Name <span className="text-zinc-600 font-normal">(optional)</span></label>
+                <input value={form.client_name} onChange={e => setForm({...form, client_name: e.target.value})} className={inp} placeholder="Client or company name" />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Description (EN)</label>
@@ -180,6 +184,51 @@ export default function AdminProjects() {
                 <div>
                   <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Apraksts (LV)</label>
                   <textarea value={form.short_description_lv} onChange={e => setForm({...form, short_description_lv: e.target.value})} rows={3} className={`${inp} resize-none`} placeholder="Latvian description" />
+                </div>
+              </div>
+
+              {/* Rich content */}
+              <div className="pt-2 border-t border-zinc-800">
+                <p className="text-xs text-zinc-500 mb-3 uppercase tracking-widest">Detail Page Content</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Overview (EN)</label>
+                    <textarea value={form.overview_en} onChange={e => setForm({...form, overview_en: e.target.value})} rows={3} className={`${inp} resize-none`} placeholder="Project overview in English" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Pārskats (LV)</label>
+                    <textarea value={form.overview_lv} onChange={e => setForm({...form, overview_lv: e.target.value})} rows={3} className={`${inp} resize-none`} placeholder="Projekta pārskats latviski" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Goals (EN)</label>
+                    <textarea value={form.goals_en} onChange={e => setForm({...form, goals_en: e.target.value})} rows={3} className={`${inp} resize-none`} placeholder="Project goals in English" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Mērķi (LV)</label>
+                    <textarea value={form.goals_lv} onChange={e => setForm({...form, goals_lv: e.target.value})} rows={3} className={`${inp} resize-none`} placeholder="Projekta mērķi latviski" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Process (EN)</label>
+                    <textarea value={form.process_en} onChange={e => setForm({...form, process_en: e.target.value})} rows={3} className={`${inp} resize-none`} placeholder="How it was built in English" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Process (LV)</label>
+                    <textarea value={form.process_lv} onChange={e => setForm({...form, process_lv: e.target.value})} rows={3} className={`${inp} resize-none`} placeholder="Kā tika veidots latviski" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Results (EN)</label>
+                    <textarea value={form.results_en} onChange={e => setForm({...form, results_en: e.target.value})} rows={3} className={`${inp} resize-none`} placeholder="Project results in English" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Rezultāti (LV)</label>
+                    <textarea value={form.results_lv} onChange={e => setForm({...form, results_lv: e.target.value})} rows={3} className={`${inp} resize-none`} placeholder="Projekta rezultāti latviski" />
+                  </div>
                 </div>
               </div>
               <div>

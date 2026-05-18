@@ -80,6 +80,15 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS title_lv             TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS short_description_lv TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS is_featured          BOOLEAN DEFAULT false;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_url          TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS client_name          TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS overview_en          TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS overview_lv          TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS goals_en             TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS goals_lv             TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS process_en           TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS process_lv           TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS results_en           TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS results_lv           TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_projects_is_featured ON projects(is_featured);
 

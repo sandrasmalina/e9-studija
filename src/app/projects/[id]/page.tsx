@@ -12,15 +12,21 @@ import Button from '@/components/Button';
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 
 interface Project {
-  id: string; title: string; category: string; client_name: string;
-  overview: string; goals: string; process: string; features: string;
-  results: string; thumbnail_url: string; gallery_urls: string[];
-  testimonial_text: string; testimonial_author: string; project_url: string;
+  id: string;
+  title: string; title_lv: string;
+  category: string; client_name: string;
+  short_description: string; short_description_lv: string;
+  overview_en: string; overview_lv: string;
+  goals_en: string; goals_lv: string;
+  process_en: string; process_lv: string;
+  results_en: string; results_lv: string;
+  thumbnail_url: string; gallery_urls: string[];
+  project_url: string;
 }
 
 export default function ProjectPage() {
   const { id } = useParams();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +57,7 @@ export default function ProjectPage() {
 
           {project.thumbnail_url && (
             <div className="aspect-video rounded-2xl overflow-hidden mb-10 border border-white/8">
-              <img src={project.thumbnail_url} alt={project.title} className="w-full h-full object-cover" />
+              <img src={project.thumbnail_url} alt={language === 'lv' && project.title_lv ? project.title_lv : project.title} className="w-full h-full object-cover" />
             </div>
           )}
 
@@ -64,7 +70,15 @@ export default function ProjectPage() {
             )}
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-bold text-white mb-6">{project.title}</h1>
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-6">
+            {language === 'lv' && project.title_lv ? project.title_lv : project.title}
+          </h1>
+
+          {(project.short_description || project.short_description_lv) && (
+            <p className="text-neutral-400 text-lg leading-relaxed mb-8">
+              {language === 'lv' && project.short_description_lv ? project.short_description_lv : project.short_description}
+            </p>
+          )}
 
           {project.project_url && (
             <div className="mb-10">
@@ -80,40 +94,36 @@ export default function ProjectPage() {
           )}
 
           <div className="space-y-10">
-            {project.overview && (
+            {(project.overview_en || project.overview_lv) && (
               <section>
-                <h2 className="text-lg font-semibold text-white mb-3 uppercase tracking-widest text-xs text-accent">{t('project.overview')}</h2>
-                <p className="text-neutral-400 leading-relaxed">{project.overview}</p>
+                <h2 className="text-xs font-semibold text-accent mb-3 uppercase tracking-widest">{t('project.overview')}</h2>
+                <p className="text-neutral-400 leading-relaxed">
+                  {language === 'lv' && project.overview_lv ? project.overview_lv : project.overview_en}
+                </p>
               </section>
             )}
-            {project.goals && (
+            {(project.goals_en || project.goals_lv) && (
               <section>
                 <h2 className="text-xs font-semibold text-accent mb-3 uppercase tracking-widest">{t('project.goals')}</h2>
-                <p className="text-neutral-400 leading-relaxed">{project.goals}</p>
+                <p className="text-neutral-400 leading-relaxed">
+                  {language === 'lv' && project.goals_lv ? project.goals_lv : project.goals_en}
+                </p>
               </section>
             )}
-            {project.process && (
+            {(project.process_en || project.process_lv) && (
               <section>
                 <h2 className="text-xs font-semibold text-accent mb-3 uppercase tracking-widest">{t('project.process')}</h2>
-                <p className="text-neutral-400 leading-relaxed">{project.process}</p>
+                <p className="text-neutral-400 leading-relaxed">
+                  {language === 'lv' && project.process_lv ? project.process_lv : project.process_en}
+                </p>
               </section>
             )}
-            {project.features && (
-              <section>
-                <h2 className="text-xs font-semibold text-accent mb-3 uppercase tracking-widest">{t('project.features')}</h2>
-                <p className="text-neutral-400 leading-relaxed">{project.features}</p>
-              </section>
-            )}
-            {project.results && (
+            {(project.results_en || project.results_lv) && (
               <section>
                 <h2 className="text-xs font-semibold text-accent mb-3 uppercase tracking-widest">{t('project.results')}</h2>
-                <p className="text-neutral-400 leading-relaxed">{project.results}</p>
-              </section>
-            )}
-            {project.testimonial_text && (
-              <section className="p-8 rounded-2xl border border-white/8 bg-bg-card">
-                <p className="text-neutral-300 italic mb-4">"{project.testimonial_text}"</p>
-                {project.testimonial_author && <p className="text-accent text-sm font-medium">— {project.testimonial_author}</p>}
+                <p className="text-neutral-400 leading-relaxed">
+                  {language === 'lv' && project.results_lv ? project.results_lv : project.results_en}
+                </p>
               </section>
             )}
           </div>
