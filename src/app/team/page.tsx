@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Button from '@/components/Button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, UserRound } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
@@ -94,8 +94,8 @@ export default function TeamPage() {
                 {(m.photo_url || m.image_url) ? (
                   <img src={m.photo_url || m.image_url} alt={m.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-4 border-2 border-accent/20" />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent/30 to-accent-dark/30 flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl group-hover:from-accent/40 group-hover:to-accent-dark/40 transition-all">
-                    {m.name?.charAt(0) || '?'}
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent/30 to-accent-dark/30 flex items-center justify-center mx-auto mb-4 border-2 border-accent/20 group-hover:from-accent/40 group-hover:to-accent-dark/40 transition-all">
+                    <UserRound size={32} className="text-accent/70" />
                   </div>
                 )}
                 <h3 className="text-white font-semibold mb-1">{m.name}</h3>
