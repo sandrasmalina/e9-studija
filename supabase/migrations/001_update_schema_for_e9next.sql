@@ -45,6 +45,19 @@ WITH ranked AS (
 )
 UPDATE team_members t SET sort_order = r.rn FROM ranked r WHERE t.id = r.id;
 
+-- Add public read policy so visitors can see the team
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'team_members' AND policyname = 'Public read team_members'
+  ) THEN
+    CREATE POLICY "Public read team_members"
+      ON team_members FOR SELECT
+      USING (true);
+  END IF;
+END$$;
+
 -- Add auth write policy for admin
 DO $$
 BEGIN

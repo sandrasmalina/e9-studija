@@ -80,7 +80,12 @@ export default function TeamPage() {
         <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className="text-3xl font-bold text-white text-center mb-12">{t('team.meetteam')}</motion.h2>
 
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
+        {!loaded ? (
+          <div className="flex justify-center py-16">
+            <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+        <motion.div initial="hidden" animate="visible" variants={stagger}
           className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
           {displayMembers.map((m) => {
             return (
@@ -108,6 +113,7 @@ export default function TeamPage() {
             );
           })}
         </motion.div>
+        )}
 
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className="p-10 rounded-2xl border border-accent/20 bg-accent/5 text-center relative overflow-hidden">
