@@ -7,6 +7,14 @@ import Footer from "@/components/Footer";
 export const metadata: Metadata = {
   title: "E9 Studija — AI & Digital Studio",
   description: "Creative and AI consulting studio specializing in interactive digital products and custom learning systems.",
+  icons: {
+    icon: [
+      { url: '/logo-512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/logo-512.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: { url: '/logo-512.png', sizes: '512x512', type: 'image/png' },
+    shortcut: '/logo-512.png',
+  },
 };
 
 export default function RootLayout({

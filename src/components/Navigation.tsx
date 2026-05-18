@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Globe, Menu, X, Lock, LayoutDashboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -47,8 +48,8 @@ export default function Navigation() {
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-white tracking-tight hover:text-accent transition-colors">
-            E9 Studija
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+            <Image src="/logo-512.png" alt="E9 Studija" width={40} height={40} className="object-contain" priority />
           </Link>
 
           {/* Desktop nav */}
