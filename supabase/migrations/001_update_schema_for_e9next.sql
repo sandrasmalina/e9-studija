@@ -180,3 +180,48 @@ BEGIN
       USING (bucket_id = 'images' AND auth.role() = 'authenticated');
   END IF;
 END$$;
+
+
+-- ┌──────────────────────────────────────────────────────────────┐
+-- │  6. TESTIMONIALS — client quotes slider                      │
+-- └──────────────────────────────────────────────────────────────┘
+
+CREATE TABLE IF NOT EXISTS testimonials (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_name TEXT NOT NULL,
+  client_role TEXT,
+  content_en  TEXT NOT NULL,
+  content_lv  TEXT,
+  is_published BOOLEAN DEFAULT true,
+  sort_order  INTEGER DEFAULT 0,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE testimonials ENABLE ROW LEVEL SECURITY;
+
+-- Public read (published only)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'testimonials' AND policyname = 'Public read testimonials'
+  ) THEN
+    CREATE POLICY "Public read testimonials"
+      ON testimonials FOR SELECT
+      USING (is_published = true);
+  END IF;
+END$$;
+
+-- Auth write for admin
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'testimonials' AND policyname = 'Auth write testimonials'
+  ) THEN
+    CREATE POLICY "Auth write testimonials"
+      ON testimonials FOR ALL
+      USING (auth.role() = 'authenticated');
+  END IF;
+END$$;

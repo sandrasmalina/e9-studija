@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { Sparkles, Brain, GraduationCap, ChevronRight, Lightbulb, Target, Users, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Brain, GraduationCap, ChevronRight, Lightbulb, Target, Users, ArrowRight, Quote } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
@@ -15,13 +15,31 @@ const fadeUp = {
 const stagger = { visible: { transition: { staggerChildren: 0.12 } } };
 
 interface Project { id: string; title: string; title_lv: string; category: string; short_description: string; short_description_lv: string; thumbnail_url: string; }
-interface Testimonial { id: string; client_name: string; client_role: string; content_en: string; content_lv: string; }
+interface Testimonial { id: string; client_name: string; client_role: string; content_en: string; content_lv: string; is_published?: boolean; sort_order?: number; }
+
+const fallbackTestimonials: Testimonial[] = [
+  { id: 'ft1', client_name: 'Anna Bērziņa', client_role: 'Marketing Director, TechCorp', content_en: 'E9 Studija transformed our digital presence with an innovative AI-powered platform. The team\'s creativity and technical expertise exceeded all our expectations.', content_lv: 'E9 Studija pārveidoja mūsu digitālo klātbūtni ar inovatīvu AI platformu. Komandas radošums un tehniskā pieredze pārsniedza visas mūsu cerības.' },
+  { id: 'ft2', client_name: 'Jānis Kalniņš', client_role: 'CEO, StartupHub Riga', content_en: 'The interactive learning platform they built for us increased student engagement by 40%. Their attention to detail and deep understanding of educational technology is outstanding.', content_lv: 'Interaktīvā mācību platforma, ko viņi izveidoja mums, palielināja studentu iesaistīšanos par 40%. Viņu uzmanība detaļām ir izcila.' },
+  { id: 'ft3', client_name: 'Laura Ozola', client_role: 'Head of Product, InnovateLV', content_en: 'Working with E9 Studija was a game-changer. They delivered a sophisticated AI support system that reduced our support load by 60% within the first month.', content_lv: 'Sadarbība ar E9 Studija bija pagrieziena punkts. Viņi piegādāja sarežģītu AI klientu atbalsta sistēmu, kas pirmā mēneša laikā samazināja slodzi par 60%.' },
+];
 
 export default function HomePage() {
   const { t, language } = useLanguage();
   const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  const displayedTestimonials = testimonials.length > 0 ? testimonials : fallbackTestimonials;
+
+  useEffect(() => {
+    if (isPaused || displayedTestimonials.length <= 1) return;
+    const timer = setInterval(() => {
+      setActiveIdx((i) => (i + 1) % displayedTestimonials.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isPaused, displayedTestimonials.length]);
 
   const scrollCarousel = (dir: 'left' | 'right') => {
     if (!carouselRef.current) return;
@@ -246,25 +264,83 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      {testimonials.length > 0 && (
-        <section className="py-24 bg-bg">
-          <div className="max-w-4xl mx-auto px-6 text-center">
-            <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-white mb-12">
-              {t('testimonials.title')}
-            </motion.h2>
-            <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger} className="grid md:grid-cols-2 gap-6">
-              {testimonials.slice(0,2).map((item) => (
-                <motion.div key={item.id} variants={fadeUp} className="p-8 rounded-2xl border border-white/8 bg-bg-card text-left">
-                  <p className="text-neutral-300 text-sm leading-relaxed mb-6 italic">"{language === 'lv' ? item.content_lv : item.content_en}"</p>
-                  <p className="text-white font-semibold text-sm">{item.client_name}</p>
-                  <p className="text-neutral-500 text-xs">{item.client_role}</p>
+      {/* Testimonials Slider */}
+      <section
+        className="py-24"
+        style={{ background: '#16122a' }}
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
+        <div className="max-w-3xl mx-auto px-6">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="text-3xl md:text-5xl font-bold text-white text-center mb-16"
+          >
+            {t('testimonials.title')}
+          </motion.h2>
+
+          <div className="relative">
+            {/* Prev button */}
+            <button
+              onClick={() => { setActiveIdx((i) => (i - 1 + displayedTestimonials.length) % displayedTestimonials.length); setIsPaused(true); }}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-14 z-10 p-2.5 rounded-xl border border-white/10 text-neutral-400 hover:text-white hover:border-accent/40 transition-all"
+              aria-label="Previous"
+            >
+              <ChevronRight size={18} className="rotate-180" />
+            </button>
+
+            {/* Next button */}
+            <button
+              onClick={() => { setActiveIdx((i) => (i + 1) % displayedTestimonials.length); setIsPaused(true); }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-14 z-10 p-2.5 rounded-xl border border-white/10 text-neutral-400 hover:text-white hover:border-accent/40 transition-all"
+              aria-label="Next"
+            >
+              <ChevronRight size={18} />
+            </button>
+
+            {/* Slide card */}
+            <div className="overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeIdx}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                  className="p-8 md:p-12 rounded-2xl border border-white/8 bg-bg-card text-center"
+                >
+                  <Quote size={32} className="text-accent/40 mx-auto mb-6" />
+                  <p className="text-neutral-300 text-base md:text-lg leading-relaxed italic mb-8">
+                    &ldquo;{language === 'lv' && displayedTestimonials[activeIdx]?.content_lv
+                      ? displayedTestimonials[activeIdx].content_lv
+                      : displayedTestimonials[activeIdx]?.content_en}&rdquo;
+                  </p>
+                  <div>
+                    <p className="text-white font-semibold">{displayedTestimonials[activeIdx]?.client_name}</p>
+                    <p className="text-neutral-500 text-sm mt-1">{displayedTestimonials[activeIdx]?.client_role}</p>
+                  </div>
                 </motion.div>
-              ))}
-            </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Dot indicators */}
+            {displayedTestimonials.length > 1 && (
+              <div className="flex justify-center gap-2 mt-8">
+                {displayedTestimonials.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setActiveIdx(i); setIsPaused(true); }}
+                    aria-label={`Slide ${i + 1}`}
+                    className={`rounded-full transition-all duration-300 ${
+                      i === activeIdx ? 'w-6 h-2 bg-accent' : 'w-2 h-2 bg-white/20 hover:bg-white/40'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* CTA */}
       <section className="py-24 relative overflow-hidden" style={{background: '#06041a'}}>

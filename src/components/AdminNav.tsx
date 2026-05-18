@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const navGroups = [
@@ -11,8 +11,9 @@ const navGroups = [
     items: [
       { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
       { href: '/admin/projects',  icon: FolderKanban,    label: 'Projects' },
-      { href: '/admin/team',      icon: Users,           label: 'Team Members' },
-      { href: '/admin/courses',   icon: BookOpen,        label: 'Courses', comingSoon: true },
+      { href: '/admin/team',          icon: Users,           label: 'Team Members' },
+      { href: '/admin/testimonials',   icon: Quote,           label: 'Testimonials' },
+      { href: '/admin/courses',        icon: BookOpen,        label: 'Courses', comingSoon: true },
     ],
   },
   {
