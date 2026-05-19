@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, ImageIcon, Upload, X } from 'lucide-react';
 
 interface CourseForm {
   title_en: string;
@@ -52,6 +52,7 @@ export default function AdminCourseEditPage() {
   const [categories, setCategories] = useState<{ id: string; name_en: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState('');
   const [courseTitle, setCourseTitle] = useState('');
@@ -104,6 +105,19 @@ export default function AdminCourseEditPage() {
   }, [id]);
 
   const set = (k: keyof CourseForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleThumbnailUpload = async (file: File) => {
+    setUploading(true); setErr('');
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `courses/thumbnails/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('images').upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from('images').getPublicUrl(path);
+      set('thumbnail_url', data.publicUrl);
+    } catch (e: unknown) { setErr(e instanceof Error ? e.message : 'Upload failed'); }
+    finally { setUploading(false); }
+  };
 
   const handleSave = async () => {
     if (!form.title_en.trim()) { setErr('Title is required'); return; }
@@ -228,12 +242,35 @@ export default function AdminCourseEditPage() {
         {/* Media */}
         <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/50 p-6 space-y-4">
           <h2 className="text-white font-semibold">Media</h2>
-          <Field label="Thumbnail URL">
-            <input type="url" value={form.thumbnail_url} onChange={e => set('thumbnail_url', e.target.value)} placeholder="https://…" className={inputCls} />
+          <Field label="Thumbnail">
+            <div className="space-y-3">
+              {/* Upload area */}
+              <label className={`flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
+                uploading ? 'border-zinc-700 opacity-50 pointer-events-none' : 'border-zinc-700 hover:border-zinc-500'
+              }`}>
+                <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={e => { const f = e.target.files?.[0]; if (f) handleThumbnailUpload(f); }} />
+                {uploading ? (
+                  <><div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" /><span className="text-zinc-500 text-xs">Uploading…</span></>
+                ) : (
+                  <><Upload size={20} className="text-zinc-600" /><span className="text-zinc-500 text-xs">Click to upload image</span></>
+                )}
+              </label>
+              {/* Preview */}
+              {form.thumbnail_url && (
+                <div className="relative w-40">
+                  <img src={form.thumbnail_url} alt="Thumbnail" className="w-40 rounded-xl border border-zinc-700/50 object-cover aspect-video" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  <button type="button" onClick={() => set('thumbnail_url', '')} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-400 hover:text-white">
+                    <X size={10} />
+                  </button>
+                </div>
+              )}
+              {/* Manual URL fallback */}
+              <div className="flex items-center gap-2">
+                <ImageIcon size={14} className="text-zinc-600 shrink-0" />
+                <input type="url" value={form.thumbnail_url} onChange={e => set('thumbnail_url', e.target.value)} placeholder="Or paste image URL…" className={inputCls} />
+              </div>
+            </div>
           </Field>
-          {form.thumbnail_url && (
-            <img src={form.thumbnail_url} alt="Thumbnail" className="w-40 rounded-xl border border-zinc-700/50 object-cover aspect-video" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-          )}
           <Field label="Promo Video URL">
             <div className="flex gap-2">
               <input type="url" value={form.promo_video_url} onChange={e => set('promo_video_url', e.target.value)} placeholder="YouTube / Vimeo URL" className={inputCls} />
