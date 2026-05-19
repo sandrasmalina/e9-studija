@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Lock, CreditCard } from 'lucide-react';
+import { ArrowLeft, Lock, Loader2, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -24,6 +24,8 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
   const router = useRouter();
   const { language } = useLanguage();
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
   const displayPrice = course.discount_price ?? course.price;
@@ -37,6 +39,40 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
       }
     });
   }, [course.slug, router]);
+
+  const handleCheckout = async () => {
+    setLoading(true);
+    setError('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.replace(`/auth/login?redirect=/checkout/${course.slug}`);
+      return;
+    }
+
+    const res = await fetch('/api/stripe/checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ courseSlug: course.slug }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (res.status === 409) {
+        router.push(`/learn/${course.slug}`);
+        return;
+      }
+      setError(data.error ?? 'Something went wrong. Please try again.');
+      setLoading(false);
+      return;
+    }
+
+    window.location.href = data.url;
+  };
 
   if (!authed) return null;
 
@@ -63,34 +99,43 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
               <p className="text-2xl font-bold text-white mt-1">
                 {displayPrice === 0 ? 'Free' : `${displayPrice} ${course.currency.toUpperCase()}`}
               </p>
-              {course.discount_price && course.discount_price < course.price && (
+              {course.discount_price !== null && course.discount_price < course.price && (
                 <p className="text-neutral-500 text-xs line-through">{course.price} {course.currency.toUpperCase()}</p>
               )}
             </div>
           </div>
 
-          {/* Payment placeholder */}
+          {/* Checkout action */}
           <div className="p-6">
-            <div className="flex items-center gap-2 mb-6 text-neutral-400 text-sm">
-              <Lock size={13} className="text-accent" />
-              Secure checkout
+            <div className="flex items-center gap-2 mb-5 text-neutral-400 text-sm">
+              <Lock size={13} className="text-accent shrink-0" />
+              Secure checkout powered by Stripe
             </div>
 
-            <div className="rounded-xl border border-dashed border-white/20 bg-white/2 p-8 text-center">
-              <CreditCard size={32} className="text-neutral-600 mx-auto mb-3" />
-              <p className="text-neutral-400 text-sm font-medium">Payment coming soon</p>
-              <p className="text-neutral-600 text-xs mt-1 max-w-xs mx-auto">
-                Online payments are being set up. Contact us directly to complete your purchase.
+            {error && (
+              <p className="text-red-400 text-sm mb-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                {error}
               </p>
-              <a href="mailto:info@e9studija.lv"
-                className="mt-4 inline-flex items-center gap-1.5 text-accent text-sm hover:underline">
-                info@e9studija.lv
-              </a>
-            </div>
+            )}
 
-            <p className="text-center text-neutral-600 text-xs mt-5">
-              Once payment is confirmed, you&apos;ll receive immediate access to the course.
-            </p>
+            <button
+              onClick={handleCheckout}
+              disabled={loading}
+              className="w-full py-3.5 rounded-xl bg-accent text-white font-semibold text-base hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+            >
+              {loading
+                ? <><Loader2 size={18} className="animate-spin" /> Redirecting to payment&hellip;</>
+                : <>Pay {displayPrice} {course.currency.toUpperCase()} &rarr;</>
+              }
+            </button>
+
+            <div className="flex items-center justify-center gap-4 mt-5 text-neutral-600 text-xs">
+              <span className="flex items-center gap-1"><ShieldCheck size={11} /> SSL encrypted</span>
+              <span>&middot;</span>
+              <span>Visa, Mastercard, Apple Pay</span>
+              <span>&middot;</span>
+              <span>30-day refund policy</span>
+            </div>
           </div>
         </div>
       </div>
