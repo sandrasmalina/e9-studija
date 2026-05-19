@@ -449,6 +449,7 @@ CREATE TABLE IF NOT EXISTS invitations (
   email       text NOT NULL,
   role        text NOT NULL DEFAULT 'instructor',
   token       text UNIQUE NOT NULL,
+  status      text NOT NULL DEFAULT 'pending',
   invited_by  uuid REFERENCES profiles,
   used_at     timestamptz,
   expires_at  timestamptz,
