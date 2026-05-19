@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap } from 'lucide-react';
@@ -73,7 +74,7 @@ export default function AdminNav() {
               {group.label}
             </p>
             <div className="space-y-1">
-              {group.items.map(({ href, icon: Icon, label }) => {
+              {group.items.map(({ href, icon: Icon, label, comingSoon }: { href: string; icon: React.ElementType; label: string; comingSoon?: boolean }) => {
                 const active = pathname.startsWith(href);
                 return (
                   <Link
