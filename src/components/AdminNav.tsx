@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap, Layers } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const navGroups = [
@@ -12,6 +12,7 @@ const navGroups = [
     items: [
       { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
       { href: '/admin/projects',  icon: FolderKanban,    label: 'Projects' },
+      { href: '/admin/project-categories', icon: Layers, label: 'Project Categories' },
       { href: '/admin/team',      icon: Users,           label: 'Team Members' },
       { href: '/admin/testimonials', icon: Quote,        label: 'Testimonials' },
     ],

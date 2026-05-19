@@ -24,35 +24,86 @@ const demoProjects: Project[] = [
 export default function ProjectsPage() {
   const { t, language } = useLanguage();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [categories, setCategories] = useState<{ name_en: string; name_lv: string }[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const run = async () => {
-      let { data, error } = await supabase.from('projects')
-        .select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url')
-        .eq('published', true).order('sort_order', { ascending: true });
-      if (error) ({ data } = await supabase.from('projects')
-        .select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url')
-        .eq('published', true).order('created_at', { ascending: false }));
+      const [projRes, catRes] = await Promise.all([
+        supabase.from('projects')
+          .select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url')
+          .eq('published', true).order('sort_order', { ascending: true }),
+        supabase.from('project_categories')
+          .select('name_en,name_lv').order('sort_order', { ascending: true }),
+      ]);
+      let data = projRes.data;
+      if (projRes.error) {
+        const fallback = await supabase.from('projects')
+          .select('id,title,title_lv,category,short_description,short_description_lv,thumbnail_url')
+          .eq('published', true).order('created_at', { ascending: false });
+        data = fallback.data;
+      }
       setProjects(data && data.length > 0 ? (data as Project[]) : demoProjects);
+      setCategories(catRes.data ?? []);
       setLoading(false);
     };
     run();
   }, []);
 
+  const filtered = activeCategory
+    ? projects.filter(p => p.category === activeCategory)
+    : projects;
+
   return (
     <div className="min-h-screen bg-bg pt-28 pb-24">
       <div className="max-w-7xl mx-auto px-6">
-        <motion.div initial="hidden" animate="visible" variants={stagger} className="text-center mb-16">
+        <motion.div initial="hidden" animate="visible" variants={stagger} className="text-center mb-12">
           <motion.h1 variants={fadeUp} className="text-4xl md:text-6xl font-bold text-white mb-4">{t('projects.title')}</motion.h1>
           <motion.p variants={fadeUp} className="text-neutral-400 max-w-2xl mx-auto">{t('projects.subtitle')}</motion.p>
         </motion.div>
+
+        {/* Category filter tabs */}
+        {categories.length > 0 && (
+          <motion.div
+            initial="hidden" animate="visible" variants={fadeUp}
+            className="flex flex-wrap justify-center gap-2 mb-10"
+          >
+            <button
+              onClick={() => setActiveCategory(null)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                activeCategory === null
+                  ? 'bg-accent text-white border-accent'
+                  : 'text-neutral-400 border-white/10 hover:text-white hover:border-white/30'
+              }`}
+            >
+              {language === 'lv' ? 'Visi' : 'All'}
+            </button>
+            {categories.map(c => {
+              const label = language === 'lv' && c.name_lv ? c.name_lv : c.name_en;
+              const active = activeCategory === c.name_en;
+              return (
+                <button
+                  key={c.name_en}
+                  onClick={() => setActiveCategory(active ? null : c.name_en)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                    active
+                      ? 'bg-accent text-white border-accent'
+                      : 'text-neutral-400 border-white/10 hover:text-white hover:border-white/30'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
 
         {loading ? (
           <p className="text-center text-neutral-500">{t('projects.loading')}</p>
         ) : (
           <motion.div initial="hidden" animate="visible" variants={stagger} className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((p) => {
+            {filtered.map((p) => {
               const title = language === 'lv' && p.title_lv ? p.title_lv : p.title;
               const desc = language === 'lv' && p.short_description_lv ? p.short_description_lv : p.short_description;
               return (

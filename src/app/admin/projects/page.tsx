@@ -23,6 +23,7 @@ const emptyForm = { title: '', title_lv: '', category: '', client_name: '', shor
 
 export default function AdminProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name_en: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ open: boolean; editing?: Project }>({ open: false });
   const [form, setForm] = useState({ ...emptyForm });
@@ -43,7 +44,11 @@ export default function AdminProjects() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    supabase.from('project_categories').select('id,name_en').order('sort_order', { ascending: true })
+      .then(({ data }) => setCategories(data ?? []));
+  }, []);
 
   const openAdd = () => { setForm({ ...emptyForm }); setModal({ open: true }); setFormError(''); };
   const openEdit = (p: Project) => {
@@ -207,7 +212,12 @@ export default function AdminProjects() {
               </div>
               <div>
                 <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Category</label>
-                <input value={form.category} onChange={e => setForm({...form, category: e.target.value})} className={inp} placeholder="e.g. AI, Design, Education" />
+                <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className={inp}>
+                  <option value="">— Select category —</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.name_en}>{c.name_en}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Client Name <span className="text-zinc-600 font-normal">(optional)</span></label>
