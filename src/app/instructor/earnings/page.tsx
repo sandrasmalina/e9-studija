@@ -43,9 +43,9 @@ export default function EarningsPage() {
         .eq('status', 'active')
         .order('enrolled_at', { ascending: false });
 
-      const rows = (enrs ?? []).map((e: Enrollment & { courses: { title_en: string } }) => ({
+      const rows = (enrs ?? []).map((e) => ({
         ...e,
-        course: e.courses,
+        course: Array.isArray(e.courses) ? e.courses[0] : e.courses,
       }));
       setEnrollments(rows);
       setTotalRevenue(rows.reduce((sum: number, e: Enrollment) => sum + (e.amount_paid ?? 0), 0));
