@@ -6,6 +6,26 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, Save, Upload } from 'lucide-react';
 
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-white text-sm font-medium mb-1.5">{label}</label>
+      {hint && <p className="text-zinc-600 text-xs mb-2">{hint}</p>}
+      {children}
+    </div>
+  );
+}
+
+const inputCls = 'w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600';
+
+function Input({ value, onChange, placeholder, type = 'text' }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
+  return <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={inputCls} />;
+}
+
+function Textarea({ value, onChange, placeholder, rows = 3 }: { value: string; onChange: (v: string) => void; placeholder?: string; rows?: number }) {
+  return <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows} className={`${inputCls} resize-none`} />;
+}
+
 interface CourseForm {
   title_en: string;
   title_lv: string;
@@ -99,24 +119,6 @@ export default function CourseEditPage() {
     return <div className="space-y-4">{[...Array(5)].map((_, i) => <div key={i} className="h-20 rounded-xl bg-white/[0.04] animate-pulse" />)}</div>;
   }
 
-  const Field = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
-    <div>
-      <label className="block text-white text-sm font-medium mb-1.5">{label}</label>
-      {hint && <p className="text-zinc-600 text-xs mb-2">{hint}</p>}
-      {children}
-    </div>
-  );
-
-  const Input = ({ field, placeholder, type = 'text' }: { field: keyof CourseForm; placeholder?: string; type?: string }) => (
-    <input type={type} value={form[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder}
-      className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
-  );
-
-  const Textarea = ({ field, placeholder, rows = 3 }: { field: keyof CourseForm; placeholder?: string; rows?: number }) => (
-    <textarea value={form[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder} rows={rows}
-      className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600 resize-none" />
-  );
-
   return (
     <div className="max-w-2xl">
       {/* Header */}
@@ -138,10 +140,10 @@ export default function CourseEditPage() {
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 space-y-4">
           <h2 className="text-white font-semibold">Basic Information</h2>
           <Field label="Course Title (English)">
-            <Input field="title_en" placeholder="e.g. Build AI Apps with Next.js" />
+            <Input value={form.title_en} onChange={v => set('title_en', v)} placeholder="e.g. Build AI Apps with Next.js" />
           </Field>
           <Field label="Title (Latvian)" hint="Optional — shown to Latvian users">
-            <Input field="title_lv" placeholder="Latviešu nosaukums" />
+            <Input value={form.title_lv} onChange={v => set('title_lv', v)} placeholder="Latviešu nosaukums" />
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Level">
@@ -167,16 +169,16 @@ export default function CourseEditPage() {
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 space-y-4">
           <h2 className="text-white font-semibold">Descriptions</h2>
           <Field label="Short Description (EN)" hint="Shown in course cards — max ~160 chars">
-            <Textarea field="short_description_en" placeholder="Brief overview of the course…" rows={2} />
+            <Textarea value={form.short_description_en} onChange={v => set('short_description_en', v)} placeholder="Brief overview of the course…" rows={2} />
           </Field>
           <Field label="Short Description (LV)" hint="Optional">
-            <Textarea field="short_description_lv" placeholder="Īss apraksts latviešu valodā…" rows={2} />
+            <Textarea value={form.short_description_lv} onChange={v => set('short_description_lv', v)} placeholder="Īss apraksts latviešu valodā…" rows={2} />
           </Field>
           <Field label="Full Description" hint="Shown on the course landing page">
-            <Textarea field="description_en" placeholder="Detailed course description…" rows={6} />
+            <Textarea value={form.description_en} onChange={v => set('description_en', v)} placeholder="Detailed course description…" rows={6} />
           </Field>
           <Field label="Target Audience" hint="Who is this course for?">
-            <Input field="target_audience" placeholder="e.g. Developers who want to build SaaS products" />
+            <Input value={form.target_audience} onChange={v => set('target_audience', v)} placeholder="e.g. Developers who want to build SaaS products" />
           </Field>
         </div>
 
@@ -184,14 +186,14 @@ export default function CourseEditPage() {
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 space-y-4">
           <h2 className="text-white font-semibold">Media</h2>
           <Field label="Thumbnail URL" hint="Paste a direct image URL (e.g. from Supabase storage)">
-            <Input field="thumbnail_url" placeholder="https://…/thumbnail.jpg" type="url" />
+            <Input value={form.thumbnail_url} onChange={v => set('thumbnail_url', v)} placeholder="https://…/thumbnail.jpg" type="url" />
           </Field>
           {form.thumbnail_url && (
             <img src={form.thumbnail_url} alt="Thumbnail preview" className="w-48 rounded-xl border border-white/[0.06] object-cover aspect-video" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           )}
           <Field label="Promo Video URL" hint="YouTube or Vimeo video URL or ID">
             <div className="flex gap-2">
-              <Input field="promo_video_url" placeholder="https://youtube.com/watch?v=… or video ID" type="url" />
+              <Input value={form.promo_video_url} onChange={v => set('promo_video_url', v)} placeholder="https://youtube.com/watch?v=… or video ID" type="url" />
               <select value={form.promo_video_type} onChange={e => set('promo_video_type', e.target.value)}
                 className="px-3 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40">
                 <option value="youtube">YouTube</option>
@@ -205,10 +207,10 @@ export default function CourseEditPage() {
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 space-y-4">
           <h2 className="text-white font-semibold">Learning Outcomes</h2>
           <Field label="What Students Will Learn" hint="One item per line — shown as bullet list on landing page">
-            <Textarea field="what_you_learn" placeholder={"Build a full-stack app\nDeploy to Vercel\nIntegrate with Supabase"} rows={5} />
+            <Textarea value={form.what_you_learn} onChange={v => set('what_you_learn', v)} placeholder={"Build a full-stack app\nDeploy to Vercel\nIntegrate with Supabase"} rows={5} />
           </Field>
           <Field label="Requirements / Prerequisites" hint="One item per line">
-            <Textarea field="requirements" placeholder={"Basic JavaScript knowledge\nNode.js installed"} rows={4} />
+            <Textarea value={form.requirements} onChange={v => set('requirements', v)} placeholder={"Basic JavaScript knowledge\nNode.js installed"} rows={4} />
           </Field>
         </div>
 

@@ -36,6 +36,16 @@ const EMPTY: CourseForm = {
   category_id: '',
 };
 
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-zinc-300 text-sm font-medium mb-1.5">{label}</label>
+      {hint && <p className="text-zinc-600 text-xs mb-2">{hint}</p>}
+      {children}
+    </div>
+  );
+}
+
 export default function AdminCourseEditPage() {
   const { id } = useParams() as { id: string };
   const [form, setForm] = useState<CourseForm>(EMPTY);
@@ -137,14 +147,6 @@ export default function AdminCourseEditPage() {
   const inputCls = 'w-full px-4 py-2.5 bg-zinc-900 border border-zinc-700/50 rounded-xl text-white text-sm focus:outline-none focus:border-zinc-500 placeholder-zinc-600';
   const textareaCls = `${inputCls} resize-none`;
   const selectCls = `${inputCls}`;
-
-  const Field = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
-    <div>
-      <label className="block text-zinc-300 text-sm font-medium mb-1.5">{label}</label>
-      {hint && <p className="text-zinc-600 text-xs mb-2">{hint}</p>}
-      {children}
-    </div>
-  );
 
   return (
     <div className="max-w-2xl">
