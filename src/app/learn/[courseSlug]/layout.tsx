@@ -131,7 +131,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!currentLectureId || sections.length === 0) return;
     const sec = sections.find(s => s.lectures.some(l => l.id === currentLectureId));
-    if (sec) setExpandedSections(prev => new Set([...prev, sec.id]));
+    if (sec) setExpandedSections(prev => { const next = new Set(prev); next.add(sec.id); return next; });
   }, [currentLectureId, sections]);
 
   const markComplete = useCallback(async (lectureId: string) => {
