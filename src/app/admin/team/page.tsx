@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2, X, Upload } from 'lucide-react';
 interface TeamMember {
   id: string;
   name: string;
+  role: string;
   position_en: string;
   position_lv: string;
   bio_en: string;
@@ -15,7 +16,7 @@ interface TeamMember {
   sort_order: number;
 }
 
-const emptyForm = { name: '', position_en: '', position_lv: '', bio_en: '', bio_lv: '', photo_url: '', sort_order: 0 };
+const emptyForm = { name: '', role: '', position_en: '', position_lv: '', bio_en: '', bio_lv: '', photo_url: '', sort_order: 0 };
 
 export default function AdminTeam() {
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -37,7 +38,7 @@ export default function AdminTeam() {
 
   const openAdd = () => { setForm({ ...emptyForm }); setModal({ open: true }); setFormError(''); };
   const openEdit = (m: TeamMember) => {
-    setForm({ name: m.name, position_en: m.position_en||'', position_lv: m.position_lv||'', bio_en: m.bio_en||'', bio_lv: m.bio_lv||'', photo_url: m.photo_url||'', sort_order: m.sort_order||0 });
+    setForm({ name: m.name, role: m.role||'', position_en: m.position_en||'', position_lv: m.position_lv||'', bio_en: m.bio_en||'', bio_lv: m.bio_lv||'', photo_url: m.photo_url||'', sort_order: m.sort_order||0 });
     setModal({ open: true, editing: m }); setFormError('');
   };
 
