@@ -148,7 +148,6 @@ export default function AdminCourseNewPage() {
               onChange={e => set('title_en', e.target.value)}
               placeholder="e.g. Complete Web Development Bootcamp"
               className={inputCls}
-              autoFocus
             />
           </Field>
           <Field label="Title (Latvian)" hint="Optional">
