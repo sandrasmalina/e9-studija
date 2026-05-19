@@ -308,82 +308,100 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Services — premium agency row layout */}
-      <section className="relative z-20 py-28 overflow-hidden" style={{background: '#0b0915'}}>
+      {/* Services — light bg, alternating amber/purple accents */}
+      <section className="relative z-20 py-24 overflow-hidden" style={{background: '#faf8ff'}}>
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-300/40 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-purple-300/40 to-transparent" />
         <div className="max-w-7xl mx-auto px-6">
 
           {/* Section header */}
           <motion.div
             initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
-            className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-0 pb-10 border-b border-white/[0.06]"
+            className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-0 pb-10 border-b border-gray-200"
           >
             <div>
               <span className="text-xs font-semibold tracking-[0.2em] uppercase text-accent">{t('whatwedo.eyebrow')}</span>
-              <h2 className="text-4xl md:text-6xl font-bold text-white mt-4">{t('whatwedo.title')}</h2>
+              <h2 className="text-4xl md:text-6xl font-bold text-[#160d2e] mt-4">{t('whatwedo.title')}</h2>
             </div>
-            <p className="text-neutral-500 max-w-xs leading-relaxed md:text-right text-sm">{t('whatwedo.subtitle')}</p>
+            <p className="text-gray-500 max-w-xs leading-relaxed md:text-right text-sm">{t('whatwedo.subtitle')}</p>
           </motion.div>
 
           {/* Service rows */}
           <div>
-            {services.map((s, i) => (
+            {services.map((s, i) => {
+              const isAmber = i % 2 !== 0;
+              return (
               <motion.div
                 key={s.title}
                 initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.45, delay: i * 0.06 }}
-                className="group relative flex flex-col md:flex-row md:items-center gap-5 md:gap-8 py-9 border-b border-white/[0.06] hover:pl-5 transition-all duration-300 cursor-default"
+                className="group relative flex flex-col md:flex-row md:items-center gap-4 md:gap-7 py-7 border-b border-gray-200 hover:pl-4 transition-all duration-300 cursor-default"
               >
-                {/* left accent stripe */}
-                <div className="absolute left-0 top-8 bottom-8 w-[2px] rounded-full bg-gradient-to-b from-accent to-pink-500/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                {/* left accent stripe — purple or amber */}
+                <div className={`absolute left-0 top-6 bottom-6 w-[3px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${isAmber ? 'bg-gradient-to-b from-amber-400 to-orange-400' : 'bg-gradient-to-b from-accent to-pink-500'}`} />
 
-                {/* Ghost number */}
-                <span className="font-black text-[3.5rem] leading-none text-white/[0.05] group-hover:text-accent/[0.13] transition-colors w-14 shrink-0 select-none tabular-nums">
+                {/* Visible number badge */}
+                <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm select-none tabular-nums transition-all duration-300 ${
+                  isAmber
+                    ? 'bg-amber-100 text-amber-700 group-hover:bg-amber-500 group-hover:text-white'
+                    : 'bg-purple-100 text-purple-700 group-hover:bg-accent group-hover:text-white'
+                }`}>
                   {String(i + 1).padStart(2, '0')}
-                </span>
+                </div>
 
                 {/* Icon */}
-                <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] group-hover:bg-accent/15 group-hover:border-accent/35 transition-all duration-300 shrink-0">
-                  <s.icon size={20} className="text-accent" />
+                <div className={`p-2.5 rounded-xl border transition-all duration-300 shrink-0 ${
+                  isAmber
+                    ? 'bg-amber-50 border-amber-200 group-hover:bg-amber-100 group-hover:border-amber-300'
+                    : 'bg-purple-50 border-purple-200 group-hover:bg-purple-100 group-hover:border-purple-300'
+                }`}>
+                  <s.icon size={20} className={isAmber ? 'text-amber-600' : 'text-accent'} />
                 </div>
 
                 {/* Title + desc */}
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-white font-bold text-xl md:text-2xl mb-1.5 group-hover:text-white/95 transition-colors">
+                  <h3 className="text-[#160d2e] font-bold text-xl md:text-2xl mb-1.5 group-hover:text-[#0d0820] transition-colors">
                     {s.title}
                   </h3>
-                  <p className="text-neutral-500 text-sm leading-relaxed max-w-lg group-hover:text-neutral-400 transition-colors">
+                  <p className="text-gray-500 text-sm leading-relaxed max-w-lg group-hover:text-gray-700 transition-colors">
                     {s.desc}
                   </p>
                 </div>
 
-                {/* Tag bullets */}
-                <div className="shrink-0 flex flex-col gap-2 md:w-60">
+                {/* Tag pills */}
+                <div className="shrink-0 flex flex-wrap md:flex-col gap-2 md:w-52">
                   {s.tags.map((tag) => (
-                    <div key={tag} className="flex items-center gap-2.5">
-                      <div className="w-1 h-1 rounded-full bg-accent/50 shrink-0" />
-                      <span className="text-xs text-neutral-600 group-hover:text-neutral-400 transition-colors leading-snug">{tag}</span>
-                    </div>
+                    <span key={tag} className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium border transition-colors ${
+                      isAmber
+                        ? 'bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-amber-100'
+                        : 'bg-purple-50 text-purple-700 border-purple-200 group-hover:bg-purple-100'
+                    }`}>
+                      <span className="w-1 h-1 rounded-full bg-current opacity-60 shrink-0" />
+                      {tag}
+                    </span>
                   ))}
                 </div>
 
                 {/* Arrow indicator */}
-                <ArrowRight size={16} className="text-neutral-700 group-hover:text-accent group-hover:translate-x-1.5 transition-all duration-300 shrink-0 hidden md:block" />
+                <ArrowRight size={16} className={`group-hover:translate-x-1.5 transition-all duration-300 shrink-0 hidden md:block ${isAmber ? 'text-amber-200 group-hover:text-amber-500' : 'text-purple-200 group-hover:text-accent'}`} />
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* Why Choose Us */}
-      <section className="relative z-20 py-24" style={{background: '#0f0c1e'}}>
+      {/* Why Choose Us — light lavender-gray */}
+      <section className="relative z-20 py-24" style={{background: '#f3f0fb'}}>
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent" />
         <div className="max-w-7xl mx-auto px-6">
-          <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
+          <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-[#160d2e] text-center mb-16">
             {t('whychooseus.title')}
           </motion.h2>
           <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger} className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {reasons.map((r) => (
-              <motion.div key={r.label} variants={fadeUp} className="flex items-center gap-3 p-5 rounded-xl glass-card card-highlight">
-                <r.icon size={18} className="text-accent flex-shrink-0" />
-                <span className="text-zinc-300 text-sm font-medium">{r.label}</span>
+            {reasons.map((r, idx) => (
+              <motion.div key={r.label} variants={fadeUp} className="flex items-center gap-3 p-5 rounded-xl bg-white border border-purple-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all duration-300">
+                <r.icon size={18} className={idx % 2 === 0 ? 'text-accent flex-shrink-0' : 'text-amber-500 flex-shrink-0'} />
+                <span className="text-gray-700 text-sm font-medium">{r.label}</span>
               </motion.div>
             ))}
           </motion.div>
