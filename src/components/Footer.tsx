@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Globe, ExternalLink, type LucideProps } from 'lucide-react';
 import { ForwardRefExoticComponent, RefAttributes } from 'react';
@@ -23,13 +24,20 @@ const iconMap: Record<string, LucideIcon> = {
 
 export default function Footer() {
   const { t } = useLanguage();
+  const pathname = usePathname();
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
 
+  const hideFooter = pathname.startsWith('/admin') ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/learn') ||
+    pathname.startsWith('/instructor');
+
   useEffect(() => {
+    if (hideFooter) return;
     supabase.from('social_links').select('*').order('created_at').then(({ data }) => {
       if (data) setSocialLinks(data);
     });
-  }, []);
+  }, [hideFooter]);
 
   const navLinks = [
     { label: t('nav.home'), href: '/' },
@@ -38,6 +46,8 @@ export default function Footer() {
     { label: t('nav.team'), href: '/team' },
     { label: t('nav.contact'), href: '/contact' },
   ];
+
+  if (hideFooter) return null;
 
   return (
     <footer className="bg-bg-secondary border-t border-white/8 py-16">

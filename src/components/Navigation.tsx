@@ -16,6 +16,12 @@ export default function Navigation() {
   const { language, setLanguage, t } = useLanguage();
   const pathname = usePathname();
 
+  // These routes have their own layouts/headers — hide the public nav
+  const hideNav = pathname.startsWith('/admin') ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/learn') ||
+    pathname.startsWith('/instructor');
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll);
@@ -37,6 +43,8 @@ export default function Navigation() {
     { label: t('nav.team'), href: '/team' },
     { label: t('nav.contact'), href: '/contact' },
   ];
+
+  if (hideNav) return null;
 
   return (
     <>
