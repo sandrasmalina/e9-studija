@@ -146,7 +146,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
     }, { onConflict: 'user_id,lecture_id' });
 
     setCompletedIds(prev => {
-      const next = new Set([...prev, lectureId]);
+      const next = new Set(prev); next.add(lectureId);
       const allLectures = sections.flatMap(s => s.lectures);
       const pct = Math.round((next.size / allLectures.length) * 100);
       // Update enrollment progress (columns added in migration 003)
