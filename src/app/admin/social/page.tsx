@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, Share2, Check, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Share2, Check, X, ToggleLeft, ToggleRight } from 'lucide-react';
 
 interface SocialLink {
   id: string;
@@ -10,6 +10,7 @@ interface SocialLink {
   url: string;
   icon_name: string;
   sort_order: number;
+  is_active: boolean;
 }
 
 const ICON_OPTIONS = [
@@ -23,7 +24,7 @@ const ICON_OPTIONS = [
   { value: 'Globe', label: 'Website / Other' },
 ];
 
-const emptyForm = { platform: '', url: '', icon_name: 'Globe', sort_order: 0 };
+const emptyForm = { platform: '', url: '', icon_name: 'Globe', sort_order: 0, is_active: true };
 
 export default function AdminSocialPage() {
   const [links, setLinks] = useState<SocialLink[]>([]);
@@ -48,7 +49,7 @@ export default function AdminSocialPage() {
   };
 
   const openEdit = (link: SocialLink) => {
-    setForm({ platform: link.platform, url: link.url, icon_name: link.icon_name, sort_order: link.sort_order });
+    setForm({ platform: link.platform, url: link.url, icon_name: link.icon_name, sort_order: link.sort_order, is_active: link.is_active });
     setEditingId(link.id);
     setError('');
   };
@@ -79,6 +80,11 @@ export default function AdminSocialPage() {
     if (!confirm('Delete this social link?')) return;
     await supabase.from('social_links').delete().eq('id', id);
     load();
+  };
+
+  const toggleActive = async (link: SocialLink) => {
+    await supabase.from('social_links').update({ is_active: !link.is_active }).eq('id', link.id);
+    setLinks((prev) => prev.map((l) => l.id === link.id ? { ...l, is_active: !l.is_active } : l));
   };
 
   return (
@@ -126,6 +132,15 @@ export default function AdminSocialPage() {
             <input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
               className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:outline-none focus:border-accent/50" />
           </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
+            <div
+              onClick={() => setForm({ ...form, is_active: !form.is_active })}
+              className={`w-10 h-5 rounded-full transition-colors relative ${form.is_active ? 'bg-accent' : 'bg-zinc-700'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${form.is_active ? 'translate-x-5' : 'translate-x-0'}`} />
+            </div>
+            <span className="text-zinc-400 text-xs">{form.is_active ? 'Visible in footer' : 'Hidden'}</span>
+          </label>
           {error && <p className="text-red-400 text-xs">{error}</p>}
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving}
@@ -158,12 +173,22 @@ export default function AdminSocialPage() {
               <div className="flex items-center gap-3">
                 <span className="text-xs text-zinc-600 w-4 text-center">{link.sort_order}</span>
                 <div>
-                  <p className="text-white text-sm font-medium">{link.platform}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-white text-sm font-medium">{link.platform}</p>
+                    {!link.is_active && <span className="text-xs text-zinc-600 bg-zinc-800 px-1.5 py-0.5 rounded">hidden</span>}
+                  </div>
                   <p className="text-zinc-500 text-xs truncate max-w-xs">{link.url}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-xs text-zinc-600 bg-zinc-900 px-2 py-0.5 rounded mr-2">{link.icon_name}</span>
+                <button
+                  onClick={() => toggleActive(link)}
+                  title={link.is_active ? 'Click to hide' : 'Click to show'}
+                  className={`p-1.5 rounded-lg transition-colors ${link.is_active ? 'text-accent hover:text-accent/60' : 'text-zinc-600 hover:text-zinc-400'} hover:bg-zinc-800`}
+                >
+                  {link.is_active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                </button>
                 <button onClick={() => openEdit(link)}
                   className="p-1.5 rounded-lg text-zinc-500 hover:text-accent hover:bg-zinc-800 transition-colors">
                   <Pencil size={13} />
@@ -186,6 +211,7 @@ export default function AdminSocialPage() {
   url TEXT NOT NULL,
   icon_name TEXT DEFAULT 'Globe',
   sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE social_links ENABLE ROW LEVEL SECURITY;
