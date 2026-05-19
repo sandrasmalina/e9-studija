@@ -523,17 +523,21 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Testimonials Slider */}
+      {/* Testimonials Slider — soft pink */}
       <section
-        className="relative z-20 py-24"
-        style={{ background: '#16122a' }}
+        className="relative z-20 py-24 overflow-hidden"
+        style={{ background: '#fff5f9' }}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
-        <div className="max-w-3xl mx-auto px-6">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-pink-300/50 to-transparent" />
+        {/* decorative blobs */}
+        <div className="absolute top-0 left-1/4 w-72 h-72 bg-pink-200/30 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-0 right-1/4 w-56 h-56 bg-purple-200/20 rounded-full blur-[80px] pointer-events-none" />
+        <div className="max-w-3xl mx-auto px-6 relative z-10">
           <motion.h2
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            className="text-3xl md:text-5xl font-bold text-white text-center mb-16"
+            className="text-3xl md:text-5xl font-bold text-[#160d2e] text-center mb-16"
           >
             {t('testimonials.title')}
           </motion.h2>
@@ -542,7 +546,7 @@ export default function HomePage() {
             {/* Prev button */}
             <button
               onClick={() => { setActiveIdx((i) => (i - 1 + displayedTestimonials.length) % displayedTestimonials.length); setIsPaused(true); }}
-              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-14 z-10 p-2.5 rounded-xl border border-white/10 text-neutral-400 hover:text-white hover:border-accent/40 transition-all"
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-14 z-10 p-2.5 rounded-xl border border-pink-200 text-pink-400 hover:text-pink-600 hover:border-pink-400 hover:bg-pink-50 transition-all"
               aria-label="Previous"
             >
               <ChevronRight size={18} className="rotate-180" />
@@ -551,7 +555,7 @@ export default function HomePage() {
             {/* Next button */}
             <button
               onClick={() => { setActiveIdx((i) => (i + 1) % displayedTestimonials.length); setIsPaused(true); }}
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-14 z-10 p-2.5 rounded-xl border border-white/10 text-neutral-400 hover:text-white hover:border-accent/40 transition-all"
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-14 z-10 p-2.5 rounded-xl border border-pink-200 text-pink-400 hover:text-pink-600 hover:border-pink-400 hover:bg-pink-50 transition-all"
               aria-label="Next"
             >
               <ChevronRight size={18} />
@@ -566,17 +570,17 @@ export default function HomePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.4 }}
-                  className="p-8 md:p-12 rounded-2xl border border-white/8 bg-bg-card text-center"
+                  className="p-8 md:p-12 rounded-2xl bg-white border border-pink-100 shadow-sm text-center"
                 >
-                  <Quote size={32} className="text-accent/40 mx-auto mb-6" />
-                  <p className="text-neutral-300 text-base md:text-lg leading-relaxed italic mb-8">
+                  <Quote size={32} className="text-pink-300 mx-auto mb-6" />
+                  <p className="text-gray-600 text-base md:text-lg leading-relaxed italic mb-8">
                     &ldquo;{language === 'lv' && displayedTestimonials[activeIdx]?.content_lv
                       ? displayedTestimonials[activeIdx].content_lv
                       : displayedTestimonials[activeIdx]?.content_en}&rdquo;
                   </p>
                   <div>
-                    <p className="text-white font-semibold">{displayedTestimonials[activeIdx]?.client_name}</p>
-                    <p className="text-neutral-500 text-sm mt-1">{displayedTestimonials[activeIdx]?.client_role}</p>
+                    <p className="text-[#160d2e] font-semibold">{displayedTestimonials[activeIdx]?.client_name}</p>
+                    <p className="text-gray-400 text-sm mt-1">{displayedTestimonials[activeIdx]?.client_role}</p>
                   </div>
                 </motion.div>
               </AnimatePresence>
@@ -591,7 +595,7 @@ export default function HomePage() {
                     onClick={() => { setActiveIdx(i); setIsPaused(true); }}
                     aria-label={`Slide ${i + 1}`}
                     className={`rounded-full transition-all duration-300 ${
-                      i === activeIdx ? 'w-6 h-2 bg-accent' : 'w-2 h-2 bg-white/20 hover:bg-white/40'
+                      i === activeIdx ? 'w-6 h-2 bg-accent' : 'w-2 h-2 bg-pink-200 hover:bg-pink-300'
                     }`}
                   />
                 ))}
