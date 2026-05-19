@@ -22,6 +22,7 @@ interface CourseInfo {
   slug: string;
   is_free: boolean;
   price: number;
+  certificate_enabled: boolean;
 }
 
 export default function LearnLayout({ children }: { children: React.ReactNode }) {
@@ -56,7 +57,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       const { data: courseData, error: courseErr } = await supabase
         .from('courses')
         .select(`
-          id, title_en, slug, is_free, price,
+          id, title_en, slug, is_free, price, certificate_enabled,
           sections(
             id, title_en, sort_order,
             lectures(id, title_en, sort_order, video_duration_seconds, is_preview, content_type)
@@ -114,7 +115,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           lectures: (s.lectures ?? []).sort((a: LectureMeta, b: LectureMeta) => a.sort_order - b.sort_order),
         }));
 
-      setCourse({ id: courseData.id, title_en: courseData.title_en, slug: courseData.slug, is_free: courseData.is_free, price: courseData.price });
+      setCourse({ id: courseData.id, title_en: courseData.title_en, slug: courseData.slug, is_free: courseData.is_free, price: courseData.price, certificate_enabled: courseData.certificate_enabled ?? false });
       setSections(sortedSections);
 
       // Expand section containing current lecture (or first section)
@@ -150,11 +151,19 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       const allLectures = sections.flatMap(s => s.lectures);
       const pct = Math.round((next.size / allLectures.length) * 100);
       // Update enrollment progress (columns added in migration 003)
+      const now = new Date().toISOString();
       supabase.from('enrollments').update({
         progress_pct: pct,
-        last_accessed_at: new Date().toISOString(),
-        ...(pct >= 100 ? { completed_at: new Date().toISOString() } : {}),
-      }).eq('user_id', userId).eq('course_id', course.id).then(() => {});
+        last_accessed_at: now,
+        ...(pct >= 100 ? { completed_at: now } : {}),
+      }).eq('user_id', userId).eq('course_id', course.id).then(() => {
+        if (pct >= 100 && course.certificate_enabled) {
+          supabase.from('certificates').upsert(
+            { user_id: userId, course_id: course.id, issued_at: now },
+            { onConflict: 'user_id,course_id' }
+          ).then(() => {});
+        }
+      });
       return next;
     });
   }, [course, userId, sections]);

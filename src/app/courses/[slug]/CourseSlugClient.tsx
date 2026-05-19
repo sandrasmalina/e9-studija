@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, BookOpen, Users, Award, ChevronDown, ChevronUp,
-  Play, Lock, CheckCircle, Globe, ArrowLeft, Star
+  Play, Lock, CheckCircle, Globe, ArrowLeft, Star, Loader2
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
 import StarRating from '@/components/courses/StarRating';
 import PriceBadge from '@/components/courses/PriceBadge';
@@ -91,7 +93,98 @@ interface Course {
 
 export default function CourseSlugClient({ course }: { course: Course }) {
   const { t, language } = useLanguage();
+  const router = useRouter();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set([course.sections[0]?.id]));
+
+  // Auth + enrollment state
+  const [enrollState, setEnrollState] = useState<'loading' | 'not-authed' | 'enrolled' | 'not-enrolled'>('loading');
+  const [enrollUserId, setEnrollUserId] = useState<string | null>(null);
+  const [enrolling, setEnrolling] = useState(false);
+
+  // Review state
+  const [localReviews, setLocalReviews] = useState<Review[]>(course.reviews ?? []);
+  const [userReview, setUserReview] = useState<Review | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewDone, setReviewDone] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setEnrollState('not-authed'); return; }
+      setEnrollUserId(user.id);
+
+      const { data: enrollment } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('course_id', course.id)
+        .maybeSingle();
+
+      if (enrollment) {
+        setEnrollState('enrolled');
+        // Check if user already left a review
+        const { data: rev } = await supabase
+          .from('reviews')
+          .select('id, rating, review_text, created_at')
+          .eq('course_id', course.id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (rev) {
+          setUserReview({ ...rev, reviewer: null });
+          setReviewDone(true);
+        }
+      } else {
+        setEnrollState('not-enrolled');
+      }
+    })();
+  }, [course.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleEnrollFree = async () => {
+    if (!enrollUserId) return;
+    setEnrolling(true);
+    const { error } = await supabase.from('enrollments').insert({
+      user_id: enrollUserId,
+      course_id: course.id,
+      amount_paid: 0,
+      currency: course.currency,
+      status: 'active',
+    });
+    if (!error || error.code === '23505') {
+      router.push(`/learn/${course.slug}`);
+    } else {
+      setEnrolling(false);
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!enrollUserId) return;
+    setReviewSubmitting(true);
+    const { data: newRev, error } = await supabase.from('reviews').upsert(
+      { course_id: course.id, user_id: enrollUserId, rating: reviewRating, review_text: reviewText || null },
+      { onConflict: 'course_id,user_id' }
+    ).select('id, rating, review_text, created_at').maybeSingle();
+    if (!error && newRev) {
+      setLocalReviews(prev => {
+        const without = prev.filter(r => r.id !== newRev.id);
+        return [{ ...newRev, reviewer: null }, ...without];
+      });
+      setUserReview({ ...newRev, reviewer: null });
+      setReviewDone(true);
+      // Recompute rating stats on the course
+      const { data: allRatings } = await supabase.from('reviews').select('rating').eq('course_id', course.id);
+      if (allRatings && allRatings.length > 0) {
+        const avg = allRatings.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / allRatings.length;
+        await supabase.from('courses').update({
+          rating_count: allRatings.length,
+          rating_avg: Math.round(avg * 10) / 10,
+        }).eq('id', course.id);
+      }
+    }
+    setReviewSubmitting(false);
+  };
 
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
   const desc = (language === 'lv' && course.description_lv) ? course.description_lv : course.description_en;
@@ -200,11 +293,36 @@ export default function CourseSlugClient({ course }: { course: Course }) {
                   isFree={course.is_free}
                 />
 
-                <Link href={`/auth/register?redirect=/learn/${course.slug}`} className="block mt-4">
-                  <Button className="w-full text-base py-3">
-                    {course.is_free || course.price === 0 ? t('courses.enroll.free') : t('courses.enroll.paid')}
-                  </Button>
-                </Link>
+                {/* Enrollment CTA — dynamic based on auth + enrollment state */}
+                <div className="mt-4">
+                  {enrollState === 'loading' && (
+                    <div className="w-full py-3 flex items-center justify-center rounded-xl bg-accent/10">
+                      <Loader2 size={18} className="text-accent animate-spin" />
+                    </div>
+                  )}
+                  {enrollState === 'enrolled' && (
+                    <Link href={`/learn/${course.slug}`}>
+                      <Button className="w-full text-base py-3">{t('courses.cta.continue') || 'Continue Learning →'}</Button>
+                    </Link>
+                  )}
+                  {enrollState === 'not-enrolled' && (course.is_free || course.price === 0) && (
+                    <Button className="w-full text-base py-3" onClick={handleEnrollFree} disabled={enrolling}>
+                      {enrolling ? <Loader2 size={16} className="animate-spin mx-auto" /> : (t('courses.enroll.free') || 'Enroll for Free')}
+                    </Button>
+                  )}
+                  {enrollState === 'not-enrolled' && !course.is_free && course.price > 0 && (
+                    <Link href={`/checkout/${course.slug}`}>
+                      <Button className="w-full text-base py-3">{t('courses.enroll.paid') || 'Buy Course'}</Button>
+                    </Link>
+                  )}
+                  {enrollState === 'not-authed' && (
+                    <Link href={`/auth/register?redirect=/learn/${course.slug}`}>
+                      <Button className="w-full text-base py-3">
+                        {course.is_free || course.price === 0 ? (t('courses.enroll.free') || 'Enroll for Free') : (t('courses.enroll.paid') || 'Buy Course')}
+                      </Button>
+                    </Link>
+                  )}
+                </div>
 
                 {previewLectures.length > 0 && (
                   <p className="text-center text-xs text-neutral-500 mt-3">{t('courses.preview.hint')}</p>
@@ -358,14 +476,62 @@ export default function CourseSlugClient({ course }: { course: Course }) {
             )}
 
             {/* Reviews */}
-            {course.reviews && course.reviews.length > 0 && (
-              <section>
-                <h2 className="text-xl font-bold text-white mb-5">
-                  {t('courses.section.reviews')}
-                  <span className="ml-2 text-neutral-500 font-normal text-base">({course.reviews.length})</span>
-                </h2>
+            <section>
+              <h2 className="text-xl font-bold text-white mb-5">
+                {t('courses.section.reviews')}
+                {localReviews.length > 0 && (
+                  <span className="ml-2 text-neutral-500 font-normal text-base">({localReviews.length})</span>
+                )}
+              </h2>
+
+              {/* Review submission form — only for enrolled students */}
+              {enrollState === 'enrolled' && (
+                <div className="mb-6 p-5 rounded-xl border border-white/8 bg-[#0f0c1e]">
+                  {reviewDone ? (
+                    <div className="text-center py-2">
+                      <CheckCircle size={20} className="text-accent mx-auto mb-2" />
+                      <p className="text-white text-sm font-medium">Review submitted</p>
+                      {userReview?.review_text && (
+                        <p className="text-neutral-400 text-xs mt-1 italic">&ldquo;{userReview.review_text}&rdquo;</p>
+                      )}
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmitReview}>
+                      <p className="text-white text-sm font-medium mb-3">Leave a review</p>
+                      {/* Star picker */}
+                      <div className="flex items-center gap-1 mb-4">
+                        {[1, 2, 3, 4, 5].map(n => (
+                          <button key={n} type="button" onClick={() => setReviewRating(n)}
+                            className="focus:outline-none transition-transform hover:scale-110">
+                            <Star size={22}
+                              className={n <= reviewRating ? 'text-yellow-400 fill-yellow-400' : 'text-neutral-600'}
+                            />
+                          </button>
+                        ))}
+                        <span className="ml-2 text-neutral-400 text-xs">{reviewRating}/5</span>
+                      </div>
+                      <textarea
+                        value={reviewText}
+                        onChange={e => setReviewText(e.target.value)}
+                        placeholder="Share your experience (optional)..."
+                        rows={3}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-accent/50 resize-none"
+                      />
+                      <div className="flex justify-end mt-3">
+                        <button type="submit" disabled={reviewSubmitting}
+                          className="px-4 py-1.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center gap-2">
+                          {reviewSubmitting && <Loader2 size={13} className="animate-spin" />}
+                          Submit Review
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {localReviews.length > 0 && (
                 <div className="space-y-4">
-                  {course.reviews.slice(0, 6).map(review => (
+                  {localReviews.slice(0, 6).map(review => (
                     <div key={review.id} className="p-5 rounded-xl border border-white/8 bg-[#0f0c1e]">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent text-sm font-bold">
@@ -382,8 +548,8 @@ export default function CourseSlugClient({ course }: { course: Course }) {
                     </div>
                   ))}
                 </div>
-              </section>
-            )}
+              )}
+            </section>
           </div>
 
           {/* Spacer for sticky card alignment on desktop */}
