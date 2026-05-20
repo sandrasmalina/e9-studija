@@ -35,11 +35,18 @@ export default function InstructorCoursesPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
+
+      // Admins see all courses; instructors see only their own
+      const { data: profile } = await supabase
+        .from('profiles').select('role').eq('id', user.id).single();
+      const isAdmin = profile?.role === 'admin';
+
+      const base = supabase
         .from('courses')
         .select('id, title_en, slug, status, is_free, price, enrollment_count, rating_avg, total_lectures, created_at, category:categories!category_id(name_en)')
-        .eq('instructor_id', user.id)
         .order('created_at', { ascending: false });
+
+      const { data } = await (isAdmin ? base : base.eq('instructor_id', user.id));
       setCourses((data ?? []) as unknown as Course[]);
       setLoading(false);
     })();
