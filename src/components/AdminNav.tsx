@@ -21,6 +21,7 @@ const navGroups = [
     label: 'Courses Platform',
     items: [
       { href: '/admin/courses',     icon: BookOpen,    label: 'Courses' },
+      { href: '/instructor/courses', icon: BookOpen,   label: 'My Courses' },
       { href: '/admin/categories',  icon: Tag,         label: 'Categories' },
       { href: '/admin/users',       icon: GraduationCap, label: 'Students & Users' },
       { href: '/admin/instructors', icon: UserCheck,   label: 'Instructor Apps' },
