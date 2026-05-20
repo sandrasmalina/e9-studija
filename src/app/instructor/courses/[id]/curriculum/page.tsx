@@ -210,7 +210,7 @@ export default function CurriculumPage() {
   const setLF = (k: string, v: string | boolean) => setLectureForm(f => ({ ...f, [k]: v }));
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
         <Link href={`/instructor/courses/${courseId}/edit`} className="p-2 rounded-xl border border-white/[0.06] text-zinc-500 hover:text-white transition-colors">
@@ -313,98 +313,116 @@ export default function CurriculumPage() {
       {lectureModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setLectureModal(null)}>
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-          <div className="relative bg-[#0f0c1e] border border-white/[0.08] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl"
+          <div className="relative bg-[#0f0c1e] border border-white/[0.08] rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl"
             onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] shrink-0">
               <h2 className="text-white font-semibold">{lectureModal.lectureId ? 'Edit Lecture' : 'Add Lecture'}</h2>
               <button onClick={() => setLectureModal(null)} className="text-zinc-600 hover:text-white transition-colors"><X size={16} /></button>
             </div>
 
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-white text-sm font-medium mb-1.5">Title <span className="text-red-400">*</span></label>
-                <input value={lectureForm.title_en} onChange={e => setLF('title_en', e.target.value)}
-                  placeholder="Lecture title"
-                  className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
-              </div>
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1">
+              <div className="p-6 grid grid-cols-2 gap-6">
 
-              <div>
-                <label className="block text-white text-sm font-medium mb-1.5">Content Type</label>
-                <div className="flex gap-2">
-                  {['video', 'text'].map(t => (
-                    <button key={t} onClick={() => setLF('content_type', t)}
-                      className={`flex-1 py-2 rounded-xl text-sm font-medium border capitalize transition-all ${
-                        lectureForm.content_type === t
-                          ? 'bg-purple-500/20 border-purple-500/40 text-white'
-                          : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'
-                      }`}>{t}</button>
-                  ))}
-                </div>
-              </div>
-
-              {lectureForm.content_type === 'video' && (
-                <>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="block text-white text-sm font-medium mb-1.5">Video URL / ID</label>
-                      <input value={lectureForm.video_url} onChange={e => setLF('video_url', e.target.value)}
-                        placeholder="https://… or video ID"
-                        className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
-                    </div>
-                    <div className="w-32">
-                      <label className="block text-white text-sm font-medium mb-1.5">Platform</label>
-                      <select value={lectureForm.video_type} onChange={e => setLF('video_type', e.target.value)}
-                        className="w-full px-3 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40">
-                        <option value="youtube">YouTube</option>
-                        <option value="vimeo">Vimeo</option>
-                      </select>
-                    </div>
-                  </div>
+                {/* ── Left column: metadata ── */}
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-white text-sm font-medium mb-1.5">Duration (minutes)</label>
-                    <input type="number" min="0" step="0.5" value={lectureForm.video_duration_minutes}
-                      onChange={e => setLF('video_duration_minutes', e.target.value)}
-                      placeholder="e.g. 12"
+                    <label className="block text-white text-sm font-medium mb-1.5">Title <span className="text-red-400">*</span></label>
+                    <input value={lectureForm.title_en} onChange={e => setLF('title_en', e.target.value)}
+                      placeholder="Lecture title"
                       className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
                   </div>
-                </>
-              )}
 
-              {lectureForm.content_type === 'text' && (
-                <div>
-                  <label className="block text-white text-sm font-medium mb-1.5">Article Content</label>
-                  <RichTextEditor
-                    value={lectureForm.text_content}
-                    onChange={v => setLF('text_content', v)}
-                    placeholder="Write lecture content…"
-                    minHeight="200px"
-                  />
+                  <div>
+                    <label className="block text-white text-sm font-medium mb-1.5">Content Type</label>
+                    <div className="flex gap-2">
+                      {['video', 'text'].map(t => (
+                        <button key={t} onClick={() => setLF('content_type', t)}
+                          className={`flex-1 py-2 rounded-xl text-sm font-medium border capitalize transition-all ${
+                            lectureForm.content_type === t
+                              ? 'bg-purple-500/20 border-purple-500/40 text-white'
+                              : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'
+                          }`}>{t}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {lectureForm.content_type === 'video' && (
+                    <>
+                      <div>
+                        <label className="block text-white text-sm font-medium mb-1.5">Video URL / ID</label>
+                        <input value={lectureForm.video_url} onChange={e => setLF('video_url', e.target.value)}
+                          placeholder="https://… or video ID"
+                          className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-white text-sm font-medium mb-1.5">Platform</label>
+                          <select value={lectureForm.video_type} onChange={e => setLF('video_type', e.target.value)}
+                            className="w-full px-3 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40">
+                            <option value="youtube">YouTube</option>
+                            <option value="vimeo">Vimeo</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-white text-sm font-medium mb-1.5">Duration (min)</label>
+                          <input type="number" min="0" step="0.5" value={lectureForm.video_duration_minutes}
+                            onChange={e => setLF('video_duration_minutes', e.target.value)}
+                            placeholder="e.g. 12"
+                            className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <label className="flex items-center gap-3 cursor-pointer pt-1">
+                    <input type="checkbox" checked={lectureForm.is_preview} onChange={e => setLF('is_preview', e.target.checked)}
+                      className="w-4 h-4 rounded border-white/20 bg-[#0b0915] accent-purple-500" />
+                    <div>
+                      <p className="text-white text-sm font-medium">Free Preview</p>
+                      <p className="text-zinc-600 text-xs">Non-enrolled visitors can watch this lecture</p>
+                    </div>
+                  </label>
+
+                  {lectureErr && <p className="text-red-400 text-sm">{lectureErr}</p>}
                 </div>
-              )}
 
-              <div>
-                <label className="block text-white text-sm font-medium mb-1.5">Description <span className="text-zinc-600 font-normal">optional</span></label>
-                <RichTextEditor
-                  value={lectureForm.description_en}
-                  onChange={v => setLF('description_en', v)}
-                  placeholder="Short description shown below the player"
-                  minHeight="120px"
-                />
+                {/* ── Right column: content / description ── */}
+                <div className="space-y-4">
+                  {lectureForm.content_type === 'text' && (
+                    <div className="flex flex-col h-full">
+                      <label className="block text-white text-sm font-medium mb-1.5">Article Content</label>
+                      <div className="flex-1">
+                        <RichTextEditor
+                          value={lectureForm.text_content}
+                          onChange={v => setLF('text_content', v)}
+                          placeholder="Write lecture content…"
+                          minHeight="340px"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-white text-sm font-medium mb-1.5">
+                      Description <span className="text-zinc-600 font-normal">optional</span>
+                    </label>
+                    <RichTextEditor
+                      value={lectureForm.description_en}
+                      onChange={v => setLF('description_en', v)}
+                      placeholder="Description shown below the player…"
+                      minHeight={lectureForm.content_type === 'text' ? '160px' : '340px'}
+                    />
+                  </div>
+                </div>
+
               </div>
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" checked={lectureForm.is_preview} onChange={e => setLF('is_preview', e.target.checked)}
-                  className="w-4 h-4 rounded border-white/20 bg-[#0b0915] accent-purple-500" />
-                <div>
-                  <p className="text-white text-sm font-medium">Free Preview</p>
-                  <p className="text-zinc-600 text-xs">Non-enrolled visitors can watch this lecture</p>
-                </div>
-              </label>
-
-              {lectureErr && <p className="text-red-400 text-sm">{lectureErr}</p>}
             </div>
 
-            <div className="p-5 pt-0 flex gap-3">
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-white/[0.06] flex gap-3 shrink-0">
               <button onClick={saveLecture} disabled={lectureSaving}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors">
                 <Save size={14} /> {lectureSaving ? 'Saving…' : lectureModal.lectureId ? 'Save Changes' : 'Add Lecture'}

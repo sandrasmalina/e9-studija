@@ -136,7 +136,7 @@ export default function AdminCourseNewPage() {
   const selectCls = inputCls;
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-4xl">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
         <Link href="/admin/courses" className="p-2 rounded-xl border border-zinc-700/50 text-zinc-500 hover:text-white transition-colors">
@@ -210,14 +210,16 @@ export default function AdminCourseNewPage() {
         {/* Descriptions */}
         <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/50 p-6 space-y-4">
           <h2 className="text-white font-semibold">Descriptions</h2>
-          <Field label="Short Description (EN)">
-            <textarea value={form.short_description_en} onChange={e => set('short_description_en', e.target.value)} rows={2} placeholder="Brief overview…" className={textareaCls} />
-          </Field>
-          <Field label="Short Description (LV)">
-            <textarea value={form.short_description_lv} onChange={e => set('short_description_lv', e.target.value)} rows={2} placeholder="Īss apraksts latviešu valodā…" className={textareaCls} />
-          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Short Description (EN)">
+              <textarea value={form.short_description_en} onChange={e => set('short_description_en', e.target.value)} rows={3} placeholder="Brief overview…" className={textareaCls} />
+            </Field>
+            <Field label="Short Description (LV)">
+              <textarea value={form.short_description_lv} onChange={e => set('short_description_lv', e.target.value)} rows={3} placeholder="Īss apraksts latviešu valodā…" className={textareaCls} />
+            </Field>
+          </div>
           <Field label="Full Description">
-            <RichTextEditor value={form.description_en} onChange={v => set('description_en', v)} placeholder="Detailed course description…" />
+            <RichTextEditor value={form.description_en} onChange={v => set('description_en', v)} placeholder="Detailed course description…" minHeight="280px" />
           </Field>
           <Field label="Target Audience">
             <input type="text" value={form.target_audience} onChange={e => set('target_audience', e.target.value)} placeholder="Who is this course for?" className={inputCls} />
