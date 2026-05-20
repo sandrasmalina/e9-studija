@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-
-const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { supabase } from '@/lib/supabase';
 import {
-  ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown,
-  Edit2, Check, X, Play, FileText, Save, ChevronRight, ChevronDown as Expand
+  ArrowLeft, Plus, Trash2, Edit2, Check, X,
+  Play, FileText, Save, ChevronRight, ChevronDown,
+  GripVertical, Upload, FileDown, Paperclip,
 } from 'lucide-react';
+
+const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
 interface Lecture {
   id: string;
@@ -22,6 +24,8 @@ interface Lecture {
   is_preview: boolean;
   description_en: string | null;
   text_content: string | null;
+  material_url: string | null;
+  material_filename: string | null;
   sort_order: number;
 }
 
@@ -33,10 +37,17 @@ interface Section {
   open: boolean;
 }
 
-const EMPTY_LECTURE_FORM = {
-  title_en: '', content_type: 'video', video_type: 'youtube',
-  video_url: '', video_duration_minutes: '', is_preview: false,
-  description_en: '', text_content: '',
+const EMPTY_FORM = {
+  title_en: '',
+  content_type: 'video',
+  video_type: 'youtube',
+  video_url: '',
+  video_duration_minutes: '',
+  is_preview: false,
+  description_en: '',
+  text_content: '',
+  material_url: '',
+  material_filename: '',
 };
 
 function fmtMin(s: number) {
@@ -50,28 +61,29 @@ export default function CurriculumPage() {
   const [loading, setLoading] = useState(true);
   const [courseTitle, setCourseTitle] = useState('');
 
-  // Section editing
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState('');
   const [addingSection, setAddingSection] = useState(false);
   const [newSectionTitle, setNewSectionTitle] = useState('');
 
-  // Lecture modal
   const [lectureModal, setLectureModal] = useState<{ sectionId: string; lectureId?: string } | null>(null);
-  const [lectureForm, setLectureForm] = useState({ ...EMPTY_LECTURE_FORM });
+  const [lectureForm, setLectureForm] = useState({ ...EMPTY_FORM });
   const [lectureSaving, setLectureSaving] = useState(false);
   const [lectureErr, setLectureErr] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const setLF = (k: string, v: string | boolean) => setLectureForm(f => ({ ...f, [k]: v }));
+  const notify = () => window.dispatchEvent(new CustomEvent('curriculum-changed'));
 
   const load = async () => {
     const { data: course } = await supabase.from('courses').select('title_en').eq('id', courseId).single();
     setCourseTitle(course?.title_en ?? '');
-
     const { data: secs } = await supabase
       .from('sections')
-      .select('id, title_en, sort_order, lectures(id, title_en, content_type, video_type, video_url, video_duration_seconds, is_preview, description_en, text_content, sort_order)')
+      .select('id, title_en, sort_order, lectures(id, title_en, content_type, video_type, video_url, video_duration_seconds, is_preview, description_en, text_content, material_url, material_filename, sort_order)')
       .eq('course_id', courseId)
       .order('sort_order');
-
     setSections(
       (secs ?? []).map((s: Omit<Section, 'open'>) => ({
         ...s,
@@ -82,18 +94,17 @@ export default function CurriculumPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [courseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [courseId]); // eslint-disable-line
 
-  // ── Section CRUD ──────────────────────────────────
+  // ── Section CRUD ───────────────────────────────────────────────────────
   const addSection = async () => {
     if (!newSectionTitle.trim()) return;
-    const sort_order = sections.length;
     const { data, error } = await supabase.from('sections')
-      .insert({ course_id: courseId, title_en: newSectionTitle.trim(), sort_order })
+      .insert({ course_id: courseId, title_en: newSectionTitle.trim(), sort_order: sections.length })
       .select('id, title_en, sort_order').single();
     if (error || !data) return;
     setSections(prev => [...prev, { ...data, lectures: [], open: true }]);
-    setNewSectionTitle(''); setAddingSection(false);
+    setNewSectionTitle(''); setAddingSection(false); notify();
   };
 
   const saveSection = async (sectionId: string) => {
@@ -101,33 +112,68 @@ export default function CurriculumPage() {
     if (!title) return;
     await supabase.from('sections').update({ title_en: title }).eq('id', sectionId);
     setSections(prev => prev.map(s => s.id === sectionId ? { ...s, title_en: title } : s));
-    setEditingSectionId(null);
+    setEditingSectionId(null); notify();
   };
 
   const deleteSection = async (sectionId: string) => {
     if (!confirm('Delete this section and all its lectures?')) return;
     await supabase.from('sections').delete().eq('id', sectionId);
-    setSections(prev => prev.filter(s => s.id !== sectionId));
+    setSections(prev => prev.filter(s => s.id !== sectionId)); notify();
   };
 
-  const moveSectionBy = async (idx: number, dir: -1 | 1) => {
-    const target = idx + dir;
-    if (target < 0 || target >= sections.length) return;
-    const next = [...sections];
-    [next[idx], next[target]] = [next[target], next[idx]];
-    const updated = next.map((s, i) => ({ ...s, sort_order: i }));
-    setSections(updated);
-    await Promise.all(updated.map(s => supabase.from('sections').update({ sort_order: s.sort_order }).eq('id', s.id)));
+  // ── Drag & Drop ────────────────────────────────────────────────────────
+  const onDragEnd = async (result: DropResult) => {
+    const { source: src, destination: dst, type } = result;
+    if (!dst || (src.droppableId === dst.droppableId && src.index === dst.index)) return;
+
+    if (type === 'section') {
+      const next = [...sections];
+      const [moved] = next.splice(src.index, 1);
+      next.splice(dst.index, 0, moved);
+      const updated = next.map((s, i) => ({ ...s, sort_order: i }));
+      setSections(updated);
+      await Promise.all(updated.map(s => supabase.from('sections').update({ sort_order: s.sort_order }).eq('id', s.id)));
+      notify();
+      return;
+    }
+
+    // Lecture drag
+    const srcSec = sections.find(s => s.id === src.droppableId)!;
+    const dstSec = sections.find(s => s.id === dst.droppableId)!;
+    const srcList = [...srcSec.lectures];
+    const [moved] = srcList.splice(src.index, 1);
+
+    if (src.droppableId === dst.droppableId) {
+      srcList.splice(dst.index, 0, moved);
+      const updated = srcList.map((l, i) => ({ ...l, sort_order: i }));
+      setSections(prev => prev.map(s => s.id === src.droppableId ? { ...s, lectures: updated } : s));
+      await Promise.all(updated.map(l => supabase.from('lectures').update({ sort_order: l.sort_order }).eq('id', l.id)));
+    } else {
+      const dstList = [...dstSec.lectures];
+      dstList.splice(dst.index, 0, moved);
+      const updSrc = srcList.map((l, i) => ({ ...l, sort_order: i }));
+      const updDst = dstList.map((l, i) => ({ ...l, sort_order: i }));
+      setSections(prev => prev.map(s => {
+        if (s.id === src.droppableId) return { ...s, lectures: updSrc };
+        if (s.id === dst.droppableId) return { ...s, lectures: updDst };
+        return s;
+      }));
+      await Promise.all([
+        supabase.from('lectures').update({ section_id: dst.droppableId, sort_order: dst.index }).eq('id', moved.id),
+        ...updSrc.map(l => supabase.from('lectures').update({ sort_order: l.sort_order }).eq('id', l.id)),
+        ...updDst.filter(l => l.id !== moved.id).map(l => supabase.from('lectures').update({ sort_order: l.sort_order }).eq('id', l.id)),
+      ]);
+    }
+    notify();
   };
 
-  // ── Lecture modal ─────────────────────────────────
-  const openNewLecture = (sectionId: string) => {
-    setLectureForm({ ...EMPTY_LECTURE_FORM });
-    setLectureErr('');
+  // ── Lecture modal ──────────────────────────────────────────────────────
+  const openNew = (sectionId: string) => {
+    setLectureForm({ ...EMPTY_FORM }); setLectureErr('');
     setLectureModal({ sectionId });
   };
 
-  const openEditLecture = (sectionId: string, lecture: Lecture) => {
+  const openEdit = (sectionId: string, lecture: Lecture) => {
     setLectureForm({
       title_en: lecture.title_en,
       content_type: lecture.content_type,
@@ -137,9 +183,23 @@ export default function CurriculumPage() {
       is_preview: lecture.is_preview,
       description_en: lecture.description_en ?? '',
       text_content: lecture.text_content ?? '',
+      material_url: lecture.material_url ?? '',
+      material_filename: lecture.material_filename ?? '',
     });
     setLectureErr('');
     setLectureModal({ sectionId, lectureId: lecture.id });
+  };
+
+  const uploadFile = async (file: File) => {
+    setUploading(true);
+    const ext = file.name.split('.').pop();
+    const path = `${courseId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from('lecture-materials').upload(path, file, { contentType: file.type });
+    if (error) { setLectureErr(error.message); setUploading(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from('lecture-materials').getPublicUrl(path);
+    setLF('material_url', publicUrl);
+    setLF('material_filename', file.name);
+    setUploading(false);
   };
 
   const saveLecture = async () => {
@@ -152,11 +212,13 @@ export default function CurriculumPage() {
       title_en: lectureForm.title_en.trim(),
       content_type: lectureForm.content_type,
       video_type: lectureForm.content_type === 'video' ? lectureForm.video_type : null,
-      video_url: lectureForm.content_type === 'video' && lectureForm.video_url.trim() ? lectureForm.video_url.trim() : null,
+      video_url: lectureForm.content_type === 'video' && (lectureForm.video_url as string).trim() ? (lectureForm.video_url as string).trim() : null,
       video_duration_seconds: lectureForm.video_duration_minutes ? Math.round(parseFloat(lectureForm.video_duration_minutes as string) * 60) : 0,
       is_preview: lectureForm.is_preview,
-      description_en: lectureForm.description_en.trim() || null,
-      text_content: lectureForm.content_type === 'text' ? lectureForm.text_content.trim() || null : null,
+      description_en: (lectureForm.description_en as string).trim() || null,
+      text_content: lectureForm.content_type === 'text' ? (lectureForm.text_content as string).trim() || null : null,
+      material_url: lectureForm.content_type === 'material' ? (lectureForm.material_url as string) || null : null,
+      material_filename: lectureForm.content_type === 'material' ? (lectureForm.material_filename as string) || null : null,
     };
 
     if (lectureModal.lectureId) {
@@ -172,17 +234,16 @@ export default function CurriculumPage() {
         .select('id, sort_order').single();
       if (data) {
         setSections(prev => prev.map(s => s.id === lectureModal.sectionId ? {
-          ...s,
-          lectures: [...s.lectures, { ...payload, id: data.id, sort_order: data.sort_order } as Lecture],
+          ...s, lectures: [...s.lectures, { ...payload, id: data.id, sort_order: data.sort_order } as Lecture],
         } : s));
       }
     }
 
     setLectureSaving(false);
     setLectureModal(null);
-    // Update course totals
-    const totalLectures = sections.reduce((acc, s) => acc + s.lectures.length, 0) + (lectureModal.lectureId ? 0 : 1);
-    await supabase.from('courses').update({ total_lectures: totalLectures }).eq('id', courseId);
+    notify();
+    const total = sections.reduce((a, s) => a + s.lectures.length, 0) + (lectureModal.lectureId ? 0 : 1);
+    await supabase.from('courses').update({ total_lectures: total }).eq('id', courseId);
   };
 
   const deleteLecture = async (sectionId: string, lectureId: string) => {
@@ -190,112 +251,171 @@ export default function CurriculumPage() {
     await supabase.from('lectures').delete().eq('id', lectureId);
     setSections(prev => prev.map(s => s.id === sectionId
       ? { ...s, lectures: s.lectures.filter(l => l.id !== lectureId) } : s));
+    notify();
   };
 
-  const moveLectureBy = async (sectionId: string, idx: number, dir: -1 | 1) => {
-    const target = idx + dir;
-    const section = sections.find(s => s.id === sectionId);
-    if (!section || target < 0 || target >= section.lectures.length) return;
-    const next = [...section.lectures];
-    [next[idx], next[target]] = [next[target], next[idx]];
-    const updated = next.map((l, i) => ({ ...l, sort_order: i }));
-    setSections(prev => prev.map(s => s.id === sectionId ? { ...s, lectures: updated } : s));
-    await Promise.all(updated.map(l => supabase.from('lectures').update({ sort_order: l.sort_order }).eq('id', l.id)));
-  };
+  if (loading) return (
+    <div className="space-y-3">
+      {[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-white/[0.04] animate-pulse" />)}
+    </div>
+  );
 
-  if (loading) {
-    return <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-white/[0.04] animate-pulse" />)}</div>;
-  }
-
-  const setLF = (k: string, v: string | boolean) => setLectureForm(f => ({ ...f, [k]: v }));
+  const ctIcon = (ct: string) =>
+    ct === 'video' ? <Play size={11} /> : ct === 'material' ? <Paperclip size={11} /> : <FileText size={11} />;
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-3xl">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
-        <Link href={`/instructor/courses/${courseId}/edit`} className="p-2 rounded-xl border border-white/[0.06] text-zinc-500 hover:text-white transition-colors">
+        <Link href={`/instructor/courses/${courseId}/edit`}
+          className="p-2 rounded-xl border border-white/[0.06] text-zinc-500 hover:text-white transition-colors">
           <ArrowLeft size={15} />
         </Link>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-white">Curriculum</h1>
           <p className="text-zinc-500 text-sm truncate">{courseTitle}</p>
         </div>
-        <Link href={`/instructor/courses/${courseId}/settings`} className="text-purple-400 text-sm hover:underline">Settings →</Link>
+        <Link href={`/instructor/courses/${courseId}/settings`} className="text-purple-400 text-sm hover:underline">
+          Settings →
+        </Link>
       </div>
 
-      {/* Sections */}
-      <div className="space-y-3 mb-4">
-        {sections.map((section, sIdx) => (
-          <div key={section.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-            {/* Section header */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
-              <button onClick={() => setSections(prev => prev.map(s => s.id === section.id ? { ...s, open: !s.open } : s))}
-                className="text-zinc-600 hover:text-white transition-colors">
-                {section.open ? <Expand size={14} /> : <ChevronRight size={14} />}
-              </button>
+      {/* Drag-and-drop sections */}
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="sections" type="section">
+          {(prov) => (
+            <div {...prov.droppableProps} ref={prov.innerRef} className="space-y-3 mb-4">
+              {sections.map((section, sIdx) => (
+                <Draggable key={section.id} draggableId={section.id} index={sIdx}>
+                  {(drag, dragSnap) => (
+                    <div
+                      ref={drag.innerRef}
+                      {...drag.draggableProps}
+                      className={`rounded-2xl border overflow-hidden transition-shadow ${
+                        dragSnap.isDragging
+                          ? 'border-purple-500/30 shadow-xl shadow-purple-500/10 bg-zinc-900'
+                          : 'border-white/[0.06] bg-white/[0.02]'
+                      }`}
+                    >
+                      {/* Section header */}
+                      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
+                        <div {...(drag.dragHandleProps ?? {})} className="text-zinc-600 hover:text-zinc-400 cursor-grab active:cursor-grabbing p-0.5">
+                          <GripVertical size={14} />
+                        </div>
+                        <button
+                          onClick={() => setSections(p => p.map(s => s.id === section.id ? { ...s, open: !s.open } : s))}
+                          className="text-zinc-600 hover:text-white transition-colors">
+                          {section.open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        </button>
 
-              {editingSectionId === section.id ? (
-                <div className="flex-1 flex items-center gap-2">
-                  <input autoFocus value={editingSectionTitle} onChange={e => setEditingSectionTitle(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') saveSection(section.id); if (e.key === 'Escape') setEditingSectionId(null); }}
-                    className="flex-1 px-3 py-1 bg-[#0b0915] border border-purple-500/40 rounded-lg text-white text-sm focus:outline-none" />
-                  <button onClick={() => saveSection(section.id)} className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors"><Check size={13} /></button>
-                  <button onClick={() => setEditingSectionId(null)} className="p-1.5 rounded-lg text-zinc-600 hover:text-white transition-colors"><X size={13} /></button>
-                </div>
-              ) : (
-                <span className="flex-1 text-white text-sm font-medium">{section.title_en}</span>
-              )}
+                        {editingSectionId === section.id ? (
+                          <div className="flex-1 flex items-center gap-2">
+                            <input
+                              autoFocus value={editingSectionTitle}
+                              onChange={e => setEditingSectionTitle(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') saveSection(section.id); if (e.key === 'Escape') setEditingSectionId(null); }}
+                              className="flex-1 px-3 py-1 bg-zinc-900 border border-purple-500/40 rounded-lg text-white text-sm focus:outline-none" />
+                            <button onClick={() => saveSection(section.id)} className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"><Check size={13} /></button>
+                            <button onClick={() => setEditingSectionId(null)} className="p-1.5 text-zinc-600 hover:text-white"><X size={13} /></button>
+                          </div>
+                        ) : (
+                          <span className="flex-1 text-white text-sm font-medium">{section.title_en}</span>
+                        )}
 
-              <span className="text-zinc-600 text-xs shrink-0">{section.lectures.length} lectures</span>
-
-              <div className="flex items-center gap-1 ml-2">
-                <button onClick={() => moveSectionBy(sIdx, -1)} disabled={sIdx === 0} className="p-1 text-zinc-700 hover:text-zinc-400 disabled:opacity-30 transition-colors"><ChevronUp size={13} /></button>
-                <button onClick={() => moveSectionBy(sIdx, 1)} disabled={sIdx === sections.length - 1} className="p-1 text-zinc-700 hover:text-zinc-400 disabled:opacity-30 transition-colors"><ChevronDown size={13} /></button>
-                <button onClick={() => { setEditingSectionId(section.id); setEditingSectionTitle(section.title_en); }}
-                  className="p-1.5 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all"><Edit2 size={13} /></button>
-                <button onClick={() => deleteSection(section.id)}
-                  className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-900/20 transition-all"><Trash2 size={13} /></button>
-              </div>
-            </div>
-
-            {/* Lectures */}
-            {section.open && (
-              <div>
-                {section.lectures.map((lecture, lIdx) => (
-                  <div key={lecture.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors group">
-                    <div className="shrink-0 text-zinc-700">
-                      {lecture.content_type === 'video' ? <Play size={13} /> : <FileText size={13} />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-white text-sm truncate block">{lecture.title_en}</span>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {lecture.video_duration_seconds > 0 && <span className="text-zinc-600 text-xs">{fmtMin(lecture.video_duration_seconds)}</span>}
-                        {lecture.is_preview && <span className="text-xs text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded">Preview</span>}
-                        <span className="text-zinc-700 text-xs capitalize">{lecture.content_type}</span>
+                        <span className="text-zinc-600 text-xs shrink-0">{section.lectures.length} lectures</span>
+                        <div className="flex gap-1 ml-1">
+                          <button
+                            onClick={() => { setEditingSectionId(section.id); setEditingSectionTitle(section.title_en); }}
+                            className="p-1.5 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all">
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            onClick={() => deleteSection(section.id)}
+                            className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-900/20 transition-all">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Lectures list */}
+                      {section.open && (
+                        <Droppable droppableId={section.id} type="lecture">
+                          {(lProv, lSnap) => (
+                            <div
+                              {...lProv.droppableProps}
+                              ref={lProv.innerRef}
+                              className={`min-h-[4px] transition-colors ${lSnap.isDraggingOver ? 'bg-purple-500/5' : ''}`}
+                            >
+                              {section.lectures.map((lecture, lIdx) => (
+                                <Draggable key={lecture.id} draggableId={lecture.id} index={lIdx}>
+                                  {(lDrag, lDragSnap) => (
+                                    <div
+                                      ref={lDrag.innerRef}
+                                      {...lDrag.draggableProps}
+                                      className={`flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04] transition-colors group ${
+                                        lDragSnap.isDragging ? 'bg-zinc-900 rounded-xl shadow-lg' : 'hover:bg-white/[0.02]'
+                                      }`}
+                                    >
+                                      <div {...(lDrag.dragHandleProps ?? {})} className="text-zinc-700 hover:text-zinc-500 cursor-grab active:cursor-grabbing shrink-0">
+                                        <GripVertical size={12} />
+                                      </div>
+                                      <span className="text-zinc-600 shrink-0">{ctIcon(lecture.content_type)}</span>
+                                      <div className="flex-1 min-w-0">
+                                        <span className="text-white text-sm truncate block">{lecture.title_en}</span>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                          {lecture.video_duration_seconds > 0 && (
+                                            <span className="text-zinc-600 text-xs">{fmtMin(lecture.video_duration_seconds)}</span>
+                                          )}
+                                          {lecture.is_preview && (
+                                            <span className="text-xs text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded">Preview</span>
+                                          )}
+                                          {lecture.material_filename && (
+                                            <span className="text-zinc-600 text-xs truncate max-w-[140px]">{lecture.material_filename}</span>
+                                          )}
+                                          <span className="text-zinc-700 text-xs capitalize">{lecture.content_type}</span>
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                        <button
+                                          onClick={() => openEdit(section.id, lecture)}
+                                          className="p-1.5 rounded-lg text-zinc-600 hover:text-purple-400 hover:bg-purple-900/20 transition-all">
+                                          <Edit2 size={12} />
+                                        </button>
+                                        <button
+                                          onClick={() => deleteLecture(section.id, lecture.id)}
+                                          className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-900/20 transition-all">
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </Draggable>
+                              ))}
+                              {lProv.placeholder}
+                              <button
+                                onClick={() => openNew(section.id)}
+                                className="flex items-center gap-2 w-full px-4 py-2.5 text-zinc-600 hover:text-purple-400 hover:bg-purple-500/5 text-sm transition-all">
+                                <Plus size={13} /> Add Lecture
+                              </button>
+                            </div>
+                          )}
+                        </Droppable>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => moveLectureBy(section.id, lIdx, -1)} disabled={lIdx === 0} className="p-1 text-zinc-700 hover:text-zinc-400 disabled:opacity-30"><ChevronUp size={12} /></button>
-                      <button onClick={() => moveLectureBy(section.id, lIdx, 1)} disabled={lIdx === section.lectures.length - 1} className="p-1 text-zinc-700 hover:text-zinc-400 disabled:opacity-30"><ChevronDown size={12} /></button>
-                      <button onClick={() => openEditLecture(section.id, lecture)} className="p-1.5 rounded-lg text-zinc-600 hover:text-purple-400 hover:bg-purple-900/20 transition-all"><Edit2 size={12} /></button>
-                      <button onClick={() => deleteLecture(section.id, lecture.id)} className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-900/20 transition-all"><Trash2 size={12} /></button>
-                    </div>
-                  </div>
-                ))}
-                <button onClick={() => openNewLecture(section.id)}
-                  className="flex items-center gap-2 w-full px-4 py-2.5 text-zinc-600 hover:text-purple-400 hover:bg-purple-500/5 text-sm transition-all">
-                  <Plus size={13} /> Add Lecture
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+                  )}
+                </Draggable>
+              ))}
+              {prov.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
 
       {/* Add section */}
       {addingSection ? (
         <div className="flex gap-2 mb-6">
-          <input autoFocus value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)}
+          <input
+            autoFocus value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') addSection(); if (e.key === 'Escape') { setAddingSection(false); setNewSectionTitle(''); } }}
             placeholder="Section title…"
             className="flex-1 px-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
@@ -303,131 +423,183 @@ export default function CurriculumPage() {
           <button onClick={() => { setAddingSection(false); setNewSectionTitle(''); }} className="px-3 py-2.5 rounded-xl border border-white/[0.08] text-zinc-500 hover:text-white transition-colors"><X size={14} /></button>
         </div>
       ) : (
-        <button onClick={() => setAddingSection(true)}
+        <button
+          onClick={() => setAddingSection(true)}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-white/[0.12] text-zinc-500 hover:text-white hover:border-white/25 text-sm transition-all mb-6">
           <Plus size={14} /> Add Section
         </button>
       )}
 
-      {/* Lecture Modal */}
+      {/* ── Lecture Modal ─────────────────────────────────────────────────── */}
       {lectureModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setLectureModal(null)}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto" onClick={() => setLectureModal(null)}>
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-          <div className="relative bg-[#0f0c1e] border border-white/[0.08] rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl"
-            onClick={e => e.stopPropagation()}>
-
-            {/* Modal header */}
+          <div
+            className="relative bg-zinc-950 border border-white/[0.08] rounded-2xl w-full max-w-2xl flex flex-col shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] shrink-0">
               <h2 className="text-white font-semibold">{lectureModal.lectureId ? 'Edit Lecture' : 'Add Lecture'}</h2>
               <button onClick={() => setLectureModal(null)} className="text-zinc-600 hover:text-white transition-colors"><X size={16} /></button>
             </div>
 
-            {/* Scrollable body */}
-            <div className="overflow-y-auto flex-1">
-              <div className="p-6 grid grid-cols-2 gap-6">
+            {/* Body — single column */}
+            <div className="p-6 space-y-5">
 
-                {/* ── Left column: metadata ── */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-white text-sm font-medium mb-1.5">Title <span className="text-red-400">*</span></label>
-                    <input value={lectureForm.title_en} onChange={e => setLF('title_en', e.target.value)}
-                      placeholder="Lecture title"
-                      className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
-                  </div>
-
-                  <div>
-                    <label className="block text-white text-sm font-medium mb-1.5">Content Type</label>
-                    <div className="flex gap-2">
-                      {['video', 'text'].map(t => (
-                        <button key={t} onClick={() => setLF('content_type', t)}
-                          className={`flex-1 py-2 rounded-xl text-sm font-medium border capitalize transition-all ${
-                            lectureForm.content_type === t
-                              ? 'bg-purple-500/20 border-purple-500/40 text-white'
-                              : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'
-                          }`}>{t}</button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {lectureForm.content_type === 'video' && (
-                    <>
-                      <div>
-                        <label className="block text-white text-sm font-medium mb-1.5">Video URL / ID</label>
-                        <input value={lectureForm.video_url} onChange={e => setLF('video_url', e.target.value)}
-                          placeholder="https://… or video ID"
-                          className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-white text-sm font-medium mb-1.5">Platform</label>
-                          <select value={lectureForm.video_type} onChange={e => setLF('video_type', e.target.value)}
-                            className="w-full px-3 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40">
-                            <option value="youtube">YouTube</option>
-                            <option value="vimeo">Vimeo</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-white text-sm font-medium mb-1.5">Duration (min)</label>
-                          <input type="number" min="0" step="0.5" value={lectureForm.video_duration_minutes}
-                            onChange={e => setLF('video_duration_minutes', e.target.value)}
-                            placeholder="e.g. 12"
-                            className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  <label className="flex items-center gap-3 cursor-pointer pt-1">
-                    <input type="checkbox" checked={lectureForm.is_preview} onChange={e => setLF('is_preview', e.target.checked)}
-                      className="w-4 h-4 rounded border-white/20 bg-[#0b0915] accent-purple-500" />
-                    <div>
-                      <p className="text-white text-sm font-medium">Free Preview</p>
-                      <p className="text-zinc-600 text-xs">Non-enrolled visitors can watch this lecture</p>
-                    </div>
-                  </label>
-
-                  {lectureErr && <p className="text-red-400 text-sm">{lectureErr}</p>}
-                </div>
-
-                {/* ── Right column: content / description ── */}
-                <div className="space-y-4">
-                  {lectureForm.content_type === 'text' && (
-                    <div className="flex flex-col h-full">
-                      <label className="block text-white text-sm font-medium mb-1.5">Article Content</label>
-                      <div className="flex-1">
-                        <RichTextEditor
-                          value={lectureForm.text_content}
-                          onChange={v => setLF('text_content', v)}
-                          placeholder="Write lecture content…"
-                          minHeight="340px"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-white text-sm font-medium mb-1.5">
-                      Description <span className="text-zinc-600 font-normal">optional</span>
-                    </label>
-                    <RichTextEditor
-                      value={lectureForm.description_en}
-                      onChange={v => setLF('description_en', v)}
-                      placeholder="Description shown below the player…"
-                      minHeight={lectureForm.content_type === 'text' ? '160px' : '340px'}
-                    />
-                  </div>
-                </div>
-
+              {/* Title */}
+              <div>
+                <label className="block text-white text-sm font-medium mb-1.5">Title <span className="text-red-400">*</span></label>
+                <input
+                  value={lectureForm.title_en as string}
+                  onChange={e => setLF('title_en', e.target.value)}
+                  placeholder="Lecture title"
+                  className="w-full px-4 py-2.5 bg-zinc-900 border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
               </div>
+
+              {/* Content type */}
+              <div>
+                <label className="block text-white text-sm font-medium mb-1.5">Content Type</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'video',    label: 'Video',    Icon: Play },
+                    { value: 'text',     label: 'Article',  Icon: FileText },
+                    { value: 'material', label: 'Material', Icon: Paperclip },
+                  ].map(({ value, label, Icon }) => (
+                    <button
+                      key={value}
+                      onClick={() => setLF('content_type', value)}
+                      className={`flex items-center gap-2 flex-1 py-2.5 px-3 rounded-xl text-sm font-medium border transition-all ${
+                        lectureForm.content_type === value
+                          ? 'bg-purple-500/20 border-purple-500/40 text-white'
+                          : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300 hover:border-white/20'
+                      }`}>
+                      <Icon size={13} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Video fields */}
+              {lectureForm.content_type === 'video' && (
+                <>
+                  <div>
+                    <label className="block text-white text-sm font-medium mb-1.5">Video URL / ID</label>
+                    <input
+                      value={lectureForm.video_url as string}
+                      onChange={e => setLF('video_url', e.target.value)}
+                      placeholder="https://… or video ID"
+                      className="w-full px-4 py-2.5 bg-zinc-900 border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1.5">Platform</label>
+                      <select
+                        value={lectureForm.video_type as string}
+                        onChange={e => setLF('video_type', e.target.value)}
+                        className="w-full px-3 py-2.5 bg-zinc-900 border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40">
+                        <option value="youtube">YouTube</option>
+                        <option value="vimeo">Vimeo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1.5">Duration (min)</label>
+                      <input
+                        type="number" min="0" step="0.5"
+                        value={lectureForm.video_duration_minutes as string}
+                        onChange={e => setLF('video_duration_minutes', e.target.value)}
+                        placeholder="e.g. 12"
+                        className="w-full px-4 py-2.5 bg-zinc-900 border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Material upload */}
+              {lectureForm.content_type === 'material' && (
+                <div>
+                  <label className="block text-white text-sm font-medium mb-1.5">File</label>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f); }} />
+                  {lectureForm.material_filename ? (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-green-500/20 rounded-xl">
+                      <FileDown size={16} className="text-green-400 shrink-0" />
+                      <span className="text-white text-sm flex-1 truncate">{lectureForm.material_filename as string}</span>
+                      <button
+                        onClick={() => fileRef.current?.click()}
+                        className="text-zinc-500 hover:text-white text-xs transition-colors shrink-0">
+                        Replace
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => fileRef.current?.click()}
+                      disabled={uploading}
+                      className="w-full flex flex-col items-center gap-3 px-4 py-8 bg-zinc-900 border-2 border-dashed border-white/[0.10] rounded-xl text-zinc-500 hover:text-white hover:border-white/25 transition-all disabled:opacity-50">
+                      <Upload size={22} />
+                      <span className="text-sm">{uploading ? 'Uploading…' : 'Click to upload PDF, image, or document'}</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Article content */}
+              {lectureForm.content_type === 'text' && (
+                <div>
+                  <label className="block text-white text-sm font-medium mb-1.5">Article Content</label>
+                  <RichTextEditor
+                    value={lectureForm.text_content as string}
+                    onChange={v => setLF('text_content', v)}
+                    placeholder="Write lecture content…"
+                    minHeight="260px" />
+                </div>
+              )}
+
+              {/* Description */}
+              <div>
+                <label className="block text-white text-sm font-medium mb-1.5">
+                  Description <span className="text-zinc-600 font-normal">optional</span>
+                </label>
+                <RichTextEditor
+                  value={lectureForm.description_en as string}
+                  onChange={v => setLF('description_en', v)}
+                  placeholder="Description shown below the player…"
+                  minHeight={lectureForm.content_type === 'text' ? '120px' : '200px'} />
+              </div>
+
+              {/* Free Preview */}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={lectureForm.is_preview as boolean}
+                  onChange={e => setLF('is_preview', e.target.checked)}
+                  className="w-4 h-4 rounded border-white/20 bg-zinc-900 accent-purple-500" />
+                <div>
+                  <p className="text-white text-sm font-medium">Free Preview</p>
+                  <p className="text-zinc-600 text-xs">Non-enrolled visitors can watch this lecture</p>
+                </div>
+              </label>
+
+              {lectureErr && <p className="text-red-400 text-sm">{lectureErr}</p>}
             </div>
 
             {/* Footer */}
             <div className="px-6 py-4 border-t border-white/[0.06] flex gap-3 shrink-0">
-              <button onClick={saveLecture} disabled={lectureSaving}
+              <button
+                onClick={saveLecture}
+                disabled={lectureSaving}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors">
-                <Save size={14} /> {lectureSaving ? 'Saving…' : lectureModal.lectureId ? 'Save Changes' : 'Add Lecture'}
+                <Save size={14} />
+                {lectureSaving ? 'Saving…' : lectureModal.lectureId ? 'Save Changes' : 'Add Lecture'}
               </button>
-              <button onClick={() => setLectureModal(null)} className="px-4 py-2.5 rounded-xl border border-white/[0.08] text-zinc-500 hover:text-white transition-colors">
+              <button
+                onClick={() => setLectureModal(null)}
+                className="px-4 py-2.5 rounded-xl border border-white/[0.08] text-zinc-500 hover:text-white transition-colors">
                 Cancel
               </button>
             </div>

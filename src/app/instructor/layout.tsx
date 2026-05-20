@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import {
   LayoutDashboard, BookOpen, TrendingUp, Settings,
-  ChevronRight, ExternalLink, ArrowLeft, Play, FileText,
+  ChevronRight, ExternalLink, ArrowLeft, Play, FileText, Paperclip,
   ShieldCheck, LogOut, Home,
 } from 'lucide-react';
 
@@ -60,8 +60,8 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
 
   useEffect(() => {
     if (!courseId || checking) return;
-    setCourseTitle(''); setSections([]);
-    (async () => {
+    const loadOutline = async () => {
+      setCourseTitle(''); setSections([]);
       const { data } = await supabase
         .from('courses')
         .select('title_en, sections(id, title_en, sort_order, lectures(id, title_en, content_type, sort_order))')
@@ -73,7 +73,10 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
           .sort((a, b) => a.sort_order - b.sort_order)
           .map(s => ({ ...s, lectures: (s.lectures ?? []).sort((a, b) => a.sort_order - b.sort_order) }))
       );
-    })();
+    };
+    loadOutline();
+    window.addEventListener('curriculum-changed', loadOutline);
+    return () => window.removeEventListener('curriculum-changed', loadOutline);
   }, [courseId, checking]);
 
   if (checking) {
@@ -176,7 +179,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                     {section.lectures.map(lecture => (
                       <div key={lecture.id} className="flex items-center gap-2.5 pl-12 pr-4 py-1.5 hover:bg-zinc-900/60 transition-colors">
                         <span className="text-zinc-600 shrink-0">
-                          {lecture.content_type === 'video' ? <Play size={11} /> : <FileText size={11} />}
+                          {lecture.content_type === 'video' ? <Play size={11} /> : lecture.content_type === 'material' ? <Paperclip size={11} /> : <FileText size={11} />}
                         </span>
                         <span className="text-zinc-500 text-sm truncate">{lecture.title_en}</span>
                       </div>
