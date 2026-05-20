@@ -26,6 +26,7 @@ interface CourseForm {
   certificate_enabled: boolean;
   status: string;
   category_id: string;
+  instructor_id: string;
 }
 
 const EMPTY: CourseForm = {
@@ -33,7 +34,7 @@ const EMPTY: CourseForm = {
   description_en: '', thumbnail_url: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '',
   price: '0', discount_price: '', is_free: false, certificate_enabled: true, status: 'draft',
-  category_id: '',
+  category_id: '', instructor_id: '',
 };
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -59,13 +60,18 @@ export default function AdminCourseNewPage() {
   const router = useRouter();
   const [form, setForm] = useState<CourseForm>(EMPTY);
   const [categories, setCategories] = useState<{ id: string; name_en: string }[]>([]);
+  const [instructors, setInstructors] = useState<{ id: string; full_name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    supabase.from('categories').select('id, name_en').order('name_en').then(({ data }) => {
-      setCategories(data ?? []);
+    Promise.all([
+      supabase.from('categories').select('id, name_en').order('name_en'),
+      supabase.from('profiles').select('id, full_name').in('role', ['instructor', 'admin']).order('full_name'),
+    ]).then(([{ data: cats }, { data: ins }]) => {
+      setCategories(cats ?? []);
+      setInstructors((ins ?? []) as { id: string; full_name: string }[]);
     });
   }, []);
 
@@ -113,6 +119,7 @@ export default function AdminCourseNewPage() {
       certificate_enabled: form.certificate_enabled,
       status: form.status,
       category_id: form.category_id || null,
+      instructor_id: form.instructor_id || null,
       ...(form.status === 'published' ? { published_at: new Date().toISOString() } : {}),
     }).select('id').single();
 
@@ -166,6 +173,12 @@ export default function AdminCourseNewPage() {
           </Field>
           <Field label="Title (Latvian)" hint="Optional">
             <input type="text" value={form.title_lv} onChange={e => set('title_lv', e.target.value)} placeholder="Latviešu nosaukums" className={inputCls} />
+          </Field>
+          <Field label="Instructor" hint="Optional — who will teach this course">
+            <select value={form.instructor_id} onChange={e => set('instructor_id', e.target.value)} className={selectCls}>
+              <option value="">— Unassigned —</option>
+              {instructors.map(i => <option key={i.id} value={i.id}>{i.full_name}</option>)}
+            </select>
           </Field>
           <div className="grid grid-cols-3 gap-4">
             <Field label="Category">

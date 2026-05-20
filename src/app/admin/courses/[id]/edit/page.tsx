@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Save, ImageIcon, Upload, X } from 'lucide-react';
+import { ArrowLeft, Save, ImageIcon, Upload, X, ExternalLink, BookOpen } from 'lucide-react';
 
 interface CourseForm {
   title_en: string;
@@ -26,6 +26,7 @@ interface CourseForm {
   certificate_enabled: boolean;
   status: string;
   category_id: string;
+  instructor_id: string;
 }
 
 const EMPTY: CourseForm = {
@@ -33,7 +34,7 @@ const EMPTY: CourseForm = {
   description_en: '', thumbnail_url: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '',
   price: '0', discount_price: '', is_free: false, certificate_enabled: true, status: 'draft',
-  category_id: '',
+  category_id: '', instructor_id: '',
 };
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -56,21 +57,25 @@ export default function AdminCourseEditPage() {
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState('');
   const [courseTitle, setCourseTitle] = useState('');
-  const [instructorName, setInstructorName] = useState('');
+  const [courseSlug, setCourseSlug] = useState('');
+  const [instructors, setInstructors] = useState<{ id: string; full_name: string }[]>([]);
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: cats }, { data: course }] = await Promise.all([
+      const [{ data: cats }, { data: course }, { data: instructorList }] = await Promise.all([
         supabase.from('categories').select('id, name_en').order('name_en'),
         supabase.from('courses')
-          .select('title_en, title_lv, short_description_en, short_description_lv, description_en, thumbnail_url, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience, price, discount_price, is_free, certificate_enabled, status, category_id, instructor_id')
+          .select('title_en, title_lv, slug, short_description_en, short_description_lv, description_en, thumbnail_url, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience, price, discount_price, is_free, certificate_enabled, status, category_id, instructor_id')
           .eq('id', id).single(),
+        supabase.from('profiles').select('id, full_name').in('role', ['instructor', 'admin']).order('full_name'),
       ]);
 
       setCategories(cats ?? []);
+      setInstructors((instructorList ?? []) as { id: string; full_name: string }[]);
 
       if (course) {
         setCourseTitle(course.title_en);
+        setCourseSlug(course.slug ?? '');
         setForm({
           title_en: course.title_en ?? '',
           title_lv: course.title_lv ?? '',
@@ -91,13 +96,8 @@ export default function AdminCourseEditPage() {
           certificate_enabled: course.certificate_enabled ?? true,
           status: course.status ?? 'draft',
           category_id: course.category_id ?? '',
+          instructor_id: course.instructor_id ?? '',
         });
-
-        if (course.instructor_id) {
-          const { data: profile } = await supabase.from('profiles')
-            .select('full_name').eq('id', course.instructor_id).single();
-          setInstructorName(profile?.full_name ?? '');
-        }
       }
       setLoading(false);
     };
@@ -143,6 +143,7 @@ export default function AdminCourseEditPage() {
       certificate_enabled: form.certificate_enabled,
       status: form.status,
       category_id: form.category_id || null,
+      instructor_id: form.instructor_id || null,
       updated_at: new Date().toISOString(),
       ...(form.status === 'published' ? { published_at: new Date().toISOString() } : {}),
     }).eq('id', id);
@@ -169,9 +170,20 @@ export default function AdminCourseEditPage() {
         <Link href="/admin/courses" className="p-2 rounded-xl border border-zinc-700/50 text-zinc-500 hover:text-white transition-colors">
           <ArrowLeft size={15} />
         </Link>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-white truncate">{courseTitle || 'Edit Course'}</h1>
-          {instructorName && <p className="text-zinc-500 text-sm mt-0.5">Instructor: {instructorName}</p>}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href={`/instructor/courses/${id}/curriculum`}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-500 text-sm transition-colors">
+            <BookOpen size={14} /> Curriculum
+          </Link>
+          {courseSlug && (
+            <a href={`/courses/${courseSlug}`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-500 text-sm transition-colors">
+              <ExternalLink size={14} /> View Course
+            </a>
+          )}
         </div>
       </div>
 
@@ -197,6 +209,12 @@ export default function AdminCourseEditPage() {
           </Field>
           <Field label="Title (Latvian)" hint="Optional">
             <input type="text" value={form.title_lv} onChange={e => set('title_lv', e.target.value)} placeholder="Latviešu nosaukums" className={inputCls} />
+          </Field>
+          <Field label="Instructor">
+            <select value={form.instructor_id} onChange={e => set('instructor_id', e.target.value)} className={selectCls}>
+              <option value="">— Unassigned —</option>
+              {instructors.map(i => <option key={i.id} value={i.id}>{i.full_name}</option>)}
+            </select>
           </Field>
           <div className="grid grid-cols-3 gap-4">
             <Field label="Category">
