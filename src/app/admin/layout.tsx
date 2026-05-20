@@ -33,7 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (!data.user) { router.replace('/admin'); return; }
       setEmail(data.user.email ?? '');
       setChecking(false);
-    });
+    }).catch(() => { setChecking(false); });
   }, [isLoginPage, router]);
 
   if (!isLoginPage && checking) {

@@ -46,8 +46,7 @@ export default function AdminNav() {
     router.push('/admin');
   };
 
-  const handleViewSite = async () => {
-    await supabase.auth.signOut();
+  const handleViewSite = () => {
     router.push('/');
   };
 
