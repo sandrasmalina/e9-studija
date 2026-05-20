@@ -441,7 +441,7 @@ export default function CourseSlugClient({ course }: { course: Course }) {
             {desc && (
               <section>
                 <h2 className="text-xl font-bold text-white mb-5">{t('courses.section.description')}</h2>
-                <div className="text-neutral-400 text-sm leading-relaxed whitespace-pre-line">{desc}</div>
+                <div className="prose prose-invert prose-sm max-w-none text-neutral-400 [&_h2]:text-white [&_h3]:text-neutral-200 [&_a]:text-purple-400 [&_a:hover]:text-purple-300" dangerouslySetInnerHTML={{ __html: desc }} />
               </section>
             )}
 

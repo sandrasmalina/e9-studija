@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, Plus, ImageIcon, Upload, X } from 'lucide-react';
+
+const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
 interface CourseForm {
   title_en: string;
@@ -214,7 +217,7 @@ export default function AdminCourseNewPage() {
             <textarea value={form.short_description_lv} onChange={e => set('short_description_lv', e.target.value)} rows={2} placeholder="Īss apraksts latviešu valodā…" className={textareaCls} />
           </Field>
           <Field label="Full Description">
-            <textarea value={form.description_en} onChange={e => set('description_en', e.target.value)} rows={6} placeholder="Detailed course description…" className={textareaCls} />
+            <RichTextEditor value={form.description_en} onChange={v => set('description_en', v)} placeholder="Detailed course description…" />
           </Field>
           <Field label="Target Audience">
             <input type="text" value={form.target_audience} onChange={e => set('target_audience', e.target.value)} placeholder="Who is this course for?" className={inputCls} />

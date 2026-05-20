@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+
+const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 import { supabase } from '@/lib/supabase';
 import {
   ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown,
@@ -32,14 +35,13 @@ interface Section {
 
 const EMPTY_LECTURE_FORM = {
   title_en: '', content_type: 'video', video_type: 'youtube',
-  video_url: '', video_duration_seconds: '', is_preview: false,
+  video_url: '', video_duration_minutes: '', is_preview: false,
   description_en: '', text_content: '',
 };
 
-function fmtSec(s: number) {
-  const m = Math.floor(s / 60);
-  const rem = s % 60;
-  return `${m}:${String(rem).padStart(2, '0')}`;
+function fmtMin(s: number) {
+  const m = Math.round(s / 60);
+  return m === 1 ? '1 min' : `${m} min`;
 }
 
 export default function CurriculumPage() {
@@ -131,7 +133,7 @@ export default function CurriculumPage() {
       content_type: lecture.content_type,
       video_type: lecture.video_type ?? 'youtube',
       video_url: lecture.video_url ?? '',
-      video_duration_seconds: lecture.video_duration_seconds > 0 ? String(lecture.video_duration_seconds) : '',
+      video_duration_minutes: lecture.video_duration_seconds > 0 ? String(Math.round(lecture.video_duration_seconds / 60)) : '',
       is_preview: lecture.is_preview,
       description_en: lecture.description_en ?? '',
       text_content: lecture.text_content ?? '',
@@ -151,7 +153,7 @@ export default function CurriculumPage() {
       content_type: lectureForm.content_type,
       video_type: lectureForm.content_type === 'video' ? lectureForm.video_type : null,
       video_url: lectureForm.content_type === 'video' && lectureForm.video_url.trim() ? lectureForm.video_url.trim() : null,
-      video_duration_seconds: lectureForm.video_duration_seconds ? parseInt(lectureForm.video_duration_seconds as string) : 0,
+      video_duration_seconds: lectureForm.video_duration_minutes ? Math.round(parseFloat(lectureForm.video_duration_minutes as string) * 60) : 0,
       is_preview: lectureForm.is_preview,
       description_en: lectureForm.description_en.trim() || null,
       text_content: lectureForm.content_type === 'text' ? lectureForm.text_content.trim() || null : null,
@@ -267,7 +269,7 @@ export default function CurriculumPage() {
                     <div className="flex-1 min-w-0">
                       <span className="text-white text-sm truncate block">{lecture.title_en}</span>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {lecture.video_duration_seconds > 0 && <span className="text-zinc-600 text-xs">{fmtSec(lecture.video_duration_seconds)}</span>}
+                        {lecture.video_duration_seconds > 0 && <span className="text-zinc-600 text-xs">{fmtMin(lecture.video_duration_seconds)}</span>}
                         {lecture.is_preview && <span className="text-xs text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded">Preview</span>}
                         <span className="text-zinc-700 text-xs capitalize">{lecture.content_type}</span>
                       </div>
@@ -359,10 +361,10 @@ export default function CurriculumPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-white text-sm font-medium mb-1.5">Duration (seconds)</label>
-                    <input type="number" min="0" value={lectureForm.video_duration_seconds}
-                      onChange={e => setLF('video_duration_seconds', e.target.value)}
-                      placeholder="e.g. 720 for 12 minutes"
+                    <label className="block text-white text-sm font-medium mb-1.5">Duration (minutes)</label>
+                    <input type="number" min="0" step="0.5" value={lectureForm.video_duration_minutes}
+                      onChange={e => setLF('video_duration_minutes', e.target.value)}
+                      placeholder="e.g. 12"
                       className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
                   </div>
                 </>
@@ -371,17 +373,23 @@ export default function CurriculumPage() {
               {lectureForm.content_type === 'text' && (
                 <div>
                   <label className="block text-white text-sm font-medium mb-1.5">Article Content</label>
-                  <textarea value={lectureForm.text_content} onChange={e => setLF('text_content', e.target.value)}
-                    rows={6} placeholder="Markdown or plain text content…"
-                    className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600 resize-none" />
+                  <RichTextEditor
+                    value={lectureForm.text_content}
+                    onChange={v => setLF('text_content', v)}
+                    placeholder="Write lecture content…"
+                    minHeight="200px"
+                  />
                 </div>
               )}
 
               <div>
                 <label className="block text-white text-sm font-medium mb-1.5">Description <span className="text-zinc-600 font-normal">optional</span></label>
-                <textarea value={lectureForm.description_en} onChange={e => setLF('description_en', e.target.value)}
-                  rows={2} placeholder="Short description shown below the player"
-                  className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600 resize-none" />
+                <RichTextEditor
+                  value={lectureForm.description_en}
+                  onChange={v => setLF('description_en', v)}
+                  placeholder="Short description shown below the player"
+                  minHeight="120px"
+                />
               </div>
 
               <label className="flex items-center gap-3 cursor-pointer">
