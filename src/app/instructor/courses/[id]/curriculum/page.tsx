@@ -263,190 +263,212 @@ export default function CurriculumPage() {
   const ctIcon = (ct: string) =>
     ct === 'video' ? <Play size={11} /> : ct === 'material' ? <Paperclip size={11} /> : <FileText size={11} />;
 
+  // ── Split-panel layout ───────────────────────────────────────────────────
   return (
-    <div className="max-w-3xl">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
-        <Link href={`/instructor/courses/${courseId}/edit`}
-          className="p-2 rounded-xl border border-white/[0.06] text-zinc-500 hover:text-white transition-colors">
-          <ArrowLeft size={15} />
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-white">Curriculum</h1>
-          <p className="text-zinc-500 text-sm truncate">{courseTitle}</p>
+    <div className="flex -m-8 h-[calc(100vh-3.5rem)] overflow-hidden">
+
+      {/* ── LEFT PANEL: course nav + drag-and-drop curriculum ─────────────── */}
+      <div className="w-80 shrink-0 flex flex-col border-r border-white/[0.06] bg-zinc-950 overflow-hidden">
+
+        {/* Top: course title + links */}
+        <div className="px-4 py-4 border-b border-white/[0.06] shrink-0">
+          <div className="flex items-center gap-2 mb-3">
+            <Link href={`/instructor/courses/${courseId}/edit`}
+              className="p-1.5 rounded-lg border border-white/[0.06] text-zinc-500 hover:text-white transition-colors shrink-0">
+              <ArrowLeft size={13} />
+            </Link>
+            <p className="text-white text-sm font-semibold truncate flex-1">{courseTitle}</p>
+          </div>
+          <div className="flex gap-2">
+            <Link href={`/instructor/courses/${courseId}/edit`}
+              className="flex-1 text-center py-1.5 rounded-lg text-xs text-zinc-500 hover:text-white border border-white/[0.06] hover:border-white/20 transition-all">
+              Course Info
+            </Link>
+            <Link href={`/instructor/courses/${courseId}/settings`}
+              className="flex-1 text-center py-1.5 rounded-lg text-xs text-zinc-500 hover:text-white border border-white/[0.06] hover:border-white/20 transition-all">
+              Settings
+            </Link>
+          </div>
         </div>
-        <Link href={`/instructor/courses/${courseId}/settings`} className="text-purple-400 text-sm hover:underline">
-          Settings →
-        </Link>
-      </div>
 
-      {/* Drag-and-drop sections */}
-      <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="sections" type="section">
-          {(prov) => (
-            <div {...prov.droppableProps} ref={prov.innerRef} className="space-y-3 mb-4">
-              {sections.map((section, sIdx) => (
-                <Draggable key={section.id} draggableId={section.id} index={sIdx}>
-                  {(drag, dragSnap) => (
-                    <div
-                      ref={drag.innerRef}
-                      {...drag.draggableProps}
-                      className={`rounded-2xl border overflow-hidden transition-shadow ${
-                        dragSnap.isDragging
-                          ? 'border-purple-500/30 shadow-xl shadow-purple-500/10 bg-zinc-900'
-                          : 'border-white/[0.06] bg-white/[0.02]'
-                      }`}
-                    >
-                      {/* Section header */}
-                      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
-                        <div {...(drag.dragHandleProps ?? {})} className="text-zinc-600 hover:text-zinc-400 cursor-grab active:cursor-grabbing p-0.5">
-                          <GripVertical size={14} />
-                        </div>
-                        <button
-                          onClick={() => setSections(p => p.map(s => s.id === section.id ? { ...s, open: !s.open } : s))}
-                          className="text-zinc-600 hover:text-white transition-colors">
-                          {section.open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        </button>
+        {/* Scrollable sections + lectures */}
+        <div className="flex-1 overflow-y-auto py-2">
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="sections" type="section">
+              {(prov) => (
+                <div {...prov.droppableProps} ref={prov.innerRef} className="space-y-1 px-2">
+                  {sections.map((section, sIdx) => (
+                    <Draggable key={section.id} draggableId={section.id} index={sIdx}>
+                      {(drag, dragSnap) => (
+                        <div
+                          ref={drag.innerRef}
+                          {...drag.draggableProps}
+                          className={`rounded-xl border overflow-hidden transition-shadow ${
+                            dragSnap.isDragging
+                              ? 'border-purple-500/30 shadow-lg shadow-purple-500/10 bg-zinc-900'
+                              : 'border-white/[0.06] bg-white/[0.02]'
+                          }`}
+                        >
+                          {/* Section header */}
+                          <div className="flex items-center gap-1.5 px-2 py-2 border-b border-white/[0.04]">
+                            <div {...(drag.dragHandleProps ?? {})} className="text-zinc-600 hover:text-zinc-400 cursor-grab active:cursor-grabbing p-0.5 shrink-0">
+                              <GripVertical size={12} />
+                            </div>
+                            <button
+                              onClick={() => setSections(p => p.map(s => s.id === section.id ? { ...s, open: !s.open } : s))}
+                              className="text-zinc-600 hover:text-white transition-colors shrink-0">
+                              {section.open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                            </button>
 
-                        {editingSectionId === section.id ? (
-                          <div className="flex-1 flex items-center gap-2">
-                            <input
-                              autoFocus value={editingSectionTitle}
-                              onChange={e => setEditingSectionTitle(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') saveSection(section.id); if (e.key === 'Escape') setEditingSectionId(null); }}
-                              className="flex-1 px-3 py-1 bg-zinc-900 border border-purple-500/40 rounded-lg text-white text-sm focus:outline-none" />
-                            <button onClick={() => saveSection(section.id)} className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"><Check size={13} /></button>
-                            <button onClick={() => setEditingSectionId(null)} className="p-1.5 text-zinc-600 hover:text-white"><X size={13} /></button>
-                          </div>
-                        ) : (
-                          <span className="flex-1 text-white text-sm font-medium">{section.title_en}</span>
-                        )}
+                            {editingSectionId === section.id ? (
+                              <div className="flex-1 flex items-center gap-1">
+                                <input
+                                  autoFocus value={editingSectionTitle}
+                                  onChange={e => setEditingSectionTitle(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') saveSection(section.id); if (e.key === 'Escape') setEditingSectionId(null); }}
+                                  className="flex-1 px-2 py-0.5 bg-zinc-900 border border-purple-500/40 rounded-lg text-white text-xs focus:outline-none" />
+                                <button onClick={() => saveSection(section.id)} className="p-1 rounded bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 shrink-0"><Check size={11} /></button>
+                                <button onClick={() => setEditingSectionId(null)} className="p-1 text-zinc-600 hover:text-white shrink-0"><X size={11} /></button>
+                              </div>
+                            ) : (
+                              <span className="flex-1 text-white text-xs font-medium truncate">{section.title_en}</span>
+                            )}
 
-                        <span className="text-zinc-600 text-xs shrink-0">{section.lectures.length} lectures</span>
-                        <div className="flex gap-1 ml-1">
-                          <button
-                            onClick={() => { setEditingSectionId(section.id); setEditingSectionTitle(section.title_en); }}
-                            className="p-1.5 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all">
-                            <Edit2 size={13} />
-                          </button>
-                          <button
-                            onClick={() => deleteSection(section.id)}
-                            className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-900/20 transition-all">
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Lectures list */}
-                      {section.open && (
-                        <Droppable droppableId={section.id} type="lecture">
-                          {(lProv, lSnap) => (
-                            <div
-                              {...lProv.droppableProps}
-                              ref={lProv.innerRef}
-                              className={`min-h-[4px] transition-colors ${lSnap.isDraggingOver ? 'bg-purple-500/5' : ''}`}
-                            >
-                              {section.lectures.map((lecture, lIdx) => (
-                                <Draggable key={lecture.id} draggableId={lecture.id} index={lIdx}>
-                                  {(lDrag, lDragSnap) => (
-                                    <div
-                                      ref={lDrag.innerRef}
-                                      {...lDrag.draggableProps}
-                                      className={`flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04] transition-colors group ${
-                                        lDragSnap.isDragging ? 'bg-zinc-900 rounded-xl shadow-lg' : 'hover:bg-white/[0.02]'
-                                      }`}
-                                    >
-                                      <div {...(lDrag.dragHandleProps ?? {})} className="text-zinc-700 hover:text-zinc-500 cursor-grab active:cursor-grabbing shrink-0">
-                                        <GripVertical size={12} />
-                                      </div>
-                                      <span className="text-zinc-600 shrink-0">{ctIcon(lecture.content_type)}</span>
-                                      <div className="flex-1 min-w-0">
-                                        <span className="text-white text-sm truncate block">{lecture.title_en}</span>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                          {lecture.video_duration_seconds > 0 && (
-                                            <span className="text-zinc-600 text-xs">{fmtMin(lecture.video_duration_seconds)}</span>
-                                          )}
-                                          {lecture.is_preview && (
-                                            <span className="text-xs text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded">Preview</span>
-                                          )}
-                                          {lecture.material_filename && (
-                                            <span className="text-zinc-600 text-xs truncate max-w-[140px]">{lecture.material_filename}</span>
-                                          )}
-                                          <span className="text-zinc-700 text-xs capitalize">{lecture.content_type}</span>
-                                        </div>
-                                      </div>
-                                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                        <button
-                                          onClick={() => openEdit(section.id, lecture)}
-                                          className="p-1.5 rounded-lg text-zinc-600 hover:text-purple-400 hover:bg-purple-900/20 transition-all">
-                                          <Edit2 size={12} />
-                                        </button>
-                                        <button
-                                          onClick={() => deleteLecture(section.id, lecture.id)}
-                                          className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-900/20 transition-all">
-                                          <Trash2 size={12} />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </Draggable>
-                              ))}
-                              {lProv.placeholder}
+                            <div className="flex gap-0.5 shrink-0">
                               <button
-                                onClick={() => openNew(section.id)}
-                                className="flex items-center gap-2 w-full px-4 py-2.5 text-zinc-600 hover:text-purple-400 hover:bg-purple-500/5 text-sm transition-all">
-                                <Plus size={13} /> Add Lecture
+                                onClick={() => { setEditingSectionId(section.id); setEditingSectionTitle(section.title_en); }}
+                                className="p-1 rounded text-zinc-700 hover:text-white hover:bg-white/[0.06] transition-all">
+                                <Edit2 size={11} />
+                              </button>
+                              <button
+                                onClick={() => deleteSection(section.id)}
+                                className="p-1 rounded text-zinc-700 hover:text-red-400 hover:bg-red-900/20 transition-all">
+                                <Trash2 size={11} />
                               </button>
                             </div>
+                          </div>
+
+                          {/* Lectures */}
+                          {section.open && (
+                            <Droppable droppableId={section.id} type="lecture">
+                              {(lProv, lSnap) => (
+                                <div
+                                  {...lProv.droppableProps}
+                                  ref={lProv.innerRef}
+                                  className={`min-h-[4px] transition-colors ${lSnap.isDraggingOver ? 'bg-purple-500/5' : ''}`}
+                                >
+                                  {section.lectures.map((lecture, lIdx) => {
+                                    const isActive = lectureModal?.lectureId === lecture.id;
+                                    return (
+                                      <Draggable key={lecture.id} draggableId={lecture.id} index={lIdx}>
+                                        {(lDrag, lDragSnap) => (
+                                          <div
+                                            ref={lDrag.innerRef}
+                                            {...lDrag.draggableProps}
+                                            className={`flex items-center gap-2 px-2 py-1.5 border-b border-white/[0.03] transition-colors group ${
+                                              lDragSnap.isDragging
+                                                ? 'bg-zinc-900 rounded-lg shadow-md'
+                                                : isActive
+                                                  ? 'bg-purple-500/10'
+                                                  : 'hover:bg-white/[0.03]'
+                                            }`}
+                                          >
+                                            <div {...(lDrag.dragHandleProps ?? {})} className="text-zinc-700 hover:text-zinc-500 cursor-grab active:cursor-grabbing shrink-0">
+                                              <GripVertical size={11} />
+                                            </div>
+                                            <span className={`shrink-0 ${isActive ? 'text-purple-400' : 'text-zinc-600'}`}>{ctIcon(lecture.content_type)}</span>
+                                            <button
+                                              onClick={() => openEdit(section.id, lecture)}
+                                              className="flex-1 min-w-0 text-left">
+                                              <span className={`text-xs truncate block ${isActive ? 'text-purple-300' : 'text-zinc-300 group-hover:text-white'} transition-colors`}>
+                                                {lecture.title_en}
+                                              </span>
+                                              {lecture.video_duration_seconds > 0 && (
+                                                <span className="text-zinc-600 text-[10px]">{fmtMin(lecture.video_duration_seconds)}</span>
+                                              )}
+                                            </button>
+                                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                              <button
+                                                onClick={() => deleteLecture(section.id, lecture.id)}
+                                                className="p-1 rounded text-zinc-700 hover:text-red-400 hover:bg-red-900/20 transition-all">
+                                                <Trash2 size={10} />
+                                              </button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </Draggable>
+                                    );
+                                  })}
+                                  {lProv.placeholder}
+                                  <button
+                                    onClick={() => openNew(section.id)}
+                                    className="flex items-center gap-1.5 w-full px-3 py-2 text-zinc-600 hover:text-purple-400 hover:bg-purple-500/5 text-xs transition-all">
+                                    <Plus size={11} /> Add Lecture
+                                  </button>
+                                </div>
+                              )}
+                            </Droppable>
                           )}
-                        </Droppable>
+                        </div>
                       )}
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {prov.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
-
-      {/* Add section */}
-      {addingSection ? (
-        <div className="flex gap-2 mb-6">
-          <input
-            autoFocus value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') addSection(); if (e.key === 'Escape') { setAddingSection(false); setNewSectionTitle(''); } }}
-            placeholder="Section title…"
-            className="flex-1 px-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
-          <button onClick={addSection} className="px-4 py-2.5 rounded-xl bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 transition-colors">Add</button>
-          <button onClick={() => { setAddingSection(false); setNewSectionTitle(''); }} className="px-3 py-2.5 rounded-xl border border-white/[0.08] text-zinc-500 hover:text-white transition-colors"><X size={14} /></button>
+                    </Draggable>
+                  ))}
+                  {prov.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         </div>
-      ) : (
-        <button
-          onClick={() => setAddingSection(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-white/[0.12] text-zinc-500 hover:text-white hover:border-white/25 text-sm transition-all mb-6">
-          <Plus size={14} /> Add Section
-        </button>
-      )}
 
-      {/* ── Lecture Modal ─────────────────────────────────────────────────── */}
-      {lectureModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto" onClick={() => setLectureModal(null)}>
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-          <div
-            className="relative bg-zinc-950 border border-white/[0.08] rounded-2xl w-full max-w-2xl flex flex-col shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] shrink-0">
-              <h2 className="text-white font-semibold">{lectureModal.lectureId ? 'Edit Lecture' : 'Add Lecture'}</h2>
-              <button onClick={() => setLectureModal(null)} className="text-zinc-600 hover:text-white transition-colors"><X size={16} /></button>
+        {/* Add section */}
+        <div className="px-3 py-3 border-t border-white/[0.06] shrink-0">
+          {addingSection ? (
+            <div className="flex gap-1.5">
+              <input
+                autoFocus value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addSection(); if (e.key === 'Escape') { setAddingSection(false); setNewSectionTitle(''); } }}
+                placeholder="Section title…"
+                className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-xs focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
+              <button onClick={addSection} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-medium hover:bg-purple-600 transition-colors">Add</button>
+              <button onClick={() => { setAddingSection(false); setNewSectionTitle(''); }} className="px-2 py-2 rounded-xl border border-white/[0.08] text-zinc-500 hover:text-white transition-colors"><X size={12} /></button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingSection(true)}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-xl border border-dashed border-white/[0.10] text-zinc-500 hover:text-white hover:border-white/25 text-xs transition-all">
+              <Plus size={12} /> Add Section
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── RIGHT PANEL: lecture form ──────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto">
+        {!lectureModal ? (
+          /* Empty state */
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
+            <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
+              <Play size={22} className="text-zinc-600" />
+            </div>
+            <div>
+              <p className="text-zinc-400 font-medium mb-1">No lecture selected</p>
+              <p className="text-zinc-600 text-sm">Click a lecture to edit it, or press<br />"Add Lecture" in any section.</p>
+            </div>
+          </div>
+        ) : (
+          /* Lecture form */
+          <div className="max-w-2xl mx-auto px-8 py-8">
+            {/* Form header */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-white text-lg font-semibold">
+                {lectureModal.lectureId ? 'Edit Lecture' : 'Add Lecture'}
+              </h2>
+              <button onClick={() => setLectureModal(null)} className="p-2 rounded-xl text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all">
+                <X size={15} />
+              </button>
             </div>
 
-            {/* Body — single column */}
-            <div className="p-6 space-y-5">
-
+            <div className="space-y-5">
               {/* Title */}
               <div>
                 <label className="block text-white text-sm font-medium mb-1.5">Title <span className="text-red-400">*</span></label>
@@ -586,26 +608,26 @@ export default function CurriculumPage() {
               </label>
 
               {lectureErr && <p className="text-red-400 text-sm">{lectureErr}</p>}
-            </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-white/[0.06] flex gap-3 shrink-0">
-              <button
-                onClick={saveLecture}
-                disabled={lectureSaving}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors">
-                <Save size={14} />
-                {lectureSaving ? 'Saving…' : lectureModal.lectureId ? 'Save Changes' : 'Add Lecture'}
-              </button>
-              <button
-                onClick={() => setLectureModal(null)}
-                className="px-4 py-2.5 rounded-xl border border-white/[0.08] text-zinc-500 hover:text-white transition-colors">
-                Cancel
-              </button>
+              {/* Actions */}
+              <div className="flex gap-3 pt-2 pb-8">
+                <button
+                  onClick={saveLecture}
+                  disabled={lectureSaving}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors">
+                  <Save size={14} />
+                  {lectureSaving ? 'Saving…' : lectureModal.lectureId ? 'Save Changes' : 'Add Lecture'}
+                </button>
+                <button
+                  onClick={() => setLectureModal(null)}
+                  className="px-4 py-2.5 rounded-xl border border-white/[0.08] text-zinc-500 hover:text-white transition-colors">
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

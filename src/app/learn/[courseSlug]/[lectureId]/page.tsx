@@ -12,8 +12,10 @@ interface Lecture {
   description_en: string | null;
   video_url: string | null;
   video_type: string | null; // 'vimeo' | 'youtube'
-  content_type: string;      // 'video' | 'text' | 'quiz'
+  content_type: string;      // 'video' | 'text' | 'material'
   text_content: string | null;
+  material_url: string | null;
+  material_filename: string | null;
 }
 
 interface Resource {
@@ -65,7 +67,7 @@ export default function LecturePage() {
 
     supabase
       .from('lectures')
-      .select('id, title_en, description_en, video_url, video_type, content_type, text_content')
+      .select('id, title_en, description_en, video_url, video_type, content_type, text_content, material_url, material_filename')
       .eq('id', lectureId)
       .single()
       .then(({ data }) => {
@@ -162,6 +164,25 @@ export default function LecturePage() {
       {lecture.content_type === 'text' && lecture.text_content && (
         <div className="rounded-xl border border-white/[0.06] bg-[#0f0c1e] p-6 mb-6 prose prose-invert prose-sm max-w-none">
           <div className="text-zinc-300 leading-relaxed whitespace-pre-wrap">{lecture.text_content}</div>
+        </div>
+      )}
+
+      {lecture.content_type === 'material' && lecture.material_url && (
+        <div className="rounded-xl border border-white/[0.06] bg-[#0f0c1e] p-6 mb-6">
+          <h2 className="text-white text-sm font-semibold mb-4 flex items-center gap-2">
+            <FileText size={15} className="text-purple-400" /> Download Material
+          </h2>
+          <a
+            href={lecture.material_url}
+            target="_blank"
+            rel="noreferrer"
+            download={lecture.material_filename ?? true}
+            className="flex items-center gap-3 p-4 rounded-xl border border-purple-500/20 bg-purple-500/5 hover:border-purple-500/40 hover:bg-purple-500/10 transition-all group">
+            <Download size={18} className="text-purple-400 shrink-0" />
+            <span className="text-white text-sm flex-1 truncate">
+              {lecture.material_filename ?? 'Download file'}
+            </span>
+          </a>
         </div>
       )}
 
