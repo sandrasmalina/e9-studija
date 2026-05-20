@@ -96,9 +96,8 @@ function LoginForm() {
           </button>
         </form>
 
-        <p className="text-center text-neutral-500 text-sm mt-6">
-          {t('auth.no.account')}{' '}
-          <Link href="/auth/register" className="text-accent hover:underline">{t('auth.register.link')}</Link>
+        <p className="text-center text-neutral-600 text-xs mt-6">
+          Accounts are created when you join a course.
         </p>
       </div>
     </div>
