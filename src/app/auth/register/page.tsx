@@ -71,6 +71,11 @@ export default function RegisterPage() {
         </Link>
         <h1 className="text-2xl font-bold text-white mt-6 mb-2">{t('auth.register.title')}</h1>
         <p className="text-neutral-500 text-sm">{t('auth.register.subtitle')}</p>
+        <p className="text-neutral-600 text-xs mt-2">
+          Looking to join a course?{' '}
+          <Link href="/courses" className="text-accent hover:underline">Browse courses</Link>{' '}
+          — your account is created when you enroll.
+        </p>
       </div>
 
       <div className="bg-bg-card border border-white/8 rounded-2xl p-8">

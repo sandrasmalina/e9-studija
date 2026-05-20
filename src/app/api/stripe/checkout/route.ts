@@ -4,16 +4,19 @@ import { supabase } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
   try {
-    const { courseSlug } = await req.json();
+    const { courseSlug, guestEmail, guestName } = await req.json();
     if (!courseSlug) {
       return NextResponse.json({ error: 'courseSlug required' }, { status: 400 });
     }
 
-    // 1. Verify auth
+    // 1. Auth check — either logged-in user OR guest email
     const authHeader = req.headers.get('authorization') ?? '';
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) {
+    const { data: { user } } = await supabase.auth.getUser(token);
+
+    // Guest checkout: no auth but email provided
+    const isGuest = !user && !!guestEmail;
+    if (!user && !guestEmail) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -31,15 +34,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Course is free' }, { status: 400 });
     }
 
-    // 3. Check not already enrolled
-    const { data: existing } = await supabase
-      .from('enrollments')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('course_id', course.id)
-      .maybeSingle();
-    if (existing) {
-      return NextResponse.json({ error: 'Already enrolled' }, { status: 409 });
+    // 3. Check not already enrolled (only for logged-in users)
+    if (user) {
+      const { data: existing } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('course_id', course.id)
+        .maybeSingle();
+      if (existing) {
+        return NextResponse.json({ error: 'Already enrolled' }, { status: 409 });
+      }
     }
 
     const unitAmount = Math.round((course.discount_price ?? course.price) * 100);
@@ -49,6 +54,9 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
+      ...(isGuest
+        ? { customer_email: guestEmail }  // prefill email for guest
+        : {}),
       line_items: [
         {
           price_data: {
@@ -65,7 +73,9 @@ export async function POST(req: NextRequest) {
       metadata: {
         course_id: course.id,
         course_slug: course.slug,
-        user_id: user.id,
+        ...(user
+          ? { user_id: user.id }
+          : { guest_email: guestEmail, guest_name: guestName ?? '' }),
       },
       success_url: `${origin}/checkout/${course.slug}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/courses/${course.slug}`,

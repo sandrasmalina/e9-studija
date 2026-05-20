@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function CheckoutSuccessPage() {
@@ -11,7 +11,7 @@ export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
 
-  const [state, setState] = useState<'loading' | 'enrolled' | 'pending' | 'error'>('loading');
+  const [state, setState] = useState<'loading' | 'enrolled' | 'guest' | 'pending' | 'error'>('loading');
   const [courseTitle, setCourseTitle] = useState('');
 
   useEffect(() => {
@@ -23,7 +23,18 @@ export default function CheckoutSuccessPage() {
 
     const check = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setState('error'); return; }
+
+      // Guest checkout: user not logged in — their account is being created by the webhook
+      if (!user) {
+        if (attempts < maxAttempts) {
+          attempts++;
+          setTimeout(check, 1500);
+        } else {
+          // Show the guest success screen (account creation email is on its way)
+          setState('guest');
+        }
+        return;
+      }
 
       const { data: course } = await supabase
         .from('courses')
@@ -63,8 +74,24 @@ export default function CheckoutSuccessPage() {
           </>
         )}
 
-        {state === 'enrolled' && (
+        {state === 'guest' && (
           <>
+            <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-5">
+              <Mail size={32} className="text-accent" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-2">Payment successful!</h1>
+            <p className="text-neutral-400 text-sm mb-6 leading-relaxed">
+              Your enrollment is confirmed. We&apos;ve sent you an email with a link to set your password and
+              access <span className="text-white font-medium">{params.courseSlug.replace(/-/g, ' ')}</span>.
+            </p>
+            <p className="text-neutral-600 text-xs">
+              Didn&apos;t receive it? Check your spam folder or contact{' '}
+              <a href="mailto:info@e9studija.lv" className="text-accent hover:underline">info@e9studija.lv</a>
+            </p>
+          </>
+        )}
+
+        {state === 'enrolled' && (          <>
             <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 size={32} className="text-accent" />
             </div>

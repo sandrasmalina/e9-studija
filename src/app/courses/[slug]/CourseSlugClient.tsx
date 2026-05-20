@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, BookOpen, Users, Award, ChevronDown, ChevronUp,
-  Play, Lock, CheckCircle, Globe, ArrowLeft, Star, Loader2
+  Play, Lock, CheckCircle, Globe, ArrowLeft, Star, Loader2, X, Mail
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
@@ -94,10 +94,21 @@ interface Course {
 export default function CourseSlugClient({ course }: { course: Course }) {
   const { t, language } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const autoEnroll = searchParams.get('auto_enroll') === '1';
+  const autoEnrollRef = useRef(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set([course.sections[0]?.id]));
 
   // Auth + enrollment state
   const [enrollState, setEnrollState] = useState<'loading' | 'not-authed' | 'enrolled' | 'not-enrolled'>('loading');
+
+  // Enrollment modal (for unauthenticated users)
+  const [showModal, setShowModal] = useState(false);
+  const [modalName, setModalName] = useState('');
+  const [modalEmail, setModalEmail] = useState('');
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState('');
+  const [modalSuccess, setModalSuccess] = useState(false);
   const [enrollUserId, setEnrollUserId] = useState<string | null>(null);
   const [enrolling, setEnrolling] = useState(false);
 
@@ -155,6 +166,56 @@ export default function CourseSlugClient({ course }: { course: Course }) {
       router.push(`/learn/${course.slug}`);
     } else {
       setEnrolling(false);
+    }
+  };
+
+  // Auto-enroll after email confirmation redirect (?auto_enroll=1)
+  useEffect(() => {
+    if (!autoEnroll || autoEnrollRef.current) return;
+    if (enrollState === 'not-enrolled' && enrollUserId) {
+      autoEnrollRef.current = true;
+      handleEnrollFree();
+    }
+  }, [autoEnroll, enrollState, enrollUserId]); // eslint-disable-line
+
+  const handleModalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = modalEmail.trim();
+    const name = modalName.trim();
+    if (!email) { setModalError('Email is required'); return; }
+    setModalLoading(true);
+    setModalError('');
+
+    if (course.is_free || course.price === 0) {
+      // Free course: send magic link → auto-enroll after confirmation
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          data: { full_name: name },
+          emailRedirectTo: `${window.location.origin}/courses/${course.slug}?auto_enroll=1`,
+          shouldCreateUser: true,
+        },
+      });
+      if (error) {
+        setModalError(error.message);
+        setModalLoading(false);
+      } else {
+        setModalSuccess(true);
+      }
+    } else {
+      // Paid course: guest checkout — Stripe collects payment, webhook creates account
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseSlug: course.slug, guestEmail: email, guestName: name }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setModalError(data.error || 'Could not start checkout. Please try again.');
+        setModalLoading(false);
+      }
     }
   };
 
@@ -316,11 +377,9 @@ export default function CourseSlugClient({ course }: { course: Course }) {
                     </Link>
                   )}
                   {enrollState === 'not-authed' && (
-                    <Link href={`/auth/register?redirect=/learn/${course.slug}`}>
-                      <Button className="w-full text-base py-3">
-                        {course.is_free || course.price === 0 ? (t('courses.enroll.free') || 'Enroll for Free') : (t('courses.enroll.paid') || 'Buy Course')}
-                      </Button>
-                    </Link>
+                    <Button className="w-full text-base py-3" onClick={() => setShowModal(true)}>
+                      {course.is_free || course.price === 0 ? (t('courses.enroll.free') || 'Enroll for Free') : (t('courses.enroll.paid') || 'Buy Course')}
+                    </Button>
                   )}
                 </div>
 
@@ -556,6 +615,78 @@ export default function CourseSlugClient({ course }: { course: Course }) {
           <div />
         </div>
       </div>
+
+      {/* Enrollment modal for unauthenticated users */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#0f0c1e] border border-white/10 rounded-2xl p-8 relative">
+            <button onClick={() => { setShowModal(false); setModalError(''); setModalSuccess(false); setModalEmail(''); setModalName(''); }}
+              className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors">
+              <X size={18} />
+            </button>
+
+            {modalSuccess ? (
+              <div className="text-center py-4">
+                <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                  <Mail size={24} className="text-accent" />
+                </div>
+                <h3 className="text-white font-bold text-lg mb-2">Check your inbox</h3>
+                <p className="text-neutral-400 text-sm leading-relaxed">
+                  We sent a magic link to <span className="text-white font-medium">{modalEmail}</span>.
+                  Click it to create your account and get instant access to this course.
+                </p>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-white font-bold text-lg mb-1">
+                  {course.is_free || course.price === 0 ? 'Enroll for Free' : 'Get Course Access'}
+                </h3>
+                <p className="text-neutral-500 text-sm mb-6">
+                  {course.is_free || course.price === 0
+                    ? 'Enter your email to get instant free access. No password needed.'
+                    : 'Enter your details to continue to payment. Your account will be created after purchase.'}
+                </p>
+                <form onSubmit={handleModalSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-neutral-400 text-xs mb-1.5">Full Name (optional)</label>
+                    <input
+                      type="text"
+                      value={modalName}
+                      onChange={e => setModalName(e.target.value)}
+                      placeholder="Your name"
+                      className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-accent/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-neutral-400 text-xs mb-1.5">Email address</label>
+                    <input
+                      type="email"
+                      required
+                      value={modalEmail}
+                      onChange={e => setModalEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-accent/50"
+                    />
+                  </div>
+                  {modalError && (
+                    <p className="text-red-400 text-xs">{modalError}</p>
+                  )}
+                  <button type="submit" disabled={modalLoading}
+                    className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent/90 disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
+                    {modalLoading && <Loader2 size={15} className="animate-spin" />}
+                    {course.is_free || course.price === 0 ? 'Get Free Access' : 'Continue to Payment'}
+                  </button>
+                  <p className="text-center text-neutral-600 text-xs">
+                    Already have an account?{' '}
+                    <button type="button" onClick={() => router.push(`/auth/login?redirect=/courses/${course.slug}`)}
+                      className="text-accent hover:underline">Sign in</button>
+                  </p>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

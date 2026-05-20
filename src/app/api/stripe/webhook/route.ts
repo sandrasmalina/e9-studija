@@ -43,10 +43,10 @@ export async function POST(req: NextRequest) {
       event.type === 'checkout.session.async_payment_succeeded'
     ) {
       const session = event.data.object as Stripe.Checkout.Session;
-      const { course_id, user_id, course_slug } = session.metadata ?? {};
+      const { course_id, user_id, course_slug, guest_email, guest_name } = session.metadata ?? {};
 
-      if (!course_id || !user_id) {
-        console.error('[webhook] missing metadata', session.metadata);
+      if (!course_id) {
+        console.error('[webhook] missing course_id in metadata', session.metadata);
         return NextResponse.json({ error: 'Missing metadata' }, { status: 400 });
       }
 
@@ -58,7 +58,42 @@ export async function POST(req: NextRequest) {
       const amountPaid = (session.amount_total ?? 0) / 100;
       const currency = session.currency ?? 'eur';
 
-      await enrollStudent(course_id, user_id, amountPaid, currency);
+      // Resolve userId: logged-in user OR guest (find/create by email)
+      let resolvedUserId = user_id ?? null;
+
+      if (!resolvedUserId && guest_email) {
+        // Find existing user by email, or invite them (creates account + sends welcome email)
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000, page: 1 });
+        const existing = users.find(u => u.email?.toLowerCase() === guest_email.toLowerCase());
+
+        if (existing) {
+          resolvedUserId = existing.id;
+          console.log(`[webhook] found existing user ${existing.id} for guest email ${guest_email}`);
+        } else {
+          // Create account and send invitation email so they can set a password
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv';
+          const { data: inviteData, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+            guest_email,
+            {
+              data: { full_name: guest_name ?? '' },
+              redirectTo: `${siteUrl}/learn/${course_slug ?? ''}`,
+            }
+          );
+          if (inviteErr || !inviteData?.user) {
+            console.error('[webhook] failed to create guest user:', inviteErr);
+            return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
+          }
+          resolvedUserId = inviteData.user.id;
+          console.log(`[webhook] created new user ${resolvedUserId} for guest email ${guest_email}`);
+        }
+      }
+
+      if (!resolvedUserId) {
+        console.error('[webhook] no user_id or guest_email in metadata', session.metadata);
+        return NextResponse.json({ error: 'Missing user info' }, { status: 400 });
+      }
+
+      await enrollStudent(course_id, resolvedUserId, amountPaid, currency);
 
       // Check if course has certificate_enabled and issue on enrollment
       const { data: course } = await supabaseAdmin
@@ -67,13 +102,13 @@ export async function POST(req: NextRequest) {
         .eq('id', course_id)
         .single();
 
-      console.log(`[webhook] enrolled user ${user_id} in course ${course_slug ?? course_id}`);
+      console.log(`[webhook] enrolled user ${resolvedUserId} in course ${course_slug ?? course_id}`);
 
       // Store Stripe session ID for reference
       await supabaseAdmin
         .from('enrollments')
         .update({ stripe_session_id: session.id } as Record<string, unknown>)
-        .eq('user_id', user_id)
+        .eq('user_id', resolvedUserId)
         .eq('course_id', course_id);
 
       void course; // referenced above
