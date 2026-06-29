@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { stripe } from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase';
 
 async function enrollStudent(courseId: string, userId: string, amountPaid: number, currency: string) {
@@ -21,6 +21,7 @@ async function enrollStudent(courseId: string, userId: string, amountPaid: numbe
 }
 
 export async function POST(req: NextRequest) {
+  const stripe = getStripe();
   const rawBody = await req.text();
   const sig = req.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
