@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Brain, GraduationCap, ChevronRight, Lightbulb, Target, Users, ArrowRight, Quote, ImageIcon, Rocket, BookOpen, Bot, CheckCircle2, Monitor, Zap, GitBranch } from 'lucide-react';
+import { Sparkles, Brain, GraduationCap, ChevronRight, Lightbulb, Target, Users, ArrowRight, Quote, ImageIcon, Code2, Bot, Monitor, Zap, GitBranch } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
@@ -97,11 +97,49 @@ export default function HomePage() {
     { icon: Sparkles, label: t('whychooseus.design') },
     { icon: GraduationCap, label: t('whychooseus.educational') },
   ];
+  const coreExpertise = [
+    {
+      icon: Code2,
+      title: t('core.build.title'),
+      desc: t('core.build.desc'),
+      tags: [t('core.build.tag1'), t('core.build.tag2'), t('core.build.tag3')],
+      card: 'bg-[#e9e0ff] border-[#d4c2ff] text-[#45209f]',
+      iconWrap: 'bg-[#ccb8ff] text-[#5f34c9]',
+      chip: 'bg-[#ccb8ff] text-[#4a28aa]',
+    },
+    {
+      icon: Bot,
+      title: t('core.automate.title'),
+      desc: t('core.automate.desc'),
+      tags: [t('core.automate.tag1'), t('core.automate.tag2'), t('core.automate.tag3')],
+      card: 'bg-[#dff3ff] border-[#b9e5ff] text-[#0f5e8f]',
+      iconWrap: 'bg-[#9dd9ff] text-[#0f5e8f]',
+      chip: 'bg-[#9dd9ff] text-[#0d547f]',
+    },
+    {
+      icon: GraduationCap,
+      title: t('core.educate.title'),
+      desc: t('core.educate.desc'),
+      tags: [t('core.educate.tag1'), t('core.educate.tag2'), t('core.educate.tag3')],
+      card: 'bg-[#ddf8ee] border-[#afe8d1] text-[#16644c]',
+      iconWrap: 'bg-[#7de0be] text-[#175f48]',
+      chip: 'bg-[#7de0be] text-[#16553f]',
+    },
+    {
+      icon: Sparkles,
+      title: t('core.create.title'),
+      desc: t('core.create.desc'),
+      tags: [t('core.create.tag1'), t('core.create.tag2'), t('core.create.tag3')],
+      card: 'bg-[#ffe4ef] border-[#f8bed6] text-[#92234d]',
+      iconWrap: 'bg-[#f7a7ca] text-[#8b1d47]',
+      chip: 'bg-[#f7a7ca] text-[#7a1940]',
+    },
+  ];
 
   return (
     <div>
-      {/* Hero — sticky so the next section slides on top as you scroll */}
-      <section className="sticky top-0 z-10 relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{background: '#06041a'}}>
+      {/* Hero */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20" style={{background: '#06041a'}}>
         {/* Mesh gradient */}
         <div className="absolute inset-0 gradient-mesh pointer-events-none" />
         {/* Dot grid */}
@@ -128,100 +166,48 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      {/* WHO THIS IS FOR — slides on top of sticky hero as you scroll */}
-      <section className="relative z-20 rounded-t-[2.5rem] py-28 overflow-hidden" style={{background: '#0b0915'}}>
-        {/* subtle top-edge glow */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-48 bg-accent/10 rounded-full blur-[80px] pointer-events-none" />
-
+      {/* Core Expertise */}
+      <section className="relative z-20 py-24" style={{ background: '#f8f8fb' }}>
         <div className="max-w-7xl mx-auto px-6">
-          {/* Header */}
-          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-20">
-            <span className="inline-block text-xs font-semibold tracking-[0.2em] uppercase text-accent mb-4 px-3 py-1.5 rounded-full border border-accent/30 bg-accent/10">
-              {t('whoweworkwith.eyebrow')}
-            </span>
-            <h2 className="text-4xl md:text-6xl font-bold text-white mt-4">
-              {t('whoweworkwith.title')}
+          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-14">
+            <div className="inline-flex items-center gap-3">
+              <span className="text-sm font-bold tracking-[0.12em] uppercase text-violet-600">
+                {t('core.eyebrow')}
+              </span>
+              <span className="px-3 py-1 rounded-xl text-sm font-bold bg-emerald-200 text-emerald-800">
+                {t('core.badge')}
+              </span>
+            </div>
+            <h2 className="text-4xl md:text-6xl font-bold text-[#1f1b54] mt-5">
+              {t('core.title')}
             </h2>
+            <p className="text-lg md:text-2xl text-[#8d95a8] mt-4 max-w-4xl">
+              {t('core.subtitle')}
+            </p>
           </motion.div>
 
-          {/* 2×2 cards grid */}
-          <motion.div
-            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
-            className="grid md:grid-cols-2 gap-5"
-          >
-            {[
-              {
-                num: '01',
-                icon: Rocket,
-                title: t('whoweworkwith.1.title'),
-                desc: t('whoweworkwith.1.desc'),
-                tag: 'MVPs · SaaS · Founders',
-                grad: 'from-violet-600/20 to-purple-900/10',
-                glow: 'rgba(124,58,237,0.35)',
-              },
-              {
-                num: '02',
-                icon: BookOpen,
-                title: t('whoweworkwith.2.title'),
-                desc: t('whoweworkwith.2.desc'),
-                tag: 'Coaches · Authors · Consultants',
-                grad: 'from-fuchsia-600/20 to-pink-900/10',
-                glow: 'rgba(217,70,239,0.3)',
-              },
-              {
-                num: '03',
-                icon: Bot,
-                title: t('whoweworkwith.3.title'),
-                desc: t('whoweworkwith.3.desc'),
-                tag: 'Operations · Automation · Scale',
-                grad: 'from-indigo-600/20 to-violet-900/10',
-                glow: 'rgba(99,102,241,0.3)',
-              },
-              {
-                num: '04',
-                icon: GraduationCap,
-                title: t('whoweworkwith.4.title'),
-                desc: t('whoweworkwith.4.desc'),
-                tag: 'LMS · eLearning · Academies',
-                grad: 'from-purple-600/20 to-fuchsia-900/10',
-                glow: 'rgba(168,85,247,0.3)',
-              },
-            ].map((item) => (
-              <motion.div
-                key={item.num}
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="grid sm:grid-cols-2 xl:grid-cols-4 gap-6">
+            {coreExpertise.map((item) => (
+              <motion.article
+                key={item.title}
                 variants={fadeUp}
-                className={`group relative rounded-2xl border border-white/[0.07] bg-gradient-to-br ${item.grad} p-8 overflow-hidden hover:border-accent/30 transition-all duration-500`}
-                style={{ backdropFilter: 'blur(8px)' }}
+                className={`rounded-3xl border p-7 min-h-[360px] flex flex-col shadow-[0_14px_36px_rgba(28,16,85,0.08)] ${item.card}`}
               >
-                {/* hover glow blob */}
-                <div className="absolute -bottom-10 -right-10 w-48 h-48 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
-                  style={{ background: item.glow }} />
-
-                <div className="relative z-10 flex flex-col h-full gap-6">
-                  {/* Top row: icon + number */}
-                  <div className="flex items-start justify-between">
-                    <div className="p-3.5 rounded-xl bg-white/[0.06] border border-white/[0.08] group-hover:bg-accent/15 group-hover:border-accent/30 transition-all duration-300">
-                      <item.icon size={26} className="text-accent" />
-                    </div>
-                    <span className="text-5xl font-black text-white/[0.06] group-hover:text-white/10 transition-colors select-none leading-none">
-                      {item.num}
-                    </span>
-                  </div>
-
-                  {/* Text */}
-                  <div>
-                    <h3 className="text-white text-2xl font-bold mb-2">{item.title}</h3>
-                    <p className="text-neutral-400 text-base leading-relaxed">{item.desc}</p>
-                  </div>
-
-                  {/* Tag pill */}
-                  <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/[0.06]">
-                    <CheckCircle2 size={13} className="text-accent/70 shrink-0" />
-                    <span className="text-xs text-neutral-500 tracking-wide">{item.tag}</span>
-                  </div>
+                <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-8 ${item.iconWrap}`}>
+                  <item.icon size={36} />
                 </div>
-              </motion.div>
+
+                <h3 className="text-3xl md:text-4xl font-bold mb-4 leading-none">{item.title}</h3>
+                <p className="text-xl md:text-2xl leading-snug mb-8">{item.desc}</p>
+
+                <div className="mt-auto flex flex-wrap gap-2.5">
+                  {item.tags.map((tag) => (
+                    <span key={tag} className={`rounded-full px-3.5 py-1.5 text-base md:text-lg font-semibold ${item.chip}`}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </motion.article>
             ))}
           </motion.div>
         </div>
