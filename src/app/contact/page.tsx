@@ -6,6 +6,7 @@ import { Mail, Clock, MessageCircle, Building2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
@@ -22,6 +23,7 @@ export default function ContactPage() {
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   useEffect(() => {
     supabase.from('time_slots').select('*').eq('available', true).order('label')
@@ -34,16 +36,20 @@ export default function ContactPage() {
       setErrorMsg(t('contact.error.fields'));
       return;
     }
+    if (!turnstileToken) {
+      setErrorMsg(t('turnstile.error.required'));
+      return;
+    }
     setStatus('sending');
     try {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, message, time_slot: selectedSlot }),
+        body: JSON.stringify({ name, email, phone, message, time_slot: selectedSlot, turnstileToken }),
       });
       if (!res.ok) throw new Error();
       setStatus('success');
-      setName(''); setEmail(''); setPhone(''); setMessage(''); setSelectedSlot('');
+      setName(''); setEmail(''); setPhone(''); setMessage(''); setSelectedSlot(''); setTurnstileToken('');
     } catch {
       setStatus('error');
       setErrorMsg(t('contact.error.failed'));
@@ -136,8 +142,13 @@ export default function ContactPage() {
                   </div>
                 </div>
               )}
+              <TurnstileWidget
+                onVerify={(token) => { setTurnstileToken(token); setErrorMsg(''); }}
+                onExpire={() => setTurnstileToken('')}
+                onError={() => { setTurnstileToken(''); setErrorMsg(t('turnstile.error.failed')); }}
+              />
               {errorMsg && <p className="text-red-400 text-sm">{errorMsg}</p>}
-              <Button type="submit" disabled={status === 'sending'} className="w-full" size="lg">
+              <Button type="submit" disabled={status === 'sending' || !turnstileToken} className="w-full" size="lg">
                 {status === 'sending' ? t('contact.sending') : t('contact.send')}
               </Button>
             </form>

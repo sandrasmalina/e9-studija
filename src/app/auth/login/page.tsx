@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 function LoginForm() {
   const { t } = useLanguage();
@@ -18,6 +19,7 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,12 +27,21 @@ function LoginForm() {
       setError(t('auth.error.fields'));
       return;
     }
+    if (!turnstileToken) {
+      setError(t('turnstile.error.required'));
+      return;
+    }
     setLoading(true);
     setError('');
     const supabase = createClient();
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: { captchaToken: turnstileToken },
+    });
     if (authError) {
       setError(t('auth.error.invalid'));
+      setTurnstileToken('');
       setLoading(false);
       return;
     }
@@ -90,7 +101,13 @@ function LoginForm() {
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
-          <button type="submit" disabled={loading}
+          <TurnstileWidget
+            onVerify={(token) => { setTurnstileToken(token); setError(''); }}
+            onExpire={() => setTurnstileToken('')}
+            onError={() => { setTurnstileToken(''); setError(t('turnstile.error.failed')); }}
+          />
+
+          <button type="submit" disabled={loading || !turnstileToken}
             className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent/90 disabled:opacity-60 transition-colors">
             {loading ? t('auth.loading') : t('auth.login.cta')}
           </button>
