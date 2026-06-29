@@ -100,7 +100,7 @@ export default function HomePage() {
   const heroTitle = language === 'lv' ? (
     <>
       Mēs pārvēršam jūsu <span className="text-[#A855F7]">ideju</span> produktā,<br className="hidden md:block" />{' '}
-      <span className="text-[#F59E0B]">zināšanas</span> ienākumos un manuālo darbu<br className="hidden md:block" />{' '}
+      <span className="text-[#F59E0B]">zināšanas</span> ienākumos un <span className="whitespace-nowrap">manuālo darbu</span><br className="hidden md:block" />{' '}
       <span className="text-[#22D3EE]">automatizācijā</span>.
     </>
   ) : (
