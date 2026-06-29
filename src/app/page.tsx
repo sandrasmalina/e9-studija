@@ -186,7 +186,7 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="grid sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          <motion.div initial="hidden" animate="visible" variants={stagger} className="grid sm:grid-cols-2 xl:grid-cols-4 gap-6">
             {coreExpertise.map((item) => (
               <motion.article
                 key={item.title}
@@ -197,7 +197,7 @@ export default function HomePage() {
                   <item.icon size={36} />
                 </div>
 
-                <h3 className="text-3xl md:text-4xl font-bold mb-4 leading-none">{item.title}</h3>
+                <h3 className="text-3xl md:text-4xl font-bold mb-4 leading-none text-current">{item.title}</h3>
                 <p className="text-xl md:text-2xl leading-snug mb-8">{item.desc}</p>
 
                 <div className="mt-auto flex flex-wrap gap-2.5">
