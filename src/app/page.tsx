@@ -166,7 +166,7 @@ export default function HomePage() {
           <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-xs font-medium mb-8">
             <Sparkles size={12} /> AI &amp; Digital Studio
           </motion.div>
-          <motion.h1 variants={fadeUp} className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight mb-6">
+          <motion.h1 variants={fadeUp} className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
             {heroTitle}
           </motion.h1>
           <motion.p variants={fadeUp} className="text-lg md:text-xl text-neutral-400 max-w-2xl mx-auto mb-10">
