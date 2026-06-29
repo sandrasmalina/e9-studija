@@ -160,7 +160,7 @@ export default function HomePage() {
             {t('hero.subtitle')}
           </motion.p>
           <motion.div variants={fadeUp} className="flex gap-4 justify-center flex-wrap">
-            <Link href="/contact"><Button size="lg">{t('hero.cta.consultation')}</Button></Link>
+            <Link href="/contact"><Button variant="amber" size="lg">{t('hero.cta.consultation')}</Button></Link>
             <Link href="/projects"><Button variant="secondary" size="lg">{t('hero.cta.projects')}</Button></Link>
           </motion.div>
         </motion.div>

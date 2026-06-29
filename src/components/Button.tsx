@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'amber';
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -10,6 +10,7 @@ export default function Button({ variant = 'primary', size = 'md', className = '
 
   const variants = {
     primary: 'bg-accent hover:bg-accent-dark text-white glow-hover',
+    amber: 'bg-[#F5B83D] hover:bg-[#E9A827] text-[#1A1028] shadow-[0_0_36px_rgba(245,184,61,0.28)] hover:shadow-[0_0_44px_rgba(245,184,61,0.4)]',
     secondary: 'bg-transparent border border-white/20 text-white hover:border-accent hover:text-accent',
     ghost: 'bg-transparent text-neutral-400 hover:text-white',
   };
