@@ -63,14 +63,21 @@ function RegisterForm() {
     setDone(true);
   };
 
+  const accountRecoveryLinks = (
+    <div className="mt-5 flex flex-col gap-2 text-sm">
+      <Link href="/auth/login" className="text-accent hover:underline">Go to login</Link>
+      <Link href="/auth/forgot-password" className="text-neutral-400 hover:text-accent">Reset password</Link>
+    </div>
+  );
+
   if (loading) return <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />;
 
   if (!invite) {
     return (
       <div className="w-full max-w-md bg-bg-card border border-white/8 rounded-2xl p-8 text-center">
         <h1 className="text-white text-2xl font-bold mb-2">Invitation not found</h1>
-        <p className="text-neutral-500 text-sm mb-6">This invitation link is invalid or expired.</p>
-        <Link href="/auth/login" className="text-accent text-sm hover:underline">Back to login</Link>
+        <p className="text-neutral-500 text-sm">This invitation link is invalid, expired, or revoked. If you already started registration, try logging in or resetting your password.</p>
+        {accountRecoveryLinks}
       </div>
     );
   }
@@ -79,8 +86,9 @@ function RegisterForm() {
     return (
       <div className="w-full max-w-md bg-bg-card border border-white/8 rounded-2xl p-8 text-center">
         <h1 className="text-white text-2xl font-bold mb-2">Account created</h1>
-        <p className="text-neutral-500 text-sm mb-6">You can now sign in with your email and password. If email confirmation is enabled, confirm your email first.</p>
+        <p className="text-neutral-500 text-sm mb-6">You can now sign in with your email and password. If email confirmation is enabled, confirm your email first. If login fails, use password reset for the same email.</p>
         <Link href="/auth/login" className="inline-flex justify-center w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent/90 transition-colors">Go to login</Link>
+        <Link href="/auth/forgot-password" className="mt-4 inline-flex text-sm text-neutral-400 hover:text-accent">Reset password</Link>
       </div>
     );
   }

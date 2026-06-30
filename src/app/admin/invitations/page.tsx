@@ -161,7 +161,7 @@ export default function AdminInvitations() {
           })}
         </div>
         {err && <p className="text-red-400 text-xs mt-2">{err}</p>}
-        <p className="text-zinc-600 text-xs mt-2">Generates a unique registration link. Valid for 7 days.</p>
+        <p className="text-zinc-600 text-xs mt-2">Generates a unique registration link. Valid for 7 days and retryable by the same email until it expires or is revoked.</p>
       </div>
 
       <div className="rounded-2xl border border-blue-900/40 bg-blue-950/20 p-5 mb-8">
@@ -213,7 +213,11 @@ export default function AdminInvitations() {
                   <tr key={inv.id} className="hover:bg-zinc-900/40 transition-colors">
                     <td className="px-4 py-3">
                       <p className="text-white text-sm">{inv.is_campaign ? (inv.campaign_label || 'Campaign link') : inv.email}</p>
-                      {inv.is_campaign && <p className="text-zinc-600 text-xs">{inv.use_count} use{inv.use_count === 1 ? '' : 's'}{inv.max_uses ? ` / ${inv.max_uses}` : ''}</p>}
+                      <p className="text-zinc-600 text-xs">
+                        {inv.is_campaign
+                          ? `${inv.use_count} use${inv.use_count === 1 ? '' : 's'}${inv.max_uses ? ` / ${inv.max_uses}` : ''}`
+                          : inv.use_count > 0 ? 'Registration started' : 'Not used yet'}
+                      </p>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       <div className="flex flex-wrap gap-1.5">
