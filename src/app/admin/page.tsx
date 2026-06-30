@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -12,17 +13,34 @@ export default function AdminLogin() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!turnstileToken) { setError('Please complete the security check.'); return; }
     setLoading(true);
     setError('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: { captchaToken: turnstileToken },
+    });
     if (error) {
       setError(error.message);
+      setTurnstileToken('');
       setLoading(false);
     } else {
-      router.push('/admin/dashboard');
+      const [{ data: profile }, { data: assignedRoles }] = await Promise.all([
+        supabase.from('profiles').select('role').eq('id', data.user.id).single(),
+        supabase.from('user_roles').select('roles(name)').eq('user_id', data.user.id),
+      ]);
+      const roleNames = new Set<string>();
+      if (profile?.role) roleNames.add(profile.role);
+      (assignedRoles ?? []).forEach((row: any) => row.roles?.name && roleNames.add(row.roles.name));
+      if (roleNames.has('admin')) { router.push('/admin/dashboard'); return; }
+      if (roleNames.has('instructor')) { router.push('/instructor'); return; }
+      if (roleNames.has('author')) { router.push('/admin/publications'); return; }
+      router.push('/dashboard');
     }
   };
 
@@ -34,8 +52,8 @@ export default function AdminLogin() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-accent/10 border border-accent/20 mb-4">
             <Lock size={20} className="text-accent" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Admin Access</h1>
-          <p className="text-zinc-500 text-sm mt-1">Sign in to manage E9 Studija</p>
+          <h1 className="text-2xl font-bold text-white">Platform Access</h1>
+          <p className="text-zinc-500 text-sm mt-1">Sign in to your E9 Studija account</p>
         </div>
 
         <form onSubmit={handleLogin} className="glass-card rounded-2xl p-6 space-y-4">
@@ -46,7 +64,7 @@ export default function AdminLogin() {
               <input
                 type="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => { setEmail(e.target.value); setError(''); }}
                 required
                 autoComplete="email"
                 className="w-full pl-9 pr-4 py-2.5 bg-zinc-900/80 border border-zinc-800 rounded-xl text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-accent/50 transition-colors"
@@ -62,7 +80,7 @@ export default function AdminLogin() {
               <input
                 type={showPass ? 'text' : 'password'}
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={e => { setPassword(e.target.value); setError(''); }}
                 required
                 autoComplete="current-password"
                 className="w-full pl-9 pr-10 py-2.5 bg-zinc-900/80 border border-zinc-800 rounded-xl text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-accent/50 transition-colors"
@@ -82,9 +100,15 @@ export default function AdminLogin() {
             <p className="text-red-400 text-xs bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">{error}</p>
           )}
 
+          <TurnstileWidget
+            onVerify={(token) => { setTurnstileToken(token); setError(''); }}
+            onExpire={() => setTurnstileToken('')}
+            onError={() => { setTurnstileToken(''); setError('Security check failed. Please try again.'); }}
+          />
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !turnstileToken}
             className="w-full py-2.5 bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm rounded-xl transition-colors mt-2"
           >
             {loading ? 'Signing in…' : 'Sign In'}

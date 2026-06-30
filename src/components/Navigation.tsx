@@ -12,7 +12,8 @@ import { supabase } from '@/lib/supabase';
 export default function Navigation() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [accountHref, setAccountHref] = useState('/auth/login');
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const { language, setLanguage, t } = useLanguage();
   const pathname = usePathname();
 
@@ -28,10 +29,30 @@ export default function Navigation() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  const resolveAccountHref = async (userId?: string) => {
+    if (!userId) {
+      setIsSignedIn(false);
+      setAccountHref('/auth/login');
+      return;
+    }
+    const [{ data: profile }, { data: assignedRoles }] = await Promise.all([
+      supabase.from('profiles').select('role').eq('id', userId).single(),
+      supabase.from('user_roles').select('roles(name)').eq('user_id', userId),
+    ]);
+    const roleNames = new Set<string>();
+    if (profile?.role) roleNames.add(profile.role);
+    (assignedRoles ?? []).forEach((row: any) => row.roles?.name && roleNames.add(row.roles.name));
+    setIsSignedIn(true);
+    if (roleNames.has('admin')) { setAccountHref('/admin/dashboard'); return; }
+    if (roleNames.has('instructor')) { setAccountHref('/instructor'); return; }
+    if (roleNames.has('author')) { setAccountHref('/admin/publications'); return; }
+    setAccountHref('/dashboard');
+  };
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setIsAdmin(!!data.session));
+    supabase.auth.getSession().then(({ data }) => resolveAccountHref(data.session?.user.id));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      setIsAdmin(!!session);
+      resolveAccountHref(session?.user.id);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -101,21 +122,21 @@ export default function Navigation() {
               </button>
             </div>
 
-            {/* Admin link */}
-            {isAdmin ? (
+            {/* Account link */}
+            {isSignedIn ? (
               <Link
-                href="/admin/dashboard"
+                href={accountHref}
                 className="ml-2 pl-4 border-l border-white/8 flex items-center gap-1.5 text-accent text-xs font-medium hover:text-white transition-colors"
-                title="Dashboard"
+                title="Account"
               >
                 <LayoutDashboard size={14} />
-                Dashboard
+                Account
               </Link>
             ) : (
               <Link
-                href="/admin"
+                href="/auth/login"
                 className="ml-2 pl-4 border-l border-white/8 text-neutral-600 hover:text-accent transition-colors"
-                title="Admin"
+                title="Sign in"
               >
                 <Lock size={14} />
               </Link>
