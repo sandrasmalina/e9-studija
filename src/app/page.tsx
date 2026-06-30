@@ -359,14 +359,14 @@ export default function HomePage() {
           <motion.h2 initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} className="text-3xl md:text-5xl font-bold text-[#160d2e] text-center mb-16">
             {t('whychooseus.title')}
           </motion.h2>
-          <motion.div initial="hidden" animate="visible" variants={stagger} className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {reasons.map((r, idx) => (
-              <motion.div key={r.label} variants={fadeUp} className="flex items-center gap-3 p-5 rounded-xl bg-white border border-purple-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all duration-300">
+              <div key={r.label} className="flex items-center gap-3 p-5 rounded-xl bg-white border border-purple-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all duration-300">
                 <r.icon size={18} className={idx % 2 === 0 ? 'text-accent flex-shrink-0' : 'text-amber-500 flex-shrink-0'} />
                 <span className="text-gray-700 text-sm font-medium">{r.label}</span>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
