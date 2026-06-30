@@ -38,7 +38,6 @@ const navGroups = [
       { href: '/admin/categories',  icon: Tag,         label: 'Categories', roles: ['admin'] },
       { href: '/admin/users?role=student', icon: GraduationCap, label: 'Students', roles: ['admin'] },
       { href: '/admin/instructors', icon: UserCheck,   label: 'Instructor Apps', roles: ['admin'] },
-      { href: '/admin/invitations', icon: Send,        label: 'Invitations', roles: ['admin'] },
       { href: '/admin/settings', icon: Settings, label: 'Course Settings', roles: ['admin'] },
     ],
   },
@@ -46,6 +45,7 @@ const navGroups = [
     label: 'Platform Management',
     items: [
       { href: '/admin/users', icon: Users, label: 'All Platform Users', roles: ['admin'] },
+      { href: '/admin/invitations', icon: Send, label: 'Invitations', roles: ['admin'] },
       { href: '/admin/contacts', icon: Mail,     label: 'Contacts', roles: ['admin'] },
       { href: '/admin/social',   icon: Share2,   label: 'Social Links', roles: ['admin'] },
     ],

@@ -34,6 +34,9 @@ export default function AdminInvitations() {
   const [selectedRoles, setSelectedRoles] = useState<string[]>(['student']);
   const [sending, setSending] = useState(false);
   const [campaignSending, setCampaignSending] = useState(false);
+  const [campaignRole, setCampaignRole] = useState<'instructor' | 'author'>('instructor');
+  const [campaignLabel, setCampaignLabel] = useState('Teacher campaign link');
+  const [campaignMaxUses, setCampaignMaxUses] = useState('');
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -73,20 +76,27 @@ export default function AdminInvitations() {
     });
   };
 
-  const handleCreateTeacherCampaign = async () => {
+  const handleCreateCampaign = async () => {
     setCampaignSending(true); setErr('');
     const token = crypto.randomUUID();
     const expires = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+    const roles = [campaignRole];
+    const maxUses = campaignMaxUses.trim() ? Number(campaignMaxUses) : null;
+    if (maxUses !== null && (!Number.isFinite(maxUses) || maxUses < 1)) {
+      setErr('Max uses must be empty or a positive number.');
+      setCampaignSending(false);
+      return;
+    }
     const { error } = await supabase.from('invitations').insert({
-      email: 'teacher-campaign@e9studija.local',
+      email: `${campaignRole}-campaign@e9studija.local`,
       token,
       expires_at: expires,
       status: 'pending',
-      role: 'instructor',
-      roles: ['instructor'],
+      role: campaignRole === 'instructor' ? 'instructor' : 'student',
+      roles,
       is_campaign: true,
-      campaign_label: 'Teacher campaign link',
-      max_uses: null,
+      campaign_label: campaignLabel.trim() || `${campaignRole === 'instructor' ? 'Teacher' : 'Author'} campaign link`,
+      max_uses: maxUses,
       use_count: 0,
     });
     setCampaignSending(false);
@@ -116,12 +126,9 @@ export default function AdminInvitations() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">Invitations</h1>
-          <p className="text-zinc-500 text-sm mt-1">Invite users to register</p>
+          <p className="text-zinc-500 text-sm mt-1">Manage individual invitations and campaign registration links</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleCreateTeacherCampaign} disabled={campaignSending} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-blue-900/50 bg-blue-950/30 text-blue-300 text-sm font-medium hover:bg-blue-950/50 disabled:opacity-50 transition-colors">
-            <Send size={15} /> {campaignSending ? 'Creating…' : 'Teacher Campaign Link'}
-          </button>
           <button onClick={load} className="p-2.5 rounded-xl border border-zinc-800 text-zinc-500 hover:text-white transition-colors"><RefreshCw size={15} /></button>
         </div>
       </div>
@@ -155,6 +162,30 @@ export default function AdminInvitations() {
         </div>
         {err && <p className="text-red-400 text-xs mt-2">{err}</p>}
         <p className="text-zinc-600 text-xs mt-2">Generates a unique registration link. Valid for 7 days.</p>
+      </div>
+
+      <div className="rounded-2xl border border-blue-900/40 bg-blue-950/20 p-5 mb-8">
+        <h2 className="text-white font-medium mb-4">Reusable Campaign Invitation</h2>
+        <div className="grid gap-3 md:grid-cols-[160px_1fr_140px_auto]">
+          <select value={campaignRole} onChange={event => {
+            const nextRole = event.target.value as 'instructor' | 'author';
+            setCampaignRole(nextRole);
+            setCampaignLabel(`${nextRole === 'instructor' ? 'Teacher' : 'Author'} campaign link`);
+            setErr('');
+          }} className="px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500/50">
+            <option value="instructor">Teachers</option>
+            <option value="author">Authors</option>
+          </select>
+          <input value={campaignLabel} onChange={event => { setCampaignLabel(event.target.value); setErr(''); }} placeholder="Campaign label"
+            className="px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500/50" />
+          <input value={campaignMaxUses} onChange={event => { setCampaignMaxUses(event.target.value); setErr(''); }} type="number" min="1" placeholder="No limit"
+            className="px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500/50" />
+          <button onClick={handleCreateCampaign} disabled={campaignSending}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 disabled:opacity-50 transition-colors whitespace-nowrap">
+            <Send size={15} /> {campaignSending ? 'Creating…' : 'Create Campaign'}
+          </button>
+        </div>
+        <p className="text-blue-200/60 text-xs mt-2">Creates one reusable registration link for all selected teachers or authors. Valid for 90 days.</p>
       </div>
 
       {loading ? (

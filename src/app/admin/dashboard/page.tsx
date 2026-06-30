@@ -213,12 +213,12 @@ export default function AdminDashboard() {
             </div>
           </Section>
 
-          <Section title="Courses" subtitle="Learning platform, students, teachers, invitations, and course settings.">
+          <Section title="Courses" subtitle="Learning platform, students, teachers, and course settings.">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard label="Courses" value={stats.courses} icon={BookOpen} tone="border-purple-500/20 text-purple-400" />
               <StatCard label="Students" value={stats.students} icon={GraduationCap} tone="border-blue-500/20 text-blue-400" />
               <StatCard label="Teachers" value={stats.instructors} icon={UserCheck} tone="border-emerald-500/20 text-emerald-400" />
-              <StatCard label="Pending Invitations" value={stats.invitations} icon={Mail} tone="border-amber-500/20 text-amber-400" />
+              <StatCard label="Instructor Apps" value={stats.instructors} icon={UserCheck} tone="border-amber-500/20 text-amber-400" />
             </div>
             <div className="grid md:grid-cols-3 gap-4">
               <QuickLink href="/admin/courses" title="Courses" description="Manage all platform courses and course publishing." icon={BookOpen} />
@@ -230,14 +230,14 @@ export default function AdminDashboard() {
           <Section title="Platform Management" subtitle="Users, contacts, social links, and operational support.">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard label="Platform Users" value={stats.users} icon={Users} tone="border-zinc-600 text-zinc-300" />
+              <StatCard label="Pending Invitations" value={stats.invitations} icon={Mail} tone="border-amber-500/20 text-amber-400" />
               <StatCard label="Contact Submissions" value={stats.contacts} icon={Mail} tone="border-cyan-500/20 text-cyan-400" />
               <StatCard label="Social Links" value={stats.socialLinks} icon={Share2} tone="border-pink-500/20 text-pink-400" />
-              <StatCard label="Support Queue" value={stats.contacts} icon={Mail} tone="border-orange-500/20 text-orange-400" />
             </div>
             <div className="grid md:grid-cols-3 gap-4">
               <QuickLink href="/admin/users" title="All Platform Users" description="Assign roles, support accounts, and manage user access." icon={Users} />
+              <QuickLink href="/admin/invitations" title="Invitations" description="Create individual invites and reusable teacher or author campaign links." icon={Mail} />
               <QuickLink href="/admin/contacts" title="Contact Submissions" description="Review and reply to contact form submissions." icon={Mail} />
-              <QuickLink href="/admin/social" title="Social Links" description="Manage footer and public social media links." icon={Share2} />
             </div>
           </Section>
         </>

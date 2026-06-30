@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Mail, Lock, User } from 'lucide-react';
 
-interface Invitation { email: string; roles: string[] | null; status: string; expires_at: string | null; is_campaign: boolean; campaign_label: string | null; }
+interface Invitation { email: string; roles: string[] | null; status: string; expires_at: string | null; is_campaign?: boolean; campaign_label?: string | null; }
 
 function RegisterForm() {
   const router = useRouter();
@@ -26,10 +26,20 @@ function RegisterForm() {
   useEffect(() => {
     if (!token) { router.replace('/courses'); return; }
     const supabase = createClient();
-    supabase.from('invitations').select('email,roles,status,expires_at,is_campaign,campaign_label').eq('token', token).single()
-      .then(({ data }) => {
-        setInvite(data as Invitation | null);
-        if (data && !data.is_campaign) setEmail(data.email);
+    supabase.from('invitations').select('*').eq('token', token).single()
+      .then(({ data, error: inviteError }) => {
+        if (inviteError || !data) {
+          setInvite(null);
+          setLoading(false);
+          return;
+        }
+        const nextInvite = {
+          ...data,
+          is_campaign: data.is_campaign ?? false,
+          campaign_label: data.campaign_label ?? null,
+        } as Invitation;
+        setInvite(nextInvite);
+        if (!nextInvite.is_campaign) setEmail(nextInvite.email);
         setLoading(false);
       });
   }, [router, token]);
@@ -69,7 +79,7 @@ function RegisterForm() {
     return (
       <div className="w-full max-w-md bg-bg-card border border-white/8 rounded-2xl p-8 text-center">
         <h1 className="text-white text-2xl font-bold mb-2">Account created</h1>
-        <p className="text-neutral-500 text-sm mb-6">You can now sign in with your email and password.</p>
+        <p className="text-neutral-500 text-sm mb-6">You can now sign in with your email and password. If email confirmation is enabled, confirm your email first.</p>
         <Link href="/auth/login" className="inline-flex justify-center w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent/90 transition-colors">Go to login</Link>
       </div>
     );
