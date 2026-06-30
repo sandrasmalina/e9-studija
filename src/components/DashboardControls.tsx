@@ -32,7 +32,13 @@ function useAvailableSpaces() {
     });
   }, []);
 
-  const isActive = (href: string) => pathname === href || (href !== '/dashboard' && pathname.startsWith(href.split('?')[0]));
+  const isActive = (href: string) => {
+    if (href === '/admin/dashboard') return pathname.startsWith('/admin') && !pathname.startsWith('/admin/publications');
+    if (href === '/admin/publications') return pathname.startsWith('/admin/publications');
+    if (href === '/instructor') return pathname.startsWith('/instructor');
+    if (href === '/dashboard') return pathname.startsWith('/dashboard');
+    return pathname === href;
+  };
   const availableSpaces = spaces
     .filter(space => space.roles.some(role => roles.includes(role)))
     .sort((a, b) => Number(isActive(b.href)) - Number(isActive(a.href)) || a.priority - b.priority);
@@ -43,23 +49,21 @@ function useAvailableSpaces() {
 export function DashboardSpaces() {
   const { t } = useLanguage();
   const { availableSpaces, isActive } = useAvailableSpaces();
+  const switchableSpaces = availableSpaces.filter(space => !isActive(space.href));
 
-  if (availableSpaces.length <= 1) return null;
+  if (switchableSpaces.length === 0) return null;
 
   return (
     <div className="space-y-1 border-t border-white/[0.06] pt-3">
       <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">{t('dashboard.spaces')}</p>
-      {availableSpaces.map(({ href, labelKey, icon: Icon }) => {
-        const active = isActive(href);
+      {switchableSpaces.map(({ href, labelKey, icon: Icon }) => {
         return (
           <Link
             key={href}
             href={href}
-            className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
-              active ? 'bg-purple-500/15 text-purple-200' : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200'
-            }`}
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-zinc-500 transition-colors hover:bg-white/[0.04] hover:text-zinc-200"
           >
-            <Icon size={14} className={active ? 'text-purple-300' : 'text-zinc-600'} />
+            <Icon size={14} className="text-zinc-600" />
             {t(labelKey)}
           </Link>
         );

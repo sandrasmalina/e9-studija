@@ -9,15 +9,14 @@ import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/Dashboa
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, BookOpen, TrendingUp, Settings,
-  ChevronRight, ChevronDown, ExternalLink, ArrowLeft, Play, FileText, Paperclip,
+  ChevronRight, ChevronDown, ArrowLeft, Play, FileText, Paperclip,
   LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus,
 } from 'lucide-react';
 
 const NAV = [
-  { href: '/instructor',          icon: LayoutDashboard, labelKey: 'instructor.nav.overview' },
+  { href: '/instructor',          icon: LayoutDashboard, labelKey: 'dashboard.space.instructor' },
   { href: '/instructor/courses',  icon: BookOpen,        labelKey: 'instructor.nav.myCourses' },
   { href: '/instructor/earnings', icon: TrendingUp,      labelKey: 'instructor.nav.earnings' },
-  { href: '/profile',             icon: Settings,        labelKey: 'instructor.nav.profile', external: true },
 ];
 
 const COURSE_PATH_RE = /^\/instructor\/courses\/([0-9a-f-]{36})(\/.*)?$/;
@@ -433,8 +432,8 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           <p className="text-zinc-600 text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">{t('instructor.nav.teaching')}</p>
-          {NAV.map(({ href, icon: Icon, labelKey, external }) => {
-            const active = pathname === href || (href !== '/instructor' && pathname.startsWith(href) && !external);
+          {NAV.map(({ href, icon: Icon, labelKey }) => {
+            const active = pathname === href || (href !== '/instructor' && pathname.startsWith(href));
             return (
               <Link key={href} href={href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all group relative ${
@@ -443,8 +442,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                 {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />}
                 <Icon size={16} className={active ? 'text-accent' : 'text-zinc-500 group-hover:text-zinc-300 transition-colors'} />
                 <span className="flex-1">{t(labelKey)}</span>
-                {external && <ExternalLink size={11} className="text-zinc-700" />}
-                {active && !external && <ChevronRight size={12} className="text-accent/50" />}
+                {active && <ChevronRight size={12} className="text-accent/50" />}
               </Link>
             );
           })}

@@ -71,6 +71,10 @@ export default function AdminNav() {
 
   const canSee = (itemRoles?: string[]) => !itemRoles || itemRoles.some(role => roles.includes(role));
   const itemIsActive = (href: string) => pathname === href.split('?')[0] || (href !== '/admin/dashboard' && pathname.startsWith(href.split('?')[0]));
+  const currentWorkspace = pathname.startsWith('/admin/publications')
+    ? { href: '/admin/publications', icon: Newspaper, labelKey: 'dashboard.space.author' }
+    : { href: '/admin/dashboard', icon: LayoutDashboard, labelKey: 'dashboard.space.admin' };
+  const CurrentWorkspaceIcon = currentWorkspace.icon;
 
   React.useEffect(() => {
     const next: Record<string, boolean> = {};
@@ -109,17 +113,17 @@ export default function AdminNav() {
       <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
         {canSee(['admin', 'author']) && (
           <Link
-            href="/admin/dashboard"
+            href={currentWorkspace.href}
             className={`mb-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all group relative ${
-              pathname === '/admin/dashboard'
+              pathname === currentWorkspace.href
                 ? 'bg-accent/10 text-accent font-medium'
                 : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
             }`}
           >
-            {pathname === '/admin/dashboard' && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />}
-            <LayoutDashboard size={16} className={pathname === '/admin/dashboard' ? 'text-accent' : 'text-zinc-500 group-hover:text-zinc-300 transition-colors'} />
-            <span className="flex-1">{t('admin.nav.dashboard')}</span>
-            {pathname === '/admin/dashboard' && <ChevronRight size={12} className="text-accent/50" />}
+            {pathname === currentWorkspace.href && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />}
+            <CurrentWorkspaceIcon size={16} className={pathname === currentWorkspace.href ? 'text-accent' : 'text-zinc-500 group-hover:text-zinc-300 transition-colors'} />
+            <span className="flex-1">{t(currentWorkspace.labelKey)}</span>
+            {pathname === currentWorkspace.href && <ChevronRight size={12} className="text-accent/50" />}
           </Link>
         )}
         <DashboardSpaces />

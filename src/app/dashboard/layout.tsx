@@ -9,7 +9,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle, Home } from 'lucide-react';
 
 const NAV = [
-  { href: '/dashboard',             icon: LayoutDashboard, labelKey: 'dashboard.nav.overview' },
+  { href: '/dashboard',             icon: LayoutDashboard, labelKey: 'dashboard.space.learner' },
   { href: '/dashboard/my-courses',  icon: BookOpen,        labelKey: 'dashboard.nav.myCourses' },
   { href: '/dashboard/wishlist',    icon: Heart,           labelKey: 'dashboard.nav.wishlist' },
   { href: '/dashboard/certificates',icon: Award,           labelKey: 'dashboard.nav.certificates' },
