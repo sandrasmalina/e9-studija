@@ -23,6 +23,7 @@ const AVAILABLE_ROLES = ['student', 'instructor', 'author', 'admin'];
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-900/40 text-yellow-400',
+  started: 'bg-blue-900/40 text-blue-400',
   used:    'bg-green-900/40 text-green-400',
   expired: 'bg-zinc-800 text-zinc-500',
 };
@@ -118,6 +119,7 @@ export default function AdminInvitations() {
   const getStatus = (inv: Invitation) => {
     if (inv.status === 'used') return 'used';
     if (new Date(inv.expires_at) < new Date()) return 'expired';
+    if (!inv.is_campaign && inv.use_count > 0) return 'started';
     return 'pending';
   };
 
@@ -237,7 +239,7 @@ export default function AdminInvitations() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        {status === 'pending' && (
+                        {(status === 'pending' || status === 'started') && (
                           <button onClick={() => copyLink(inv.token)} title="Copy invite link"
                             className="p-1.5 rounded-lg text-zinc-600 hover:text-accent hover:bg-accent/10 transition-all">
                             {copied === inv.token ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}

@@ -62,7 +62,11 @@ function RegisterForm() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      options: { captchaToken: turnstileToken, data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: fullName, invite_token: token } },
+      options: {
+        captchaToken: turnstileToken,
+        emailRedirectTo: `${window.location.origin}/auth/login?confirmed=1`,
+        data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: fullName, invite_token: token },
+      },
     });
     setSaving(false);
     if (signUpError) { setError(signUpError.message); setTurnstileToken(''); return; }
@@ -97,7 +101,7 @@ function RegisterForm() {
     return (
       <div className="w-full max-w-md bg-bg-card border border-white/8 rounded-2xl p-8 text-center">
         <h1 className="text-white text-2xl font-bold mb-2">Account created</h1>
-        <p className="text-neutral-500 text-sm mb-6">You can now sign in with your email and password. If email confirmation is enabled, confirm your email first. If login fails, use password reset for the same email.</p>
+        <p className="text-neutral-500 text-sm mb-6">Please check your email and confirm your signup before logging in. After confirmation, use the email and password you just created.</p>
         <Link href="/auth/login" className="inline-flex justify-center w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent/90 transition-colors">Go to login</Link>
         <Link href="/auth/forgot-password" className="mt-4 inline-flex text-sm text-neutral-400 hover:text-accent">Reset password</Link>
       </div>
