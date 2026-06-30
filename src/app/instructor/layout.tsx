@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
-  LayoutDashboard, BookOpen, TrendingUp, Settings,
+  LayoutDashboard, BookOpen, TrendingUp, Settings, Users,
   ChevronRight, ChevronDown, ArrowLeft, Play, FileText, Paperclip,
   LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus,
 } from 'lucide-react';
@@ -16,6 +16,7 @@ import {
 const NAV = [
   { href: '/instructor',          icon: LayoutDashboard, labelKey: 'dashboard.space.instructor' },
   { href: '/instructor/courses',  icon: BookOpen,        labelKey: 'instructor.nav.myCourses' },
+  { href: '/instructor/students', icon: Users,           labelKey: 'instructor.nav.students' },
   { href: '/instructor/earnings', icon: TrendingUp,      labelKey: 'instructor.nav.earnings' },
 ];
 

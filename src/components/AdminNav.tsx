@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap, Layers, Newspaper, ChevronDown, PenLine, UserCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
@@ -50,6 +50,7 @@ const navGroups = [
 
 export default function AdminNav() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { t } = useLanguage();
   const [roles, setRoles] = React.useState<string[]>([]);
@@ -71,18 +72,20 @@ export default function AdminNav() {
 
   const canSee = (itemRoles?: string[]) => !itemRoles || itemRoles.some(role => roles.includes(role));
   const itemIsActive = (href: string) => pathname === href.split('?')[0] || (href !== '/admin/dashboard' && pathname.startsWith(href.split('?')[0]));
-  const currentWorkspace = pathname.startsWith('/admin/publications')
+  const isAuthorWorkspace = pathname.startsWith('/admin/publications') || pathname.startsWith('/admin/publication-categories') || (pathname === '/admin/users' && searchParams.get('role') === 'author');
+  const workspaceGroups = isAuthorWorkspace ? navGroups.filter(group => group.labelKey === 'admin.nav.publications') : navGroups.filter(group => group.labelKey !== 'admin.nav.publications');
+  const currentWorkspace = isAuthorWorkspace
     ? { href: '/admin/publications', icon: Newspaper, labelKey: 'dashboard.space.author' }
     : { href: '/admin/dashboard', icon: LayoutDashboard, labelKey: 'dashboard.space.admin' };
   const CurrentWorkspaceIcon = currentWorkspace.icon;
 
   React.useEffect(() => {
     const next: Record<string, boolean> = {};
-    navGroups.forEach(group => {
+    workspaceGroups.forEach(group => {
       next[group.labelKey] = group.items.some(item => itemIsActive(item.href));
     });
     setOpenGroups(next);
-  }, [pathname]);
+  }, [pathname, isAuthorWorkspace]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -126,8 +129,7 @@ export default function AdminNav() {
             {pathname === currentWorkspace.href && <ChevronRight size={12} className="text-accent/50" />}
           </Link>
         )}
-        <DashboardSpaces />
-        {navGroups.map((group) => {
+        {workspaceGroups.map((group) => {
           const visibleItems = group.items.filter(item => canSee(item.roles));
           if (visibleItems.length === 0) return null;
           const isOpen = openGroups[group.labelKey] ?? true;
@@ -170,6 +172,7 @@ export default function AdminNav() {
           </div>
           );
         })}
+        <DashboardSpaces />
       </nav>
 
       {/* Footer actions */}
