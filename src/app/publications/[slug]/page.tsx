@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { ArrowLeft, CalendarDays, Clock, ExternalLink, Share2, User } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clock, ExternalLink, Moon, Share2, Sun, User } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
@@ -74,6 +74,20 @@ export default function PublicationPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [related, setRelated] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [contentTheme, setContentTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('e9-content-theme');
+    if (saved === 'light' || saved === 'dark') setContentTheme(saved);
+  }, []);
+
+  const toggleContentTheme = () => {
+    setContentTheme(current => {
+      const next = current === 'dark' ? 'light' : 'dark';
+      window.localStorage.setItem('e9-content-theme', next);
+      return next;
+    });
+  };
 
   useEffect(() => {
     const run = async () => {
@@ -144,7 +158,15 @@ export default function PublicationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg pt-28 pb-24">
+    <div className={`content-page content-theme-${contentTheme} min-h-screen bg-bg pt-28 pb-24`}>
+      <button
+        type="button"
+        onClick={toggleContentTheme}
+        className="fixed right-5 top-24 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-bg-card/90 text-neutral-400 shadow-2xl backdrop-blur transition-colors hover:text-white"
+        title={contentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {contentTheme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+      </button>
       <article className="max-w-4xl mx-auto px-6">
         {isPreview && <div className="mb-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-3 text-sm text-amber-200">Preview mode: this draft is visible only to authorized admins/authors.</div>}
         <Link href="/publications" className="inline-flex items-center gap-2 text-neutral-500 hover:text-accent text-sm mb-10 transition-colors"><ArrowLeft size={14} /> {language === 'lv' ? 'Atpakaļ uz publikācijām' : 'Back to Publications'}</Link>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AdminNav from '@/components/AdminNav';
+import { Moon, Sun } from 'lucide-react';
 
 const pageTitles: Record<string, string> = {
   '/admin/dashboard':   'Dashboard',
@@ -28,6 +29,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isLoginPage = pathname === '/admin';
   const [checking, setChecking] = useState(true);
   const [email, setEmail] = useState('');
+  const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('e9-admin-theme');
+    if (saved === 'light' || saved === 'dark') setPanelTheme(saved);
+  }, []);
+
+  const togglePanelTheme = () => {
+    setPanelTheme(current => {
+      const next = current === 'dark' ? 'light' : 'dark';
+      window.localStorage.setItem('e9-admin-theme', next);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (isLoginPage) { setChecking(false); return; }
@@ -62,20 +77,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pageTitle = Object.entries(pageTitles).find(([key]) => pathname.startsWith(key))?.[1] ?? 'Admin';
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#09090b' }}>
+    <div className={`admin-panel admin-theme-${panelTheme} min-h-screen flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
       <AdminNav />
       <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
         {/* Top bar */}
         <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-8 flex items-center justify-between shrink-0">
           <h1 className="text-white text-sm font-semibold">{pageTitle}</h1>
-          {email && (
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={togglePanelTheme}
+              className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-900 transition-colors"
+              title={panelTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {panelTheme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+            {email && (
+              <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/25 flex items-center justify-center text-accent text-xs font-semibold">
                 {email.charAt(0).toUpperCase()}
               </div>
               <span className="text-zinc-500 text-xs hidden sm:block">{email}</span>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </header>
         {/* Page content */}
         <main className="flex-1 p-8 overflow-auto">{children}</main>

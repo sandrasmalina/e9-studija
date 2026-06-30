@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     // 2. Fetch course
     const { data: course, error: courseErr } = await supabase
       .from('courses')
-      .select('id, title_en, slug, price, discount_price, currency, thumbnail_url, is_free, instructor_id, profiles!courses_instructor_id_fkey(stripe_account_id,revenue_share_pct)')
+      .select('id, title_en, slug, price, discount_price, discount_starts_at, discount_ends_at, currency, thumbnail_url, is_free, instructor_id, profiles!courses_instructor_id_fkey(stripe_account_id,revenue_share_pct)')
       .eq('slug', courseSlug)
       .single();
 
@@ -49,7 +49,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const unitAmount = Math.round((course.discount_price ?? course.price) * 100);
+    const now = Date.now();
+    const discountStarts = course.discount_starts_at ? new Date(course.discount_starts_at).getTime() : null;
+    const discountEnds = course.discount_ends_at ? new Date(course.discount_ends_at).getTime() : null;
+    const discountActive = course.discount_price !== null && course.discount_price < course.price && (!discountStarts || discountStarts <= now) && (!discountEnds || discountEnds >= now);
+    const unitAmount = Math.round((discountActive ? course.discount_price : course.price) * 100);
     const origin = req.headers.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
     const instructorProfile = Array.isArray(course.profiles) ? course.profiles[0] : course.profiles;
     const stripeAccountId = instructorProfile?.stripe_account_id;

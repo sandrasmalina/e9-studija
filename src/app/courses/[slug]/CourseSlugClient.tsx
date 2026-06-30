@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, BookOpen, Users, Award, ChevronDown, ChevronUp,
-  Play, Lock, CheckCircle, Globe, ArrowLeft, Star, Loader2, X, Mail
+  Play, Lock, CheckCircle, Globe, ArrowLeft, Star, Loader2, X, Mail, Moon, Sun
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
@@ -71,6 +71,8 @@ interface Course {
   promo_video_type: string | null;
   price: number;
   discount_price: number | null;
+  discount_starts_at: string | null;
+  discount_ends_at: string | null;
   currency: string;
   is_free: boolean;
   level: string | null;
@@ -99,7 +101,21 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   const searchParams = useSearchParams();
   const autoEnroll = searchParams.get('auto_enroll') === '1';
   const autoEnrollRef = useRef(false);
+  const [contentTheme, setContentTheme] = useState<'dark' | 'light'>('dark');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set([course.sections[0]?.id]));
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('e9-content-theme');
+    if (saved === 'light' || saved === 'dark') setContentTheme(saved);
+  }, []);
+
+  const toggleContentTheme = () => {
+    setContentTheme(current => {
+      const next = current === 'dark' ? 'light' : 'dark';
+      window.localStorage.setItem('e9-content-theme', next);
+      return next;
+    });
+  };
 
   // Auth + enrollment state
   const [enrollState, setEnrollState] = useState<'loading' | 'not-authed' | 'enrolled' | 'not-enrolled'>('loading');
@@ -267,7 +283,15 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   const previewLectures = course.sections.flatMap(s => s.lectures).filter(l => l.is_preview);
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className={`content-page content-theme-${contentTheme} min-h-screen bg-bg`}>
+      <button
+        type="button"
+        onClick={toggleContentTheme}
+        className="fixed right-5 top-24 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-bg-card/90 text-neutral-400 shadow-2xl backdrop-blur transition-colors hover:text-white"
+        title={contentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {contentTheme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+      </button>
       {isPreview && (
         <div className="fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-full border border-amber-400/30 bg-amber-500/15 px-4 py-2 text-xs font-semibold text-amber-200 shadow-2xl backdrop-blur">
           Draft preview
@@ -357,6 +381,8 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                 <PriceBadge
                   price={Number(course.price)}
                   discountPrice={course.discount_price ? Number(course.discount_price) : null}
+                  discountStartsAt={course.discount_starts_at}
+                  discountEndsAt={course.discount_ends_at}
                   currency={course.currency}
                   isFree={course.is_free}
                 />

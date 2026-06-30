@@ -11,7 +11,9 @@ interface CourseSettings {
   slug: string;
   price: number;
   discount_price: string;
+  discount_starts_at: string;
   discount_ends_at: string;
+  discount_type: 'none' | 'permanent' | 'period';
   is_free: boolean;
   certificate_enabled: boolean;
   status: string;
@@ -34,7 +36,7 @@ export default function CourseSettingsPage() {
 
   useEffect(() => {
     supabase.from('courses')
-      .select('title_en, slug, price, discount_price, discount_ends_at, is_free, certificate_enabled, status')
+      .select('title_en, slug, price, discount_price, discount_starts_at, discount_ends_at, is_free, certificate_enabled, status')
       .eq('id', id)
       .single()
       .then(({ data }) => {
@@ -44,7 +46,9 @@ export default function CourseSettingsPage() {
             slug: data.slug,
             price: data.price ?? 0,
             discount_price: data.discount_price ? String(data.discount_price) : '',
+            discount_starts_at: data.discount_starts_at ? data.discount_starts_at.slice(0, 16) : '',
             discount_ends_at: data.discount_ends_at ? data.discount_ends_at.slice(0, 16) : '',
+            discount_type: data.discount_price ? (data.discount_starts_at || data.discount_ends_at ? 'period' : 'permanent') : 'none',
             is_free: data.is_free ?? false,
             certificate_enabled: data.certificate_enabled ?? true,
             status: data.status ?? 'draft',
@@ -68,8 +72,9 @@ export default function CourseSettingsPage() {
     const { error } = await supabase.from('courses').update({
       price: settings.is_free ? 0 : Number(settings.price),
       is_free: settings.is_free,
-      discount_price: settings.discount_price ? Number(settings.discount_price) : null,
-      discount_ends_at: settings.discount_ends_at || null,
+      discount_price: !settings.is_free && settings.discount_type !== 'none' && settings.discount_price ? Number(settings.discount_price) : null,
+      discount_starts_at: !settings.is_free && settings.discount_type === 'period' ? settings.discount_starts_at || null : null,
+      discount_ends_at: !settings.is_free && settings.discount_type === 'period' ? settings.discount_ends_at || null : null,
       certificate_enabled: settings.certificate_enabled,
       status,
       updated_at: new Date().toISOString(),
@@ -170,20 +175,40 @@ export default function CourseSettingsPage() {
                   onChange={e => set('price', e.target.value)}
                   className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-white text-sm font-medium mb-1.5">Discount Price (€) <span className="text-zinc-600 font-normal">optional</span></label>
-                  <input type="number" min="0" step="0.01" value={settings.discount_price}
-                    onChange={e => set('discount_price', e.target.value)} placeholder="e.g. 29"
-                    className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
-                </div>
-                <div>
-                  <label className="block text-white text-sm font-medium mb-1.5">Discount Ends</label>
-                  <input type="datetime-local" value={settings.discount_ends_at}
-                    onChange={e => set('discount_ends_at', e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 [color-scheme:dark]" />
+              <div>
+                <label className="block text-white text-sm font-medium mb-1.5">Discount Setup</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([['none', 'No discount'], ['permanent', 'Permanent'], ['period', 'Specific period']] as const).map(([value, label]) => (
+                    <button key={value} type="button" onClick={() => set('discount_type', value)} className={`rounded-xl border px-3 py-2 text-sm transition-colors ${settings.discount_type === value ? 'border-purple-500/40 bg-purple-500/15 text-white' : 'border-white/[0.08] text-zinc-500 hover:text-white'}`}>{label}</button>
+                  ))}
                 </div>
               </div>
+              {settings.discount_type !== 'none' && (
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-white text-sm font-medium mb-1.5">Discount Price (€)</label>
+                    <input type="number" min="0" step="0.01" value={settings.discount_price}
+                      onChange={e => set('discount_price', e.target.value)} placeholder="e.g. 29"
+                      className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
+                  </div>
+                  {settings.discount_type === 'period' && (
+                    <>
+                      <div>
+                        <label className="block text-white text-sm font-medium mb-1.5">Discount Starts</label>
+                        <input type="datetime-local" value={settings.discount_starts_at}
+                          onChange={e => set('discount_starts_at', e.target.value)}
+                          className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 [color-scheme:dark]" />
+                      </div>
+                      <div>
+                        <label className="block text-white text-sm font-medium mb-1.5">Discount Ends</label>
+                        <input type="datetime-local" value={settings.discount_ends_at}
+                          onChange={e => set('discount_ends_at', e.target.value)}
+                          className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 [color-scheme:dark]" />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

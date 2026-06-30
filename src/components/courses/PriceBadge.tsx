@@ -3,11 +3,21 @@
 interface PriceBadgeProps {
   price: number;
   discountPrice?: number | null;
+  discountStartsAt?: string | null;
+  discountEndsAt?: string | null;
   currency?: string;
   isFree?: boolean;
 }
 
-export default function PriceBadge({ price, discountPrice, currency = 'EUR', isFree }: PriceBadgeProps) {
+export function isDiscountActive(discountPrice: number | null | undefined, price: number, discountStartsAt?: string | null, discountEndsAt?: string | null) {
+  if (discountPrice === null || discountPrice === undefined || discountPrice >= price) return false;
+  const now = Date.now();
+  const starts = discountStartsAt ? new Date(discountStartsAt).getTime() : null;
+  const ends = discountEndsAt ? new Date(discountEndsAt).getTime() : null;
+  return (!starts || starts <= now) && (!ends || ends >= now);
+}
+
+export default function PriceBadge({ price, discountPrice, discountStartsAt, discountEndsAt, currency = 'EUR', isFree }: PriceBadgeProps) {
   const symbol = currency === 'EUR' ? '€' : currency === 'USD' ? '$' : currency;
 
   if (isFree || price === 0) {
@@ -16,8 +26,8 @@ export default function PriceBadge({ price, discountPrice, currency = 'EUR', isF
     );
   }
 
-  const active = discountPrice ?? price;
-  const hasDiscount = discountPrice !== null && discountPrice !== undefined && discountPrice < price;
+  const hasDiscount = isDiscountActive(discountPrice, price, discountStartsAt, discountEndsAt);
+  const active = hasDiscount ? discountPrice! : price;
 
   return (
     <div className="flex items-baseline gap-2">
