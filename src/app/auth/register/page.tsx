@@ -14,7 +14,8 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get('invite');
   const [invite, setInvite] = useState<Invitation | null>(null);
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -47,16 +48,18 @@ function RegisterForm() {
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!invite || !token) return;
-    if (!fullName.trim()) { setError('Full name is required'); return; }
+    if (!firstName.trim()) { setError('First name is required'); return; }
+    if (!lastName.trim()) { setError('Surname is required'); return; }
     if (!email.trim() || !email.includes('@')) { setError('Valid email is required'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     setSaving(true); setError('');
     const supabase = createClient();
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
     const { error: signUpError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      options: { data: { full_name: fullName.trim(), invite_token: token } },
+      options: { data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: fullName, invite_token: token } },
     });
     setSaving(false);
     if (signUpError) { setError(signUpError.message); return; }
@@ -102,11 +105,17 @@ function RegisterForm() {
       </div>
       <div className="bg-bg-card border border-white/8 rounded-2xl p-8">
         <form onSubmit={handleCreate} className="space-y-5">
-          <div>
-            <label className="block text-neutral-400 text-sm mb-2">Full name</label>
-            <div className="relative">
-              <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-600" />
-              <input value={fullName} onChange={e => { setFullName(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none transition-colors" placeholder="Your name" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-neutral-400 text-sm mb-2">First name</label>
+              <div className="relative">
+                <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-600" />
+                <input value={firstName} onChange={e => { setFirstName(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none transition-colors" placeholder="Name" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-neutral-400 text-sm mb-2">Surname</label>
+              <input value={lastName} onChange={e => { setLastName(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none transition-colors" placeholder="Surname" />
             </div>
           </div>
           <div>
