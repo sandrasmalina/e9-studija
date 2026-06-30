@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, Users, DollarSign, Star, ArrowRight, Plus } from 'lucide-react';
 
 interface Stats {
@@ -27,6 +28,7 @@ export default function InstructorPage() {
   const [recent, setRecent] = useState<RecentCourse[]>([]);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     (async () => {
@@ -76,10 +78,10 @@ export default function InstructorPage() {
   };
 
   const STAT_CARDS = [
-    { label: 'Total Courses', value: stats.courses, sub: `${stats.published} published`, icon: BookOpen, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
-    { label: 'Total Students', value: stats.students, sub: 'enrolled', icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
-    { label: 'Revenue', value: `€${stats.revenue.toFixed(0)}`, sub: 'your share', icon: DollarSign, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' },
-    { label: 'Avg. Rating', value: stats.avgRating > 0 ? stats.avgRating.toFixed(1) : '—', sub: 'across all courses', icon: Star, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' },
+    { label: t('instructor.stat.totalCourses'), value: stats.courses, sub: t('instructor.stat.published').replace('{value}', String(stats.published)), icon: BookOpen, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+    { label: t('instructor.stat.totalStudents'), value: stats.students, sub: t('instructor.stat.enrolled'), icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
+    { label: t('instructor.stat.revenue'), value: `€${stats.revenue.toFixed(0)}`, sub: t('instructor.stat.share'), icon: DollarSign, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' },
+    { label: t('instructor.stat.rating'), value: stats.avgRating > 0 ? stats.avgRating.toFixed(1) : '—', sub: t('instructor.stat.allCourses'), icon: Star, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' },
   ];
 
   if (loading) {
@@ -97,12 +99,12 @@ export default function InstructorPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Welcome, {name} 👋</h1>
-          <p className="text-zinc-500 text-sm mt-1">Your instructor overview</p>
+          <h1 className="text-2xl font-bold text-white">{t('instructor.welcome').replace('{name}', name)}</h1>
+          <p className="text-zinc-500 text-sm mt-1">{t('instructor.subtitle')}</p>
         </div>
         <Link href="/instructor/courses/new"
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 transition-colors">
-          <Plus size={15} /> New Course
+          <Plus size={15} /> {t('instructor.newCourse')}
         </Link>
       </div>
 
@@ -120,28 +122,28 @@ export default function InstructorPage() {
       {/* Recent courses */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-semibold">Your Courses</h2>
+          <h2 className="text-white font-semibold">{t('instructor.yourCourses')}</h2>
           <Link href="/instructor/courses" className="text-purple-400 text-sm hover:text-purple-300 flex items-center gap-1 transition-colors">
-            View all <ArrowRight size={13} />
+            {t('instructor.viewAll')} <ArrowRight size={13} />
           </Link>
         </div>
         {recent.length === 0 ? (
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-10 text-center">
             <BookOpen size={32} className="text-zinc-700 mx-auto mb-3" />
-            <p className="text-zinc-500 text-sm">No courses yet.</p>
+            <p className="text-zinc-500 text-sm">{t('instructor.noCourses')}</p>
             <Link href="/instructor/courses/new"
               className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 transition-colors">
-              <Plus size={14} /> Create your first course
+              <Plus size={14} /> {t('instructor.createFirst')}
             </Link>
           </div>
         ) : (
           <div className="rounded-2xl border border-white/[0.06] overflow-hidden">
             <table className="w-full">
               <thead><tr className="border-b border-white/[0.06] bg-white/[0.02]">
-                <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">Course</th>
-                <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden sm:table-cell">Status</th>
-                <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden md:table-cell">Students</th>
-                <th className="text-right px-4 py-3 text-xs text-zinc-500 font-medium">Edit</th>
+                <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">{t('instructor.table.course')}</th>
+                <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden sm:table-cell">{t('instructor.table.status')}</th>
+                <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden md:table-cell">{t('instructor.table.students')}</th>
+                <th className="text-right px-4 py-3 text-xs text-zinc-500 font-medium">{t('instructor.table.edit')}</th>
               </tr></thead>
               <tbody className="divide-y divide-white/[0.04]">
                 {recent.map(c => (

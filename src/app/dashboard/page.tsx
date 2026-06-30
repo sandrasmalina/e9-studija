@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, Award, Heart, ArrowRight, Clock, PlayCircle } from 'lucide-react';
 
 interface EnrolledCourse {
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats>({ enrolled: 0, completed: 0, certificates: 0, wishlist: 0 });
   const [recent, setRecent] = useState<EnrolledCourse[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     (async () => {
@@ -54,10 +56,10 @@ export default function DashboardPage() {
   }, []);
 
   const STATS_CARDS = [
-    { label: 'Enrolled', value: stats.enrolled, icon: BookOpen, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
-    { label: 'Completed', value: stats.completed, icon: Award, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' },
-    { label: 'Certificates', value: stats.certificates, icon: Award, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' },
-    { label: 'Wishlist', value: stats.wishlist, icon: Heart, color: 'text-pink-400', bg: 'bg-pink-500/10 border-pink-500/20' },
+    { label: t('dashboard.stat.enrolled'), value: stats.enrolled, icon: BookOpen, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+    { label: t('dashboard.stat.completed'), value: stats.completed, icon: Award, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' },
+    { label: t('dashboard.stat.certificates'), value: stats.certificates, icon: Award, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' },
+    { label: t('dashboard.stat.wishlist'), value: stats.wishlist, icon: Heart, color: 'text-pink-400', bg: 'bg-pink-500/10 border-pink-500/20' },
   ];
 
   if (loading) {
@@ -76,8 +78,8 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* Welcome */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Welcome back, {name.split(' ')[0]} 👋</h1>
-        <p className="text-zinc-500 text-sm mt-1">Here's a summary of your learning progress.</p>
+        <h1 className="text-2xl font-bold text-white">{t('dashboard.welcome').replace('{name}', name.split(' ')[0])}</h1>
+        <p className="text-zinc-500 text-sm mt-1">{t('dashboard.summary')}</p>
       </div>
 
       {/* Stats */}
@@ -94,17 +96,17 @@ export default function DashboardPage() {
       {/* Continue Learning */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-semibold">Continue Learning</h2>
+          <h2 className="text-white font-semibold">{t('dashboard.continue')}</h2>
           <Link href="/dashboard/my-courses" className="text-purple-400 text-sm hover:text-purple-300 flex items-center gap-1 transition-colors">
-            All courses <ArrowRight size={14} />
+            {t('dashboard.allCourses')} <ArrowRight size={14} />
           </Link>
         </div>
         {recent.length === 0 ? (
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-10 text-center">
             <BookOpen size={36} className="text-zinc-700 mx-auto mb-3" />
-            <p className="text-zinc-500 text-sm">You haven't enrolled in any courses yet.</p>
+            <p className="text-zinc-500 text-sm">{t('dashboard.emptyCourses')}</p>
             <Link href="/courses" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 transition-colors">
-              Browse Courses <ArrowRight size={14} />
+              {t('dashboard.browseCourses')} <ArrowRight size={14} />
             </Link>
           </div>
         ) : (
@@ -129,7 +131,7 @@ export default function DashboardPage() {
                 <div className="p-4">
                   <h3 className="text-white text-sm font-medium line-clamp-2 group-hover:text-purple-300 transition-colors">{course.title_en}</h3>
                   <div className="flex items-center justify-between mt-3">
-                    <span className="text-purple-400 text-xs font-medium">{progress_pct ?? 0}% complete</span>
+                    <span className="text-purple-400 text-xs font-medium">{t('dashboard.progressComplete').replace('{value}', String(progress_pct ?? 0))}</span>
                     {last_accessed_at && (
                       <span className="text-zinc-600 text-xs flex items-center gap-1">
                         <Clock size={11} />

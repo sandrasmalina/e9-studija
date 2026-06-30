@@ -5,6 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { supabase } from '@/lib/supabase';
+import DashboardControls from '@/components/DashboardControls';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, BookOpen, TrendingUp, Settings,
   ChevronRight, ChevronDown, ExternalLink, ArrowLeft, Play, FileText, Paperclip,
@@ -12,10 +14,10 @@ import {
 } from 'lucide-react';
 
 const NAV = [
-  { href: '/instructor',          icon: LayoutDashboard, label: 'Overview' },
-  { href: '/instructor/courses',  icon: BookOpen,        label: 'My Courses' },
-  { href: '/instructor/earnings', icon: TrendingUp,      label: 'Earnings' },
-  { href: '/profile',             icon: Settings,        label: 'Profile', external: true },
+  { href: '/instructor',          icon: LayoutDashboard, labelKey: 'instructor.nav.overview' },
+  { href: '/instructor/courses',  icon: BookOpen,        labelKey: 'instructor.nav.myCourses' },
+  { href: '/instructor/earnings', icon: TrendingUp,      labelKey: 'instructor.nav.earnings' },
+  { href: '/profile',             icon: Settings,        labelKey: 'instructor.nav.profile', external: true },
 ];
 
 const COURSE_PATH_RE = /^\/instructor\/courses\/([0-9a-f-]{36})(\/.*)?$/;
@@ -30,6 +32,7 @@ interface Section {
 export default function InstructorLayout({ children }: { children: React.ReactNode }) {
   const router    = useRouter();
   const pathname  = usePathname();
+  const { t } = useLanguage();
   const [user,      setUser]      = useState<{ name: string; email: string; isAdmin: boolean } | null>(null);
   const [checking,  setChecking]  = useState(true);
   const [courseTitle, setCourseTitle] = useState('');
@@ -48,17 +51,22 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) { router.replace('/auth/login?redirect=/instructor'); return; }
 
-      const { data: profile } = await supabase
-        .from('profiles').select('full_name, role').eq('id', authUser.id).single();
+      const [{ data: profile }, { data: assignedRoles }] = await Promise.all([
+        supabase.from('profiles').select('full_name, role').eq('id', authUser.id).single(),
+        supabase.from('user_roles').select('roles(name)').eq('user_id', authUser.id),
+      ]);
+      const roleNames = new Set<string>();
+      if (profile?.role) roleNames.add(profile.role);
+      (assignedRoles ?? []).forEach((row: any) => row.roles?.name && roleNames.add(row.roles.name));
 
-      if (!profile || (profile.role !== 'instructor' && profile.role !== 'admin')) {
+      if (!profile || (!roleNames.has('instructor') && !roleNames.has('admin'))) {
         router.replace('/dashboard'); return;
       }
 
       setUser({
         name: profile.full_name || authUser.email?.split('@')[0] || 'Instructor',
         email: authUser.email ?? '',
-        isAdmin: profile.role === 'admin',
+        isAdmin: roleNames.has('admin'),
       });
       setChecking(false);
     })();
@@ -183,18 +191,18 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         <Link href="/admin/dashboard"
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all group">
           <ShieldCheck size={16} className="text-purple-400 group-hover:text-purple-300 transition-colors" />
-          Admin Dashboard
+          {t('instructor.nav.admin')}
         </Link>
       )}
       <Link href="/"
         className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all group">
         <Home size={16} className="group-hover:text-zinc-300 transition-colors" />
-        Exit to Site
+        {t('instructor.nav.exit')}
       </Link>
       <button onClick={handleLogout}
         className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-red-400 hover:bg-red-950/20 transition-all group">
         <LogOut size={16} className="group-hover:text-red-400 transition-colors" />
-        Logout
+        {t('instructor.nav.logout')}
       </button>
     </div>
   );
@@ -390,6 +398,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
           </nav>
 
           <SidebarFooter />
+          <DashboardControls />
         </aside>
 
         <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
@@ -417,15 +426,15 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
             </div>
             <div>
               <p className="text-white font-semibold text-sm leading-tight">E9 Studija</p>
-              <p className="text-zinc-500 text-xs">Instructor</p>
+              <p className="text-zinc-500 text-xs">{t('instructor.title')}</p>
             </div>
           </div>
         </div>
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          <p className="text-zinc-600 text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">Teaching</p>
-          {NAV.map(({ href, icon: Icon, label, external }) => {
+          <p className="text-zinc-600 text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">{t('instructor.nav.teaching')}</p>
+          {NAV.map(({ href, icon: Icon, labelKey, external }) => {
             const active = pathname === href || (href !== '/instructor' && pathname.startsWith(href) && !external);
             return (
               <Link key={href} href={href}
@@ -434,7 +443,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                 }`}>
                 {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />}
                 <Icon size={16} className={active ? 'text-accent' : 'text-zinc-500 group-hover:text-zinc-300 transition-colors'} />
-                <span className="flex-1">{label}</span>
+                <span className="flex-1">{t(labelKey)}</span>
                 {external && <ExternalLink size={11} className="text-zinc-700" />}
                 {active && !external && <ChevronRight size={12} className="text-accent/50" />}
               </Link>
@@ -456,12 +465,13 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         </div>
 
         <SidebarFooter />
+        <DashboardControls />
       </aside>
 
       <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
         <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-8 flex items-center shrink-0">
           <h1 className="text-white text-sm font-semibold">
-            {NAV.find(n => pathname === n.href || (n.href !== '/instructor' && pathname.startsWith(n.href)))?.label ?? 'Instructor'}
+            {t(NAV.find(n => pathname === n.href || (n.href !== '/instructor' && pathname.startsWith(n.href)))?.labelKey ?? 'instructor.title')}
           </h1>
         </header>
         <main className="flex-1 p-8 overflow-y-auto">{children}</main>

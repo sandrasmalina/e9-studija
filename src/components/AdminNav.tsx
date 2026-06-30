@@ -5,43 +5,45 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap, Layers, Newspaper, ChevronDown, PenLine, UserCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import DashboardControls from '@/components/DashboardControls';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const navGroups = [
   {
-    label: 'Webpage',
+    labelKey: 'admin.nav.webpage',
     items: [
-      { href: '/admin/projects',  icon: FolderKanban,    label: 'Projects', roles: ['admin'] },
-      { href: '/admin/project-categories', icon: Layers, label: 'Project Categories', roles: ['admin'] },
-      { href: '/admin/team',      icon: Users,           label: 'Team Members', roles: ['admin'] },
-      { href: '/admin/testimonials', icon: Quote,        label: 'Testimonials', roles: ['admin'] },
+      { href: '/admin/projects',  icon: FolderKanban,    labelKey: 'admin.nav.projects', roles: ['admin'] },
+      { href: '/admin/project-categories', icon: Layers, labelKey: 'admin.nav.projectCategories', roles: ['admin'] },
+      { href: '/admin/team',      icon: Users,           labelKey: 'admin.nav.team', roles: ['admin'] },
+      { href: '/admin/testimonials', icon: Quote,        labelKey: 'admin.nav.testimonials', roles: ['admin'] },
     ],
   },
   {
-    label: 'Publications',
+    labelKey: 'admin.nav.publications',
     items: [
-      { href: '/admin/publications', icon: Newspaper, label: 'Publications', roles: ['admin', 'author'] },
-      { href: '/admin/publication-categories', icon: Tag, label: 'Categories', roles: ['admin'] },
-      { href: '/admin/users?role=author', icon: PenLine, label: 'Authors', roles: ['admin'] },
+      { href: '/admin/publications', icon: Newspaper, labelKey: 'admin.nav.publications', roles: ['admin', 'author'] },
+      { href: '/admin/publication-categories', icon: Tag, labelKey: 'admin.nav.categories', roles: ['admin'] },
+      { href: '/admin/users?role=author', icon: PenLine, labelKey: 'admin.nav.authors', roles: ['admin'] },
     ],
   },
   {
-    label: 'Courses',
+    labelKey: 'admin.nav.courses',
     items: [
-      { href: '/admin/courses',     icon: BookOpen,    label: 'Courses', roles: ['admin'] },
-      { href: '/instructor/courses', icon: BookOpen,   label: 'My Courses', roles: ['admin', 'instructor'] },
-      { href: '/admin/categories',  icon: Tag,         label: 'Categories', roles: ['admin'] },
-      { href: '/admin/users?role=student', icon: GraduationCap, label: 'Students', roles: ['admin'] },
-      { href: '/admin/instructors', icon: UserCheck,   label: 'Instructor Apps', roles: ['admin'] },
-      { href: '/admin/settings', icon: Settings, label: 'Course Settings', roles: ['admin'] },
+      { href: '/admin/courses',     icon: BookOpen,    labelKey: 'admin.nav.courses', roles: ['admin'] },
+      { href: '/instructor/courses', icon: BookOpen,   labelKey: 'admin.nav.myCourses', roles: ['admin', 'instructor'] },
+      { href: '/admin/categories',  icon: Tag,         labelKey: 'admin.nav.categories', roles: ['admin'] },
+      { href: '/admin/users?role=student', icon: GraduationCap, labelKey: 'admin.nav.students', roles: ['admin'] },
+      { href: '/admin/instructors', icon: UserCheck,   labelKey: 'admin.nav.instructorApps', roles: ['admin'] },
+      { href: '/admin/settings', icon: Settings, labelKey: 'admin.nav.courseSettings', roles: ['admin'] },
     ],
   },
   {
-    label: 'Platform Management',
+    labelKey: 'admin.nav.platform',
     items: [
-      { href: '/admin/users', icon: Users, label: 'All Platform Users', roles: ['admin'] },
-      { href: '/admin/invitations', icon: Send, label: 'Invitations', roles: ['admin'] },
-      { href: '/admin/contacts', icon: Mail,     label: 'Contacts', roles: ['admin'] },
-      { href: '/admin/social',   icon: Share2,   label: 'Social Links', roles: ['admin'] },
+      { href: '/admin/users', icon: Users, labelKey: 'admin.nav.users', roles: ['admin'] },
+      { href: '/admin/invitations', icon: Send, labelKey: 'admin.nav.invitations', roles: ['admin'] },
+      { href: '/admin/contacts', icon: Mail,     labelKey: 'admin.nav.contacts', roles: ['admin'] },
+      { href: '/admin/social',   icon: Share2,   labelKey: 'admin.nav.social', roles: ['admin'] },
     ],
   },
 ];
@@ -49,6 +51,7 @@ const navGroups = [
 export default function AdminNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useLanguage();
   const [roles, setRoles] = React.useState<string[]>([]);
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
 
@@ -72,7 +75,7 @@ export default function AdminNav() {
   React.useEffect(() => {
     const next: Record<string, boolean> = {};
     navGroups.forEach(group => {
-      next[group.label] = group.items.some(item => itemIsActive(item.href));
+      next[group.labelKey] = group.items.some(item => itemIsActive(item.href));
     });
     setOpenGroups(next);
   }, [pathname]);
@@ -97,7 +100,7 @@ export default function AdminNav() {
           </div>
           <div>
             <p className="text-white font-semibold text-sm leading-tight">E9 Studija</p>
-            <p className="text-zinc-500 text-xs">Admin Panel</p>
+            <p className="text-zinc-500 text-xs">{t('admin.nav.panel')}</p>
           </div>
         </div>
       </div>
@@ -115,26 +118,26 @@ export default function AdminNav() {
           >
             {pathname === '/admin/dashboard' && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />}
             <LayoutDashboard size={16} className={pathname === '/admin/dashboard' ? 'text-accent' : 'text-zinc-500 group-hover:text-zinc-300 transition-colors'} />
-            <span className="flex-1">Dashboard</span>
+            <span className="flex-1">{t('admin.nav.dashboard')}</span>
             {pathname === '/admin/dashboard' && <ChevronRight size={12} className="text-accent/50" />}
           </Link>
         )}
         {navGroups.map((group) => {
           const visibleItems = group.items.filter(item => canSee(item.roles));
           if (visibleItems.length === 0) return null;
-          const isOpen = openGroups[group.label] ?? true;
+          const isOpen = openGroups[group.labelKey] ?? true;
           return (
-          <div key={group.label}>
+          <div key={group.labelKey}>
             <button
               type="button"
-              onClick={() => setOpenGroups(current => ({ ...current, [group.label]: !isOpen }))}
+              onClick={() => setOpenGroups(current => ({ ...current, [group.labelKey]: !isOpen }))}
               className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-zinc-600 hover:bg-zinc-900/70 hover:text-zinc-400 transition-colors"
             >
-              <span>{group.label}</span>
+              <span>{t(group.labelKey)}</span>
               <ChevronDown size={13} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && <div className="mt-1 space-y-1">
-              {visibleItems.map(({ href, icon: Icon, label, comingSoon }: { href: string; icon: React.ElementType; label: string; comingSoon?: boolean; roles?: string[] }) => {
+              {visibleItems.map(({ href, icon: Icon, labelKey, comingSoon }: { href: string; icon: React.ElementType; labelKey: string; comingSoon?: boolean; roles?: string[] }) => {
                 const active = itemIsActive(href);
                 return (
                   <Link
@@ -150,7 +153,7 @@ export default function AdminNav() {
                       <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />
                     )}
                     <Icon size={16} className={active ? 'text-accent' : 'text-zinc-500 group-hover:text-zinc-300 transition-colors'} />
-                    <span className="flex-1">{label}</span>
+                    <span className="flex-1">{t(labelKey)}</span>
                     {comingSoon
                       ? <span className="text-[9px] bg-zinc-900 text-zinc-600 px-1.5 py-0.5 rounded-md border border-zinc-800">Soon</span>
                       : active && <ChevronRight size={12} className="text-accent/50" />
@@ -163,6 +166,7 @@ export default function AdminNav() {
           );
         })}
       </nav>
+      <DashboardControls />
 
       {/* Footer actions */}
       <div className="px-3 py-4 border-t border-zinc-900 space-y-1">
@@ -171,21 +175,21 @@ export default function AdminNav() {
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all group"
         >
           <UserCircle size={16} className="group-hover:text-zinc-300 transition-colors" />
-          My Profile
+          {t('admin.nav.profile')}
         </Link>
         <button
           onClick={handleViewSite}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all group"
         >
           <Home size={16} className="group-hover:text-zinc-300 transition-colors" />
-          Exit to Site
+          {t('admin.nav.exit')}
         </button>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-red-400 hover:bg-red-950/20 transition-all group"
         >
           <LogOut size={16} className="group-hover:text-red-400 transition-colors" />
-          Logout
+          {t('admin.nav.logout')}
         </button>
       </div>
     </aside>

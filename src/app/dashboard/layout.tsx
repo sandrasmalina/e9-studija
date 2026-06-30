@@ -4,18 +4,21 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import DashboardControls from '@/components/DashboardControls';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle } from 'lucide-react';
 
 const NAV = [
-  { href: '/dashboard',             icon: LayoutDashboard, label: 'Overview' },
-  { href: '/dashboard/my-courses',  icon: BookOpen,        label: 'My Courses' },
-  { href: '/dashboard/wishlist',    icon: Heart,           label: 'Wishlist' },
-  { href: '/dashboard/certificates',icon: Award,           label: 'Certificates' },
+  { href: '/dashboard',             icon: LayoutDashboard, labelKey: 'dashboard.nav.overview' },
+  { href: '/dashboard/my-courses',  icon: BookOpen,        labelKey: 'dashboard.nav.myCourses' },
+  { href: '/dashboard/wishlist',    icon: Heart,           labelKey: 'dashboard.nav.wishlist' },
+  { href: '/dashboard/certificates',icon: Award,           labelKey: 'dashboard.nav.certificates' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useLanguage();
   const [user, setUser] = useState<{ name: string; email: string; avatar: string | null } | null>(null);
   const [checking, setChecking] = useState(true);
 
@@ -69,7 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {NAV.map(({ href, icon: Icon, label }) => {
+          {NAV.map(({ href, icon: Icon, labelKey }) => {
             const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
             return (
               <Link key={href} href={href}
@@ -79,7 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04]'
                 }`}>
                 <Icon size={16} className={active ? 'text-purple-400' : 'text-zinc-600 group-hover:text-zinc-400'} />
-                {label}
+                {t(labelKey)}
                 {active && <ChevronRight size={12} className="ml-auto text-purple-400/60" />}
               </Link>
             );
@@ -103,13 +106,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <button onClick={handleLogout}
             className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-zinc-600 hover:text-red-400 hover:bg-red-900/10 text-sm transition-all">
-            <LogOut size={14} /> Sign out
+            <LogOut size={14} /> {t('dashboard.nav.signOut')}
           </button>
           <Link href="/profile"
             className="mt-1 flex items-center gap-2 w-full px-3 py-2 rounded-xl text-zinc-600 hover:text-purple-300 hover:bg-purple-900/10 text-sm transition-all">
-            <UserCircle size={14} /> Profile settings
+            <UserCircle size={14} /> {t('dashboard.nav.profile')}
           </Link>
         </div>
+        <DashboardControls />
       </aside>
 
       {/* Main */}
