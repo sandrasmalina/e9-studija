@@ -21,7 +21,8 @@ export default function Navigation() {
   const hideNav = pathname.startsWith('/admin') ||
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/learn') ||
-    pathname.startsWith('/instructor');
+    pathname.startsWith('/instructor') ||
+    pathname.startsWith('/profile');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);

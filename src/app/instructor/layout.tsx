@@ -15,7 +15,7 @@ const NAV = [
   { href: '/instructor',          icon: LayoutDashboard, label: 'Overview' },
   { href: '/instructor/courses',  icon: BookOpen,        label: 'My Courses' },
   { href: '/instructor/earnings', icon: TrendingUp,      label: 'Earnings' },
-  { href: '/dashboard/settings',  icon: Settings,        label: 'Profile', external: true },
+  { href: '/profile',             icon: Settings,        label: 'Profile', external: true },
 ];
 
 const COURSE_PATH_RE = /^\/instructor\/courses\/([0-9a-f-]{36})(\/.*)?$/;

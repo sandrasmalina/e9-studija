@@ -70,7 +70,8 @@ export default function Footer() {
   const hideFooter = pathname.startsWith('/admin') ||
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/learn') ||
-    pathname.startsWith('/instructor');
+    pathname.startsWith('/instructor') ||
+    pathname.startsWith('/profile');
 
   useEffect(() => {
     if (hideFooter) return;

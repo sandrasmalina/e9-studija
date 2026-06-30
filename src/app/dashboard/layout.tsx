@@ -4,14 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { BookOpen, Heart, Award, Settings, LogOut, GraduationCap, LayoutDashboard, ChevronRight } from 'lucide-react';
+import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle } from 'lucide-react';
 
 const NAV = [
   { href: '/dashboard',             icon: LayoutDashboard, label: 'Overview' },
   { href: '/dashboard/my-courses',  icon: BookOpen,        label: 'My Courses' },
   { href: '/dashboard/wishlist',    icon: Heart,           label: 'Wishlist' },
   { href: '/dashboard/certificates',icon: Award,           label: 'Certificates' },
-  { href: '/dashboard/settings',    icon: Settings,        label: 'Settings' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -106,6 +105,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-zinc-600 hover:text-red-400 hover:bg-red-900/10 text-sm transition-all">
             <LogOut size={14} /> Sign out
           </button>
+          <Link href="/profile"
+            className="mt-1 flex items-center gap-2 w-full px-3 py-2 rounded-xl text-zinc-600 hover:text-purple-300 hover:bg-purple-900/10 text-sm transition-all">
+            <UserCircle size={14} /> Profile settings
+          </Link>
         </div>
       </aside>
 

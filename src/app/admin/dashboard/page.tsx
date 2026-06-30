@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { ArrowRight, BookOpen, FolderKanban, GraduationCap, Mail, Newspaper, PenLine, Plus, Quote, Settings, Share2, Star, Tag, UserCheck, Users } from 'lucide-react';
+import { ArrowRight, BookOpen, ChevronDown, FolderKanban, GraduationCap, Mail, Newspaper, PenLine, Quote, Settings, Share2, Star, Tag, UserCheck, Users } from 'lucide-react';
 
 interface Stats {
   projects: number;
@@ -72,15 +72,18 @@ function QuickLink({ href, title, description, icon: Icon }: { href: string; tit
   );
 }
 
-function Section({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+function Section({ title, subtitle, children, defaultOpen = false }: { title: string; subtitle: string; children: React.ReactNode; defaultOpen?: boolean }) {
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-white">{title}</h2>
-        <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
-      </div>
-      {children}
-    </section>
+    <details open={defaultOpen} className="group rounded-2xl border border-zinc-800 bg-zinc-950/40 p-5">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">{title}</h2>
+          <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
+        </div>
+        <ChevronDown size={18} className="text-zinc-600 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="mt-5 space-y-4">{children}</div>
+    </details>
   );
 }
 
@@ -182,7 +185,7 @@ export default function AdminDashboard() {
       </div>
 
       {(isAdmin || isAuthor) && (
-        <Section title="Publications" subtitle={isAdmin ? 'All article, author, and publication activity.' : 'Your author workspace and publication metrics.'}>
+        <Section title="Publications" subtitle={isAdmin ? 'All article, author, and publication activity.' : 'Your author workspace and publication metrics.'} defaultOpen>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label={isAdmin ? 'Total Publications' : 'Your Publications'} value={isAdmin ? stats.publications : stats.ownPublications} icon={Newspaper} tone="border-violet-500/20 text-violet-400" />
             <StatCard label={isAdmin ? 'Published Publications' : 'Published by You'} value={isAdmin ? stats.publishedPublications : stats.ownPublishedPublications} icon={Star} tone="border-emerald-500/20 text-emerald-400" />
