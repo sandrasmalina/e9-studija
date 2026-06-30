@@ -182,7 +182,7 @@ export default function HomePage() {
       {/* Core Expertise */}
       <section className="relative z-20 py-24" style={{ background: '#f8f8fb' }}>
         <div className="max-w-7xl mx-auto px-6">
-          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-14">
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="mb-14">
             <div className="inline-flex items-center gap-3">
               <span className="text-sm font-bold tracking-[0.12em] uppercase text-violet-600">
                 {t('core.eyebrow')}
@@ -235,19 +235,19 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-6">
 
           {/* ── PROBLEMS ── */}
-          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-6">
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="mb-6">
             <span className="inline-block text-xs font-semibold tracking-[0.2em] uppercase text-accent px-3 py-1.5 rounded-full border border-accent/30 bg-accent/10">
               {t('problems.eyebrow')}
             </span>
           </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }} className="mb-16">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="mb-16">
             <h2 className="text-4xl md:text-6xl font-bold text-white">{t('problems.title')}</h2>
             <p className="text-neutral-500 mt-3 text-lg">{t('problems.subtitle')}</p>
           </motion.div>
 
           {/* Problem cards — 2 col desktop, staggered */}
           <motion.div
-            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
+            initial="hidden" animate="visible" variants={stagger}
             className="grid md:grid-cols-2 gap-4"
           >
             {[t('problems.1'), t('problems.2'), t('problems.3'), t('problems.4'), t('problems.5')].map((problem, i) => (
@@ -278,7 +278,7 @@ export default function HomePage() {
 
           {/* Section header */}
           <motion.div
-            initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
+            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
             className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-0 pb-10 border-b border-gray-200"
           >
             <div>
@@ -295,7 +295,7 @@ export default function HomePage() {
               return (
               <motion.div
                 key={s.title}
-                initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.45, delay: i * 0.06 }}
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: i * 0.06 }}
                 className="group relative flex flex-col md:flex-row md:items-center gap-4 md:gap-7 py-7 border-b border-gray-200 hover:pl-4 transition-all duration-300 cursor-default"
               >
                 {/* left accent stripe — purple or amber */}
@@ -356,10 +356,10 @@ export default function HomePage() {
       <section className="relative z-20 py-24" style={{background: '#f3f0fb'}}>
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent" />
         <div className="max-w-7xl mx-auto px-6">
-          <motion.h2 initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-3xl md:text-5xl font-bold text-[#160d2e] text-center mb-16">
+          <motion.h2 initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} className="text-3xl md:text-5xl font-bold text-[#160d2e] text-center mb-16">
             {t('whychooseus.title')}
           </motion.h2>
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger} className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <motion.div initial="hidden" animate="visible" variants={stagger} className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {reasons.map((r, idx) => (
               <motion.div key={r.label} variants={fadeUp} className="flex items-center gap-3 p-5 rounded-xl bg-white border border-purple-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all duration-300">
                 <r.icon size={18} className={idx % 2 === 0 ? 'text-accent flex-shrink-0' : 'text-amber-500 flex-shrink-0'} />
@@ -373,7 +373,7 @@ export default function HomePage() {
       {/* Featured Projects */}
       <section className="relative z-20 py-24" style={{background: '#0b0915'}}>
         <div className="max-w-7xl mx-auto px-6">
-          <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="flex items-center justify-between mb-12">
+          <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} className="flex items-center justify-between mb-12">
             <div>
               <h2 className="text-3xl md:text-5xl font-bold text-white">{t('featured.title')}</h2>
               {featuredProjects.length === 0 && (
@@ -431,7 +431,7 @@ export default function HomePage() {
       {/* How We Work */}
       <section className="relative z-20 py-24" style={{background: '#0f0c1e'}}>
         <div className="max-w-7xl mx-auto px-6">
-          <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="text-center mb-16">
+          <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-bold" style={{color:'#f0eeff'}}>{t('howwework.title')}</h2>
           </motion.div>
 
@@ -442,7 +442,7 @@ export default function HomePage() {
               <div className="absolute left-[10%] right-[10%] top-7 h-px z-0"
                 style={{background: 'linear-gradient(90deg, transparent, rgba(168,85,247,0.5) 20%, rgba(236,72,153,0.6) 50%, rgba(168,85,247,0.5) 80%, transparent)'}} />
 
-              <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger}
+              <motion.div initial="hidden" animate="visible" variants={stagger}
                 className="grid grid-cols-5 gap-4">
                 {steps.map((step) => (
                   <motion.div key={step.num} variants={fadeUp} className="flex flex-col items-center text-center">
@@ -467,7 +467,7 @@ export default function HomePage() {
           </div>
 
           {/* Mobile: vertical stack */}
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once:true }} variants={stagger}
+          <motion.div initial="hidden" animate="visible" variants={stagger}
             className="flex flex-col gap-4 md:hidden">
             {steps.map((step) => (
               <motion.div key={step.num} variants={fadeUp} className="flex items-start gap-4">
@@ -498,7 +498,7 @@ export default function HomePage() {
         <div className="absolute bottom-0 right-1/4 w-56 h-56 bg-purple-200/20 rounded-full blur-[80px] pointer-events-none" />
         <div className="max-w-3xl mx-auto px-6 relative z-10">
           <motion.h2
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             className="text-3xl md:text-5xl font-bold text-[#160d2e] text-center mb-16"
           >
             {t('testimonials.title')}
@@ -573,7 +573,7 @@ export default function HomePage() {
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-[600px] h-[300px] bg-accent/12 rounded-full blur-[120px]" />
         </div>
-        <motion.div initial={{ opacity:0, y:30 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="relative z-10 max-w-2xl mx-auto px-6 text-center">
+        <motion.div initial={{ opacity:0, y:30 }} animate={{ opacity:1, y:0 }} className="relative z-10 max-w-2xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">{t('cta.title')}</h2>
           <p className="text-neutral-400 mb-8">{t('cta.subtitle')}</p>
           <Link href="/contact"><Button size="lg">{t('cta.button')} <ArrowRight size={16} className="ml-2" /></Button></Link>
