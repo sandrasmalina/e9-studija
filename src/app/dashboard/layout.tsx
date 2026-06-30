@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import DashboardControls from '@/components/DashboardControls';
+import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle } from 'lucide-react';
+import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle, Home } from 'lucide-react';
 
 const NAV = [
   { href: '/dashboard',             icon: LayoutDashboard, labelKey: 'dashboard.nav.overview' },
@@ -87,6 +87,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             );
           })}
+          <DashboardSpaces />
         </nav>
 
         {/* User footer */}
@@ -112,8 +113,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className="mt-1 flex items-center gap-2 w-full px-3 py-2 rounded-xl text-zinc-600 hover:text-purple-300 hover:bg-purple-900/10 text-sm transition-all">
             <UserCircle size={14} /> {t('dashboard.nav.profile')}
           </Link>
+          <Link href="/"
+            className="mt-1 flex items-center gap-2 w-full px-3 py-2 rounded-xl text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] text-sm transition-all">
+            <Home size={14} /> {t('admin.nav.exit')}
+          </Link>
+          <DashboardLanguageSwitcher />
         </div>
-        <DashboardControls />
       </aside>
 
       {/* Main */}

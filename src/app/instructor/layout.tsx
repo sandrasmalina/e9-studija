@@ -5,12 +5,12 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { supabase } from '@/lib/supabase';
-import DashboardControls from '@/components/DashboardControls';
+import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, BookOpen, TrendingUp, Settings,
   ChevronRight, ChevronDown, ExternalLink, ArrowLeft, Play, FileText, Paperclip,
-  ShieldCheck, LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus,
+  LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus,
 } from 'lucide-react';
 
 const NAV = [
@@ -187,23 +187,22 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   // ── Shared sidebar footer ────────────────────────────────────────────────
   const SidebarFooter = () => (
     <div className="px-3 py-3 border-t border-zinc-900 space-y-0.5 shrink-0">
-      {user?.isAdmin && (
-        <Link href="/admin/dashboard"
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all group">
-          <ShieldCheck size={16} className="text-purple-400 group-hover:text-purple-300 transition-colors" />
-          {t('instructor.nav.admin')}
-        </Link>
-      )}
-      <Link href="/"
-        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all group">
-        <Home size={16} className="group-hover:text-zinc-300 transition-colors" />
-        {t('instructor.nav.exit')}
-      </Link>
       <button onClick={handleLogout}
         className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-red-400 hover:bg-red-950/20 transition-all group">
         <LogOut size={16} className="group-hover:text-red-400 transition-colors" />
         {t('instructor.nav.logout')}
       </button>
+      <Link href="/profile"
+        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all group">
+        <Settings size={16} className="group-hover:text-zinc-300 transition-colors" />
+        {t('instructor.nav.profile')}
+      </Link>
+      <Link href="/"
+        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all group">
+        <Home size={16} className="group-hover:text-zinc-300 transition-colors" />
+        {t('instructor.nav.exit')}
+      </Link>
+      <DashboardLanguageSwitcher />
     </div>
   );
 
@@ -395,10 +394,10 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
               {pathname === `/instructor/courses/${courseId}/settings` && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />}
               Settings
             </Link>
+            <DashboardSpaces />
           </nav>
 
           <SidebarFooter />
-          <DashboardControls />
         </aside>
 
         <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
@@ -449,6 +448,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
               </Link>
             );
           })}
+          <DashboardSpaces />
         </nav>
 
         {/* User card */}
@@ -465,7 +465,6 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         </div>
 
         <SidebarFooter />
-        <DashboardControls />
       </aside>
 
       <div className="flex-1 flex flex-col min-h-screen overflow-hidden">

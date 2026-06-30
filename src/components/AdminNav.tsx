@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap, Layers, Newspaper, ChevronDown, PenLine, UserCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import DashboardControls from '@/components/DashboardControls';
+import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const navGroups = [
@@ -122,6 +122,7 @@ export default function AdminNav() {
             {pathname === '/admin/dashboard' && <ChevronRight size={12} className="text-accent/50" />}
           </Link>
         )}
+        <DashboardSpaces />
         {navGroups.map((group) => {
           const visibleItems = group.items.filter(item => canSee(item.roles));
           if (visibleItems.length === 0) return null;
@@ -166,10 +167,16 @@ export default function AdminNav() {
           );
         })}
       </nav>
-      <DashboardControls />
 
       {/* Footer actions */}
-      <div className="px-3 py-4 border-t border-zinc-900 space-y-1">
+      <div className="px-3 py-4 border-t border-zinc-900 space-y-1 shrink-0">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-red-400 hover:bg-red-950/20 transition-all group"
+        >
+          <LogOut size={16} className="group-hover:text-red-400 transition-colors" />
+          {t('admin.nav.logout')}
+        </button>
         <Link
           href="/profile"
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all group"
@@ -184,13 +191,7 @@ export default function AdminNav() {
           <Home size={16} className="group-hover:text-zinc-300 transition-colors" />
           {t('admin.nav.exit')}
         </button>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-red-400 hover:bg-red-950/20 transition-all group"
-        >
-          <LogOut size={16} className="group-hover:text-red-400 transition-colors" />
-          {t('admin.nav.logout')}
-        </button>
+        <DashboardLanguageSwitcher />
       </div>
     </aside>
   );

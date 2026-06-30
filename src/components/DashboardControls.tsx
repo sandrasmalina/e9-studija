@@ -8,15 +8,14 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
 
 const spaces = [
-  { href: '/dashboard', labelKey: 'dashboard.space.learner', roles: ['student', 'admin', 'instructor', 'author'], icon: GraduationCap },
-  { href: '/instructor', labelKey: 'dashboard.space.instructor', roles: ['instructor', 'admin'], icon: BookOpen },
-  { href: '/admin/publications', labelKey: 'dashboard.space.author', roles: ['author', 'admin'], icon: Newspaper },
-  { href: '/admin/dashboard', labelKey: 'dashboard.space.admin', roles: ['admin'], icon: LayoutDashboard },
+  { href: '/admin/dashboard', labelKey: 'dashboard.space.admin', roles: ['admin'], icon: LayoutDashboard, priority: 1 },
+  { href: '/admin/publications', labelKey: 'dashboard.space.author', roles: ['author', 'admin'], icon: Newspaper, priority: 2 },
+  { href: '/instructor', labelKey: 'dashboard.space.instructor', roles: ['instructor', 'admin'], icon: BookOpen, priority: 3 },
+  { href: '/dashboard', labelKey: 'dashboard.space.learner', roles: ['student', 'admin', 'instructor', 'author'], icon: GraduationCap, priority: 4 },
 ];
 
-export default function DashboardControls() {
+function useAvailableSpaces() {
   const pathname = usePathname();
-  const { language, setLanguage, t } = useLanguage();
   const [roles, setRoles] = useState<string[]>([]);
 
   useEffect(() => {
@@ -33,52 +32,73 @@ export default function DashboardControls() {
     });
   }, []);
 
-  const availableSpaces = spaces.filter(space => space.roles.some(role => roles.includes(role)));
+  const isActive = (href: string) => pathname === href || (href !== '/dashboard' && pathname.startsWith(href.split('?')[0]));
+  const availableSpaces = spaces
+    .filter(space => space.roles.some(role => roles.includes(role)))
+    .sort((a, b) => Number(isActive(b.href)) - Number(isActive(a.href)) || a.priority - b.priority);
+
+  return { availableSpaces, isActive };
+}
+
+export function DashboardSpaces() {
+  const { t } = useLanguage();
+  const { availableSpaces, isActive } = useAvailableSpaces();
+
+  if (availableSpaces.length <= 1) return null;
 
   return (
-    <div className="space-y-4 border-t border-white/[0.06] px-3 py-4">
-      <div>
-        <div className="mb-2 flex items-center gap-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
-          <Languages size={12} /> {t('dashboard.language')}
-        </div>
-        <div className="grid grid-cols-2 gap-1 rounded-xl bg-white/[0.03] p-1">
-          {(['en', 'lv'] as const).map(lang => (
-            <button
-              key={lang}
-              type="button"
-              onClick={() => setLanguage(lang)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                language === lang ? 'bg-purple-500 text-white' : 'text-zinc-500 hover:text-zinc-200'
-              }`}
-            >
-              {lang.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="space-y-1 border-t border-white/[0.06] pt-3">
+      <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">{t('dashboard.spaces')}</p>
+      {availableSpaces.map(({ href, labelKey, icon: Icon }) => {
+        const active = isActive(href);
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
+              active ? 'bg-purple-500/15 text-purple-200' : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200'
+            }`}
+          >
+            <Icon size={14} className={active ? 'text-purple-300' : 'text-zinc-600'} />
+            {t(labelKey)}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
-      {availableSpaces.length > 1 && (
-        <div>
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">{t('dashboard.spaces')}</p>
-          <div className="space-y-1">
-            {availableSpaces.map(({ href, labelKey, icon: Icon }) => {
-              const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href.split('?')[0]));
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
-                    active ? 'bg-purple-500/15 text-purple-200' : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200'
-                  }`}
-                >
-                  <Icon size={14} className={active ? 'text-purple-300' : 'text-zinc-600'} />
-                  {t(labelKey)}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
+export function DashboardLanguageSwitcher() {
+  const { language, setLanguage, t } = useLanguage();
+
+  return (
+    <div className="px-3 pt-3">
+      <div className="mb-2 flex items-center gap-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+        <Languages size={12} /> {t('dashboard.language')}
+      </div>
+      <div className="grid grid-cols-2 gap-1 rounded-xl bg-white/[0.03] p-1">
+        {(['en', 'lv'] as const).map(lang => (
+          <button
+            key={lang}
+            type="button"
+            onClick={() => setLanguage(lang)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              language === lang ? 'bg-purple-500 text-white' : 'text-zinc-500 hover:text-zinc-200'
+            }`}
+          >
+            {lang.toUpperCase()}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardControls() {
+  return (
+    <div className="space-y-4 border-t border-white/[0.06] px-3 py-4">
+      <DashboardSpaces />
+      <DashboardLanguageSwitcher />
     </div>
   );
 }
