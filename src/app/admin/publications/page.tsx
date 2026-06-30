@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -26,14 +26,24 @@ interface Publication {
   external_source_url: string;
   is_featured: boolean;
   status: string;
+  article_type: string;
+  tags_ai_topics: string;
+  reading_time: number;
   seo_title: string;
   seo_description: string;
-  seo_keywords: string;
   og_title: string;
   og_description: string;
   og_image: string;
   canonical_url: string;
   no_index: boolean;
+  executive_summary: string;
+  ai_summary: string;
+  key_takeaways: string;
+  faq_items: string;
+  reference_sources: string;
+  expertise_level: string;
+  industry: string;
+  last_updated: string;
   updated_at: string;
   author?: { full_name: string | null; avatar_url: string | null } | null;
 }
@@ -45,10 +55,26 @@ const today = () => new Date().toISOString().slice(0, 10);
 const emptyForm = {
   title_en: '', title_lv: '', slug: '', short_description_en: '', short_description_lv: '', content_en: '', content_lv: '', has_lv: false,
   featured_media_url: '', featured_media_type: 'image', featured_image_alt: '', publication_date: today(), author_id: '', external_source_url: '',
-  is_featured: false, status: 'draft', seo_title: '', seo_description: '', seo_keywords: '', og_title: '', og_description: '', og_image: '', canonical_url: '', no_index: false,
+  is_featured: false, status: 'draft', article_type: 'article', tags_ai_topics: '', reading_time: 1,
+  seo_title: '', seo_description: '', og_title: '', og_description: '', og_image: '', canonical_url: '', no_index: false,
+  executive_summary: '', ai_summary: '', key_takeaways: '', faq_items: '', reference_sources: '', expertise_level: '', industry: '', last_updated: today(),
 };
 
 const toSlug = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+const plainText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+const readingTimeFor = (html: string) => Math.max(1, Math.ceil(plainText(html).split(' ').filter(Boolean).length / 220));
+
+function FormSection({ title, subtitle, children, defaultOpen = false }: { title: string; subtitle?: string; children: ReactNode; defaultOpen?: boolean }) {
+  return (
+    <details open={defaultOpen} className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-5">
+      <summary className="cursor-pointer list-none">
+        <p className="text-sm font-semibold text-white">{title}</p>
+        {subtitle && <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>}
+      </summary>
+      <div className="mt-5 space-y-4">{children}</div>
+    </details>
+  );
+}
 
 export default function AdminPublicationsPage() {
   const [publications, setPublications] = useState<Publication[]>([]);
@@ -114,7 +140,9 @@ export default function AdminPublicationsPage() {
     setForm({
       title_en: publication.title_en ?? '', title_lv: publication.title_lv ?? '', slug: publication.slug ?? '', short_description_en: publication.short_description_en ?? '', short_description_lv: publication.short_description_lv ?? '', content_en: publication.content_en ?? '', content_lv: publication.content_lv ?? '', has_lv: !!publication.has_lv,
       featured_media_url: publication.featured_media_url ?? '', featured_media_type: publication.featured_media_type ?? 'image', featured_image_alt: publication.featured_image_alt ?? '', publication_date: publication.publication_date ?? today(), author_id: publication.author_id ?? currentUserId, external_source_url: publication.external_source_url ?? '',
-      is_featured: !!publication.is_featured, status: publication.status ?? 'draft', seo_title: publication.seo_title ?? '', seo_description: publication.seo_description ?? '', seo_keywords: publication.seo_keywords ?? '', og_title: publication.og_title ?? '', og_description: publication.og_description ?? '', og_image: publication.og_image ?? '', canonical_url: publication.canonical_url ?? '', no_index: !!publication.no_index,
+      is_featured: !!publication.is_featured, status: publication.status ?? 'draft', article_type: publication.article_type ?? 'article', tags_ai_topics: publication.tags_ai_topics ?? '', reading_time: publication.reading_time ?? readingTimeFor(publication.content_en ?? ''),
+      seo_title: publication.seo_title ?? '', seo_description: publication.seo_description ?? '', og_title: publication.og_title ?? '', og_description: publication.og_description ?? '', og_image: publication.og_image ?? '', canonical_url: publication.canonical_url ?? '', no_index: !!publication.no_index,
+      executive_summary: publication.executive_summary ?? '', ai_summary: publication.ai_summary ?? '', key_takeaways: publication.key_takeaways ?? '', faq_items: publication.faq_items ?? '', reference_sources: publication.reference_sources ?? '', expertise_level: publication.expertise_level ?? '', industry: publication.industry ?? '', last_updated: publication.last_updated ?? today(),
     });
     setSelectedCategoryIds(publicationCategoryMap[publication.id] ?? []);
     setModal({ open: true, editing: publication });
@@ -153,7 +181,22 @@ export default function AdminPublicationsPage() {
     if (!form.slug.trim()) { setError('Slug is required'); return; }
     if (!form.author_id) { setError('Author is required'); return; }
     setSaving(true); setError('');
-    const payload = { ...form, slug: toSlug(form.slug), title_en: form.title_en.trim(), author_id: form.author_id || currentUserId };
+    const contentReadingTime = readingTimeFor(form.content_en);
+    const canonicalPath = `/publications/${toSlug(form.slug)}`;
+    const payload = {
+      ...form,
+      slug: toSlug(form.slug),
+      title_en: form.title_en.trim(),
+      author_id: form.author_id || currentUserId,
+      reading_time: contentReadingTime,
+      seo_title: form.seo_title.trim() || form.title_en.trim(),
+      seo_description: form.seo_description.trim() || form.short_description_en.trim(),
+      og_title: form.og_title.trim() || form.seo_title.trim() || form.title_en.trim(),
+      og_description: form.og_description.trim() || form.seo_description.trim() || form.short_description_en.trim(),
+      og_image: form.og_image.trim() || form.featured_media_url.trim(),
+      canonical_url: form.canonical_url.trim() || canonicalPath,
+      last_updated: today(),
+    };
     const { data, error: saveError } = modal.editing
       ? await supabase.from('publications').update(payload).eq('id', modal.editing.id).select('id').single()
       : await supabase.from('publications').insert(payload).select('id').single();
@@ -195,6 +238,7 @@ export default function AdminPublicationsPage() {
   });
 
   const input = 'w-full px-3 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:border-accent/50 transition-colors';
+  const textarea = `${input} min-h-[110px] resize-y`;
 
   return (
     <div className="max-w-6xl">
@@ -280,30 +324,35 @@ export default function AdminPublicationsPage() {
               <button onClick={() => setModal({ open: false })} className="text-zinc-500 hover:text-white"><X size={18} /></button>
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Title (EN)</label>
-                  <input value={form.title_en} onChange={event => setForm(current => ({ ...current, title_en: event.target.value, slug: modal.editing ? current.slug : toSlug(event.target.value) }))} className={input} required />
+              <FormSection title="1. Basic Information" subtitle="Title, language, status, author, and publication metadata." defaultOpen>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Title (EN)</label>
+                    <input value={form.title_en} onChange={event => setForm(current => ({ ...current, title_en: event.target.value, slug: modal.editing ? current.slug : toSlug(event.target.value) }))} className={input} required />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Slug</label>
+                    <input value={form.slug} onChange={event => setForm(current => ({ ...current, slug: toSlug(event.target.value) }))} className={input} required />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Slug</label>
-                  <input value={form.slug} onChange={event => setForm(current => ({ ...current, slug: toSlug(event.target.value) }))} className={input} required />
+                <label className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer w-fit">
+                  <input type="checkbox" checked={form.has_lv} onChange={event => setForm(current => ({ ...current, has_lv: event.target.checked }))} className="rounded accent-violet-500" /> Add Latvian version
+                </label>
+                {form.has_lv && <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Title (LV)</label><input value={form.title_lv} onChange={event => setForm(current => ({ ...current, title_lv: event.target.value }))} className={input} /></div>}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Short Description (EN)</label><textarea value={form.short_description_en} onChange={event => setForm(current => ({ ...current, short_description_en: event.target.value }))} className={textarea} rows={4} /></div>
+                  {form.has_lv && <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Short Description (LV)</label><textarea value={form.short_description_lv} onChange={event => setForm(current => ({ ...current, short_description_lv: event.target.value }))} className={textarea} rows={4} /></div>}
                 </div>
-              </div>
-              <label className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer w-fit">
-                <input type="checkbox" checked={form.has_lv} onChange={event => setForm(current => ({ ...current, has_lv: event.target.checked }))} className="rounded accent-violet-500" /> Add Latvian version
-              </label>
-              {form.has_lv && <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Title (LV)</label><input value={form.title_lv} onChange={event => setForm(current => ({ ...current, title_lv: event.target.value }))} className={input} /></div>}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Short Description (EN)</label><textarea value={form.short_description_en} onChange={event => setForm(current => ({ ...current, short_description_en: event.target.value }))} className={`${input} resize-none`} rows={3} /></div>
-                {form.has_lv && <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Short Description (LV)</label><textarea value={form.short_description_lv} onChange={event => setForm(current => ({ ...current, short_description_lv: event.target.value }))} className={`${input} resize-none`} rows={3} /></div>}
-              </div>
-              <div className="grid md:grid-cols-3 gap-4">
-                <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Publication Date</label><input type="date" value={form.publication_date} onChange={event => setForm(current => ({ ...current, publication_date: event.target.value }))} className={input} /></div>
-                <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Status</label><select value={form.status} onChange={event => setForm(current => ({ ...current, status: event.target.value }))} className={input}><option value="draft">Draft</option><option value="published">Published</option></select></div>
-                <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Author</label><select value={form.author_id} onChange={event => setForm(current => ({ ...current, author_id: event.target.value }))} disabled={!isAdmin} className={input}>{authors.map(author => <option key={author.id} value={author.id}>{author.full_name || 'Unnamed user'}</option>)}</select></div>
-              </div>
-              <div>
+                <div className="grid md:grid-cols-4 gap-4">
+                  <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Publication Date</label><input type="date" value={form.publication_date} onChange={event => setForm(current => ({ ...current, publication_date: event.target.value }))} className={input} /></div>
+                  <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Status</label><select value={form.status} onChange={event => setForm(current => ({ ...current, status: event.target.value }))} className={input}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></select></div>
+                  <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Article Type</label><select value={form.article_type} onChange={event => setForm(current => ({ ...current, article_type: event.target.value }))} className={input}><option value="article">Article</option><option value="guide">Guide</option><option value="opinion">Opinion</option><option value="case_study">Case Study</option><option value="interview">Interview</option><option value="research_note">Research Note</option><option value="framework">Framework</option><option value="news">News</option><option value="tutorial">Tutorial</option><option value="whitepaper">Whitepaper</option></select></div>
+                  <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Author</label><select value={form.author_id} onChange={event => setForm(current => ({ ...current, author_id: event.target.value }))} disabled={!isAdmin} className={input}>{authors.map(author => <option key={author.id} value={author.id}>{author.full_name || 'Unnamed user'}</option>)}</select></div>
+                </div>
+                <div className="flex items-center gap-6 pt-1"><label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={form.is_featured} onChange={event => setForm(current => ({ ...current, is_featured: event.target.checked }))} className="rounded accent-violet-500" /><span className="text-sm text-zinc-300">Featured publication</span></label><span className="text-xs text-zinc-600">Reading time saves automatically: {readingTimeFor(form.content_en)} min</span></div>
+              </FormSection>
+
+              <FormSection title="2. Categories and Content Type" subtitle="Multi-select categories and AI topic tags replacing old SEO keywords." defaultOpen>
                 <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Categories</label>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 rounded-xl border border-zinc-800 bg-zinc-900 p-3">
                   {categories.map(category => {
@@ -315,7 +364,10 @@ export default function AdminPublicationsPage() {
                     <button type="button" onClick={handleAddCategory} className="px-3 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-sm hover:bg-zinc-700 transition-colors whitespace-nowrap">Add</button>
                   </div>
                 </div>
-              </div>
+                <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Tags / AI Topics</label><textarea value={form.tags_ai_topics} onChange={event => setForm(current => ({ ...current, tags_ai_topics: event.target.value }))} className={textarea} rows={3} placeholder="AI agents, automation, SaaS, education technology" /></div>
+              </FormSection>
+
+              <FormSection title="3. Media" subtitle="Cover media, upload, and accessibility text.">
               <div className="grid md:grid-cols-[160px_1fr_auto] gap-3">
                 <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Media Type</label><select value={form.featured_media_type} onChange={event => setForm(current => ({ ...current, featured_media_type: event.target.value }))} className={input}><option value="image">Image</option><option value="youtube">YouTube</option><option value="vimeo">Vimeo</option></select></div>
                 <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Media URL</label><input value={form.featured_media_url} onChange={event => setForm(current => ({ ...current, featured_media_url: event.target.value }))} className={input} placeholder="Image, YouTube, or Vimeo URL" /></div>
@@ -323,16 +375,27 @@ export default function AdminPublicationsPage() {
               </div>
               <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Image Alt Text</label><input value={form.featured_image_alt} onChange={event => setForm(current => ({ ...current, featured_image_alt: event.target.value }))} className={input} /></div>
               <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">External Source URL</label><input value={form.external_source_url} onChange={event => setForm(current => ({ ...current, external_source_url: event.target.value }))} className={input} placeholder="If originally published elsewhere" /></div>
-              <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Content (EN)</label><RichTextEditor value={form.content_en} onChange={html => setForm(current => ({ ...current, content_en: html }))} minHeight="260px" placeholder="Write the publication content…" /></div>
-              {form.has_lv && <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Content (LV)</label><RichTextEditor value={form.content_lv} onChange={html => setForm(current => ({ ...current, content_lv: html }))} minHeight="260px" placeholder="Raksta saturs latviski…" /></div>}
-              <div className="pt-4 border-t border-zinc-800 space-y-4">
-                <p className="text-xs text-zinc-500 uppercase tracking-widest">SEO</p>
+              </FormSection>
+
+              <FormSection title="4. Main Content" subtitle="Use H2/H3/H4 inside the article. The page H1 is generated from the title." defaultOpen>
+                <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Content (EN)</label><RichTextEditor value={form.content_en} onChange={html => setForm(current => ({ ...current, content_en: html, reading_time: readingTimeFor(html) }))} minHeight="380px" placeholder="Write the publication content…" /></div>
+                {form.has_lv && <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Content (LV)</label><RichTextEditor value={form.content_lv} onChange={html => setForm(current => ({ ...current, content_lv: html }))} minHeight="380px" placeholder="Raksta saturs latviski…" /></div>}
+              </FormSection>
+
+              <FormSection title="5. SEO and Sharing" subtitle="Keywords were removed here. Use Tags / AI Topics in the classification section.">
                 <div className="grid md:grid-cols-2 gap-4"><input value={form.seo_title} onChange={event => setForm(current => ({ ...current, seo_title: event.target.value }))} className={input} placeholder="SEO title" /><input value={form.seo_description} onChange={event => setForm(current => ({ ...current, seo_description: event.target.value }))} className={input} placeholder="SEO description" /></div>
                 <div className="grid md:grid-cols-2 gap-4"><input value={form.og_title} onChange={event => setForm(current => ({ ...current, og_title: event.target.value }))} className={input} placeholder="Open Graph title" /><input value={form.og_description} onChange={event => setForm(current => ({ ...current, og_description: event.target.value }))} className={input} placeholder="Open Graph description" /></div>
-                <div className="grid md:grid-cols-3 gap-4"><input value={form.seo_keywords} onChange={event => setForm(current => ({ ...current, seo_keywords: event.target.value }))} className={input} placeholder="Keywords" /><input value={form.og_image} onChange={event => setForm(current => ({ ...current, og_image: event.target.value }))} className={input} placeholder="OG image URL" /><input value={form.canonical_url} onChange={event => setForm(current => ({ ...current, canonical_url: event.target.value }))} className={input} placeholder="Canonical URL" /></div>
+                <div className="grid md:grid-cols-2 gap-4"><input value={form.og_image} onChange={event => setForm(current => ({ ...current, og_image: event.target.value }))} className={input} placeholder="OG image URL" /><input value={form.canonical_url} onChange={event => setForm(current => ({ ...current, canonical_url: event.target.value }))} className={input} placeholder="Canonical URL override, optional" /></div>
                 <label className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer w-fit"><input type="checkbox" checked={form.no_index} onChange={event => setForm(current => ({ ...current, no_index: event.target.checked }))} className="rounded accent-violet-500" /> No-index this publication</label>
-              </div>
-              <div className="flex items-center gap-6 pt-1"><label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={form.is_featured} onChange={event => setForm(current => ({ ...current, is_featured: event.target.checked }))} className="rounded accent-violet-500" /><span className="text-sm text-zinc-300">Featured publication</span></label></div>
+              </FormSection>
+
+              <FormSection title="6. AI Search Optimization" subtitle="Structured article notes for AI search, Google AI Overviews, and fast reader scanning.">
+                <div className="grid md:grid-cols-2 gap-4"><div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Expertise Level</label><select value={form.expertise_level} onChange={event => setForm(current => ({ ...current, expertise_level: event.target.value }))} className={input}><option value="">Not selected</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div><div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Industry</label><input value={form.industry} onChange={event => setForm(current => ({ ...current, industry: event.target.value }))} className={input} placeholder="AI & Automation, Education, SaaS…" /></div></div>
+                <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Executive Summary</label><textarea value={form.executive_summary} onChange={event => setForm(current => ({ ...current, executive_summary: event.target.value }))} className={textarea} rows={4} placeholder="2–4 sentence reader-facing summary" /></div>
+                <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">AI Summary</label><textarea value={form.ai_summary} onChange={event => setForm(current => ({ ...current, ai_summary: event.target.value }))} className={textarea} rows={4} placeholder="Concise summary for AI/search systems" /></div>
+                <div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">Key Takeaways</label><textarea value={form.key_takeaways} onChange={event => setForm(current => ({ ...current, key_takeaways: event.target.value }))} className={textarea} rows={5} placeholder="One takeaway per line" /></div>
+                <div className="grid md:grid-cols-2 gap-4"><div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">FAQ</label><textarea value={form.faq_items} onChange={event => setForm(current => ({ ...current, faq_items: event.target.value }))} className={textarea} rows={6} placeholder="Q: ...\nA: ..." /></div><div><label className="block text-xs text-zinc-400 mb-1.5 font-medium">References / Sources</label><textarea value={form.reference_sources} onChange={event => setForm(current => ({ ...current, reference_sources: event.target.value }))} className={textarea} rows={6} placeholder="Source title - URL" /></div></div>
+              </FormSection>
               {error && <p className="text-red-400 text-xs bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">{error}</p>}
               <div className="flex gap-3 pt-1"><button type="button" onClick={() => setModal({ open: false })} className="flex-1 py-2.5 rounded-xl border border-zinc-800 text-zinc-400 text-sm hover:text-white transition-colors">Cancel</button><button type="submit" disabled={saving || uploading} className="flex-1 py-2.5 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-white text-sm font-medium transition-colors">{saving ? 'Saving…' : 'Save Publication'}</button></div>
             </form>
