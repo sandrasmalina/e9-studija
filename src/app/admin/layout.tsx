@@ -41,8 +41,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (profile?.role) roles.add(profile.role);
       (assignedRoles ?? []).forEach((row: any) => row.roles?.name && roles.add(row.roles.name));
       const canAccessPublications = pathname.startsWith('/admin/publications') && (roles.has('admin') || roles.has('author'));
+      const canAccessDashboard = pathname.startsWith('/admin/dashboard') && (roles.has('admin') || roles.has('author'));
       const canAccessAdminOnly = roles.has('admin');
-      if (!canAccessAdminOnly && !canAccessPublications) { router.replace('/dashboard'); return; }
+      if (!canAccessAdminOnly && !canAccessPublications && !canAccessDashboard) { router.replace('/dashboard'); return; }
       setEmail(data.user.email ?? '');
       setChecking(false);
     }).catch(() => { setChecking(false); });

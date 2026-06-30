@@ -65,6 +65,11 @@ export default function AdminUsers() {
   };
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    const role = new URLSearchParams(window.location.search).get('role');
+    if (role) setRoleFilter(role);
+  }, []);
+
   const handleRoleToggle = async (user: UserProfile, roleName: string) => {
     setUpdating(user.id);
     const role = roles.find(r => r.name === roleName);
