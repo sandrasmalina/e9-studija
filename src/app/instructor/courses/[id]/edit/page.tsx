@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, Save, Upload } from 'lucide-react';
+
+const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -32,6 +35,7 @@ interface CourseForm {
   short_description_en: string;
   short_description_lv: string;
   description_en: string;
+  description_lv: string;
   thumbnail_url: string;
   promo_video_url: string;
   promo_video_type: string;
@@ -44,7 +48,7 @@ interface CourseForm {
 
 const EMPTY: CourseForm = {
   title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
-  description_en: '', thumbnail_url: '', promo_video_url: '', promo_video_type: 'youtube',
+  description_en: '', description_lv: '', thumbnail_url: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '',
 };
 
@@ -59,7 +63,7 @@ export default function CourseEditPage() {
 
   useEffect(() => {
     supabase.from('courses')
-      .select('title_en, title_lv, short_description_en, short_description_lv, description_en, thumbnail_url, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience')
+      .select('title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience')
       .eq('id', id)
       .single()
       .then(({ data }) => {
@@ -71,6 +75,7 @@ export default function CourseEditPage() {
             short_description_en: data.short_description_en ?? '',
             short_description_lv: data.short_description_lv ?? '',
             description_en: data.description_en ?? '',
+            description_lv: data.description_lv ?? '',
             thumbnail_url: data.thumbnail_url ?? '',
             promo_video_url: data.promo_video_url ?? '',
             promo_video_type: data.promo_video_type ?? 'youtube',
@@ -97,6 +102,7 @@ export default function CourseEditPage() {
       short_description_en: form.short_description_en.trim() || null,
       short_description_lv: form.short_description_lv.trim() || null,
       description_en: form.description_en.trim() || null,
+      description_lv: form.description_lv.trim() || null,
       thumbnail_url: form.thumbnail_url.trim() || null,
       promo_video_url: form.promo_video_url.trim() || null,
       promo_video_type: form.promo_video_url.trim() ? form.promo_video_type : null,
@@ -174,8 +180,11 @@ export default function CourseEditPage() {
           <Field label="Short Description (LV)" hint="Optional">
             <Textarea value={form.short_description_lv} onChange={v => set('short_description_lv', v)} placeholder="Īss apraksts latviešu valodā…" rows={2} />
           </Field>
-          <Field label="Full Description" hint="Shown on the course landing page">
-            <Textarea value={form.description_en} onChange={v => set('description_en', v)} placeholder="Detailed course description…" rows={6} />
+          <Field label="Full Description (EN)" hint="Shown on the course landing page. Supports headings, links, images, tables, embeds, and code blocks.">
+            <RichTextEditor value={form.description_en} onChange={v => set('description_en', v)} placeholder="Detailed course description…" minHeight="260px" />
+          </Field>
+          <Field label="Full Description (LV)" hint="Optional Latvian version with the same rich content tools.">
+            <RichTextEditor value={form.description_lv} onChange={v => set('description_lv', v)} placeholder="Detalizēts kursa apraksts latviešu valodā…" minHeight="220px" />
           </Field>
           <Field label="Target Audience" hint="Who is this course for?">
             <Input value={form.target_audience} onChange={v => set('target_audience', v)} placeholder="e.g. Developers who want to build SaaS products" />
