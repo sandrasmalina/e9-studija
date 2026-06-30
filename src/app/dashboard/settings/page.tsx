@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { Save, Upload, Eye, EyeOff } from 'lucide-react';
 
 interface Profile {
+  first_name: string;
+  last_name: string;
   full_name: string;
   bio: string;
   bio_lv: string;
@@ -15,7 +17,7 @@ interface Profile {
 
 export default function DashboardSettingsPage() {
   const [userId, setUserId] = useState('');
-  const [profile, setProfile] = useState<Profile>({ full_name: '', bio: '', bio_lv: '', role_title: '', linkedin_url: '', avatar_url: null });
+  const [profile, setProfile] = useState<Profile>({ first_name: '', last_name: '', full_name: '', bio: '', bio_lv: '', role_title: '', linkedin_url: '', avatar_url: null });
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -41,14 +43,34 @@ export default function DashboardSettingsPage() {
       setUserId(user.id);
       setEmail(user.email ?? '');
       const { data } = await supabase.from('profiles').select('full_name, bio, bio_lv, role_title, linkedin_url, avatar_url').eq('id', user.id).single();
-      if (data) setProfile({ full_name: data.full_name ?? '', bio: data.bio ?? '', bio_lv: data.bio_lv ?? '', role_title: data.role_title ?? '', linkedin_url: data.linkedin_url ?? '', avatar_url: data.avatar_url ?? null });
+      if (data) {
+        const parts = (data.full_name ?? '').trim().split(/\s+/).filter(Boolean);
+        const [{ data: nameData }] = await Promise.all([
+          supabase.from('profiles').select('first_name,last_name').eq('id', user.id).single(),
+        ]);
+        setProfile({
+          first_name: nameData?.first_name ?? parts[0] ?? '',
+          last_name: nameData?.last_name ?? parts.slice(1).join(' '),
+          full_name: data.full_name ?? '',
+          bio: data.bio ?? '',
+          bio_lv: data.bio_lv ?? '',
+          role_title: data.role_title ?? '',
+          linkedin_url: data.linkedin_url ?? '',
+          avatar_url: data.avatar_url ?? null,
+        });
+      }
       setLoading(false);
     })();
   }, []);
 
   const handleSaveProfile = async () => {
     setSaving(true); setErrMsg(''); setSavedMsg('');
-    const { error } = await supabase.from('profiles').update({ full_name: profile.full_name, bio: profile.bio, bio_lv: profile.bio_lv, role_title: profile.role_title, linkedin_url: profile.linkedin_url }).eq('id', userId);
+    const fullName = `${profile.first_name.trim()} ${profile.last_name.trim()}`.trim();
+    const { error } = await supabase.from('profiles').update({ full_name: fullName, bio: profile.bio, bio_lv: profile.bio_lv, role_title: profile.role_title, linkedin_url: profile.linkedin_url }).eq('id', userId);
+    if (!error) {
+      await supabase.from('profiles').update({ first_name: profile.first_name.trim(), last_name: profile.last_name.trim() }).eq('id', userId);
+      setProfile(p => ({ ...p, full_name: fullName }));
+    }
     setSaving(false);
     if (error) { setErrMsg(error.message); return; }
     setSavedMsg('Profile saved!');
@@ -118,12 +140,19 @@ export default function DashboardSettingsPage() {
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} />
         </div>
 
-        {/* Full name */}
-        <div>
-          <label className="block text-white text-sm font-medium mb-1.5">Full Name</label>
-          <input value={profile.full_name} onChange={e => setProfile(p => ({ ...p, full_name: e.target.value }))}
-            className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600"
-            placeholder="Your name" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-white text-sm font-medium mb-1.5">First Name</label>
+            <input value={profile.first_name} onChange={e => setProfile(p => ({ ...p, first_name: e.target.value }))}
+              className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600"
+              placeholder="Name" />
+          </div>
+          <div>
+            <label className="block text-white text-sm font-medium mb-1.5">Surname</label>
+            <input value={profile.last_name} onChange={e => setProfile(p => ({ ...p, last_name: e.target.value }))}
+              className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600"
+              placeholder="Surname" />
+          </div>
         </div>
 
         {/* Email (read-only) */}
