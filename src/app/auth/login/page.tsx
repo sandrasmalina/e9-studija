@@ -60,16 +60,24 @@ function LoginForm() {
       setLoading(false);
       return;
     }
-    // Redirect based on role
+    const safeRedirect = redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/dashboard';
+    if (safeRedirect !== '/dashboard') {
+      router.replace(safeRedirect);
+      return;
+    }
+
+    // Redirect based on all assigned roles when this is a normal account login.
     const [{ data: profile }, { data: assignedRoles }] = await Promise.all([
       supabase.from('profiles').select('role').eq('id', data.user.id).single(),
       supabase.from('user_roles').select('roles(name)').eq('user_id', data.user.id),
     ]);
-    const role = profile?.role ?? 'student';
-    if (role === 'admin') { router.replace('/admin'); return; }
-    if (role === 'instructor') { router.replace('/instructor/dashboard'); return; }
-    if ((assignedRoles ?? []).some((row: any) => row.roles?.name === 'author')) { router.replace('/admin/publications'); return; }
-    router.replace(redirect);
+    const roleNames = new Set<string>();
+    if (profile?.role) roleNames.add(profile.role);
+    (assignedRoles ?? []).forEach((row: any) => row.roles?.name && roleNames.add(row.roles.name));
+    if (roleNames.has('admin')) { router.replace('/admin/dashboard'); return; }
+    if (roleNames.has('instructor')) { router.replace('/instructor'); return; }
+    if (roleNames.has('author')) { router.replace('/admin/publications'); return; }
+    router.replace('/dashboard');
   };
 
   return (
