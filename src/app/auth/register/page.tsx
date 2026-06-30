@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Mail, Lock, User } from 'lucide-react';
 
-interface Invitation { email: string; roles: string[] | null; status: string; expires_at: string | null; }
+interface Invitation { email: string; roles: string[] | null; status: string; expires_at: string | null; is_campaign: boolean; campaign_label: string | null; }
 
 function RegisterForm() {
   const router = useRouter();
@@ -15,6 +15,7 @@ function RegisterForm() {
   const token = searchParams.get('invite');
   const [invite, setInvite] = useState<Invitation | null>(null);
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(true);
@@ -25,9 +26,10 @@ function RegisterForm() {
   useEffect(() => {
     if (!token) { router.replace('/courses'); return; }
     const supabase = createClient();
-    supabase.from('invitations').select('email,roles,status,expires_at').eq('token', token).single()
+    supabase.from('invitations').select('email,roles,status,expires_at,is_campaign,campaign_label').eq('token', token).single()
       .then(({ data }) => {
         setInvite(data as Invitation | null);
+        if (data && !data.is_campaign) setEmail(data.email);
         setLoading(false);
       });
   }, [router, token]);
@@ -36,12 +38,13 @@ function RegisterForm() {
     event.preventDefault();
     if (!invite || !token) return;
     if (!fullName.trim()) { setError('Full name is required'); return; }
+    if (!email.trim() || !email.includes('@')) { setError('Valid email is required'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     setSaving(true); setError('');
     const supabase = createClient();
     const { error: signUpError } = await supabase.auth.signUp({
-      email: invite.email,
+      email: email.trim().toLowerCase(),
       password,
       options: { data: { full_name: fullName.trim(), invite_token: token } },
     });
@@ -77,7 +80,7 @@ function RegisterForm() {
       <div className="text-center mb-8">
         <Link href="/" className="inline-flex items-center gap-2 text-white font-bold text-xl"><span className="text-accent">E9</span> Studija</Link>
         <h1 className="text-2xl font-bold text-white mt-6 mb-2">Create your account</h1>
-        <p className="text-neutral-500 text-sm">Invitation for {invite.email}</p>
+        <p className="text-neutral-500 text-sm">{invite.is_campaign ? (invite.campaign_label || 'Campaign invitation') : `Invitation for ${invite.email}`}</p>
       </div>
       <div className="bg-bg-card border border-white/8 rounded-2xl p-8">
         <form onSubmit={handleCreate} className="space-y-5">
@@ -92,7 +95,7 @@ function RegisterForm() {
             <label className="block text-neutral-400 text-sm mb-2">Email</label>
             <div className="relative">
               <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-600" />
-              <input value={invite.email} readOnly className="w-full bg-bg border border-white/8 rounded-xl pl-10 pr-4 py-3 text-neutral-500 text-sm" />
+              <input value={email} onChange={e => { setEmail(e.target.value); setError(''); }} readOnly={!invite.is_campaign} className={`w-full bg-bg border border-white/8 rounded-xl pl-10 pr-4 py-3 text-sm ${invite.is_campaign ? 'text-white placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none' : 'text-neutral-500'}`} placeholder="your@email.com" />
             </div>
           </div>
           <div>

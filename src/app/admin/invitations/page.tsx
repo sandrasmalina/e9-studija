@@ -8,6 +8,10 @@ interface Invitation {
   id: string;
   email: string;
   roles: string[] | null;
+  is_campaign: boolean;
+  campaign_label: string | null;
+  max_uses: number | null;
+  use_count: number;
   status: string;
   token: string;
   expires_at: string;
@@ -29,6 +33,7 @@ export default function AdminInvitations() {
   const [email, setEmail] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>(['student']);
   const [sending, setSending] = useState(false);
+  const [campaignSending, setCampaignSending] = useState(false);
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -68,6 +73,27 @@ export default function AdminInvitations() {
     });
   };
 
+  const handleCreateTeacherCampaign = async () => {
+    setCampaignSending(true); setErr('');
+    const token = crypto.randomUUID();
+    const expires = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+    const { error } = await supabase.from('invitations').insert({
+      email: 'teacher-campaign@e9studija.local',
+      token,
+      expires_at: expires,
+      status: 'pending',
+      role: 'instructor',
+      roles: ['instructor'],
+      is_campaign: true,
+      campaign_label: 'Teacher campaign link',
+      max_uses: null,
+      use_count: 0,
+    });
+    setCampaignSending(false);
+    if (error) { setErr(error.message); return; }
+    load();
+  };
+
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/auth/register?invite=${token}`;
     navigator.clipboard.writeText(url).then(() => { setCopied(token); setTimeout(() => setCopied(null), 2000); });
@@ -92,7 +118,12 @@ export default function AdminInvitations() {
           <h1 className="text-2xl font-bold text-white">Invitations</h1>
           <p className="text-zinc-500 text-sm mt-1">Invite users to register</p>
         </div>
-        <button onClick={load} className="p-2.5 rounded-xl border border-zinc-800 text-zinc-500 hover:text-white transition-colors"><RefreshCw size={15} /></button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleCreateTeacherCampaign} disabled={campaignSending} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-blue-900/50 bg-blue-950/30 text-blue-300 text-sm font-medium hover:bg-blue-950/50 disabled:opacity-50 transition-colors">
+            <Send size={15} /> {campaignSending ? 'Creating…' : 'Teacher Campaign Link'}
+          </button>
+          <button onClick={load} className="p-2.5 rounded-xl border border-zinc-800 text-zinc-500 hover:text-white transition-colors"><RefreshCw size={15} /></button>
+        </div>
       </div>
 
       {/* Send new invite */}
@@ -137,7 +168,7 @@ export default function AdminInvitations() {
         <div className="rounded-2xl border border-zinc-800 overflow-hidden">
           <table className="w-full">
             <thead><tr className="border-b border-zinc-800 bg-zinc-900/60">
-              <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">Email</th>
+              <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">Invite</th>
               <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden md:table-cell">Roles</th>
               <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">Status</th>
               <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden md:table-cell">Expires</th>
@@ -149,7 +180,10 @@ export default function AdminInvitations() {
                 const status = getStatus(inv);
                 return (
                   <tr key={inv.id} className="hover:bg-zinc-900/40 transition-colors">
-                    <td className="px-4 py-3 text-white text-sm">{inv.email}</td>
+                    <td className="px-4 py-3">
+                      <p className="text-white text-sm">{inv.is_campaign ? (inv.campaign_label || 'Campaign link') : inv.email}</p>
+                      {inv.is_campaign && <p className="text-zinc-600 text-xs">{inv.use_count} use{inv.use_count === 1 ? '' : 's'}{inv.max_uses ? ` / ${inv.max_uses}` : ''}</p>}
+                    </td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       <div className="flex flex-wrap gap-1.5">
                         {(inv.roles && inv.roles.length > 0 ? inv.roles : ['student']).map(role => (
