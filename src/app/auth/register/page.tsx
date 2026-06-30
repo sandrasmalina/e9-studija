@@ -59,13 +59,18 @@ function RegisterForm() {
     setSaving(true); setError('');
     const supabase = createClient();
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
       options: { captchaToken: turnstileToken, data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: fullName, invite_token: token } },
     });
     setSaving(false);
     if (signUpError) { setError(signUpError.message); setTurnstileToken(''); return; }
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setError('An account with this email already exists. Please log in or reset the password for this email.');
+      setTurnstileToken('');
+      return;
+    }
     setDone(true);
   };
 

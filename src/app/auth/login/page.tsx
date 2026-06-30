@@ -40,7 +40,14 @@ function LoginForm() {
       options: { captchaToken: turnstileToken },
     });
     if (authError) {
-      setError(t('auth.error.invalid'));
+      const message = authError.message.toLowerCase();
+      if (message.includes('email not confirmed')) {
+        setError('Please confirm your email address before logging in. If you cannot find the email, use forgot password to receive a new access link.');
+      } else if (message.includes('captcha')) {
+        setError(authError.message);
+      } else {
+        setError(t('auth.error.invalid'));
+      }
       setTurnstileToken('');
       setLoading(false);
       return;
