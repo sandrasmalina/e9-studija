@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Mail } from 'lucide-react';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 export default function ForgotPasswordPage() {
   const { t } = useLanguage();
@@ -12,17 +13,20 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) { setError(t('auth.error.fields')); return; }
+    if (!turnstileToken) { setError(t('turnstile.error.required')); return; }
     setLoading(true);
     setError('');
     const supabase = createClient();
     const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
+      captchaToken: turnstileToken,
     });
-    if (authError) { setError(authError.message); setLoading(false); return; }
+    if (authError) { setError(authError.message); setTurnstileToken(''); setLoading(false); return; }
     setSent(true);
   };
 
@@ -59,7 +63,14 @@ export default function ForgotPasswordPage() {
               </div>
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
-            <button type="submit" disabled={loading}
+
+            <TurnstileWidget
+              onVerify={(token) => { setTurnstileToken(token); setError(''); }}
+              onExpire={() => setTurnstileToken('')}
+              onError={() => { setTurnstileToken(''); setError(t('turnstile.error.failed')); }}
+            />
+
+            <button type="submit" disabled={loading || !turnstileToken}
               className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent/90 disabled:opacity-60 transition-colors">
               {loading ? t('auth.loading') : t('auth.forgot.cta')}
             </button>
