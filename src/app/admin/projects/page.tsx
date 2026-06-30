@@ -21,6 +21,9 @@ interface Project {
 
 const emptyForm = { title: '', title_lv: '', category: '', client_name: '', short_description: '', short_description_lv: '', overview_en: '', overview_lv: '', goals_en: '', goals_lv: '', process_en: '', process_lv: '', results_en: '', results_lv: '', thumbnail_url: '', project_url: '', is_featured: false, published: true, sort_order: 0 };
 
+const parseCategories = (value: string) => value.split(',').map(category => category.trim()).filter(Boolean);
+const stringifyCategories = (values: string[]) => values.join(', ');
+
 export default function AdminProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [categories, setCategories] = useState<{ id: string; name_en: string }[]>([]);
@@ -109,6 +112,16 @@ export default function AdminProjects() {
   };
   const toggleFeatured = async (p: Project) => { await supabase.from('projects').update({ is_featured: !p.is_featured }).eq('id', p.id); load(); };
   const togglePublished = async (p: Project) => { await supabase.from('projects').update({ published: !p.published }).eq('id', p.id); load(); };
+  const toggleCategory = (categoryName: string) => {
+    setForm(current => {
+      const selected = parseCategories(current.category);
+      const next = selected.includes(categoryName)
+        ? selected.filter(category => category !== categoryName)
+        : [...selected, categoryName];
+
+      return { ...current, category: stringifyCategories(next) };
+    });
+  };
 
   const inp = 'w-full px-3 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:border-accent/50 transition-colors';
 
@@ -167,7 +180,17 @@ export default function AdminProjects() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-zinc-400 hidden md:table-cell">{p.category || <span className="text-zinc-600">—</span>}</td>
+                    <td className="px-4 py-3.5 hidden md:table-cell">
+                      {parseCategories(p.category).length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {parseCategories(p.category).map(category => (
+                            <span key={category} className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">{category}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-zinc-600">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3.5 text-center">
                       <button onClick={() => toggleFeatured(p)} className={`inline-flex p-1.5 rounded-lg transition-colors ${p.is_featured ? 'bg-amber-500/20 text-amber-400' : 'bg-zinc-800 text-zinc-600 hover:text-amber-400'}`}>
                         <Star size={13} fill={p.is_featured ? 'currentColor' : 'none'} />
@@ -211,13 +234,22 @@ export default function AdminProjects() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Category</label>
-                <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className={inp}>
-                  <option value="">— Select category —</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.name_en}>{c.name_en}</option>
-                  ))}
-                </select>
+                <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Categories</label>
+                {categories.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 rounded-xl border border-zinc-800 bg-zinc-900 p-3">
+                    {categories.map(c => {
+                      const checked = parseCategories(form.category).includes(c.name_en);
+                      return (
+                        <label key={c.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors cursor-pointer ${checked ? 'border-accent/50 bg-accent/10 text-white' : 'border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}>
+                          <input type="checkbox" checked={checked} onChange={() => toggleCategory(c.name_en)} className="rounded accent-violet-500" />
+                          <span>{c.name_en}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <input value={form.category} onChange={e => setForm({...form, category: e.target.value})} className={inp} placeholder="Category names, separated by commas" />
+                )}
               </div>
               <div>
                 <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Client Name <span className="text-zinc-600 font-normal">(optional)</span></label>

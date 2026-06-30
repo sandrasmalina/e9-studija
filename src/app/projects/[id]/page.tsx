@@ -11,6 +11,8 @@ import Button from '@/components/Button';
 
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 
+const parseCategories = (value: string) => value.split(',').map(category => category.trim()).filter(Boolean);
+
 interface Project {
   id: string;
   title: string; title_lv: string;
@@ -63,7 +65,9 @@ export default function ProjectPage() {
           )}
 
           <div className="flex flex-wrap gap-4 mb-6 text-sm">
-            <span className="px-3 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">{project.category}</span>
+            {parseCategories(project.category).map(category => (
+              <span key={category} className="px-3 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">{category}</span>
+            ))}
             {project.client_name && (
               <span className="px-3 py-1 rounded-full border border-white/8 text-neutral-400">
                 {t('project.client')}: {project.client_name}

@@ -17,6 +17,8 @@ const stagger = { visible: { transition: { staggerChildren: 0.12 } } };
 interface Project { id: string; title: string; title_lv: string; category: string; short_description: string; short_description_lv: string; thumbnail_url: string; }
 interface Testimonial { id: string; client_name: string; client_role: string; content_en: string; content_lv: string; is_published?: boolean; sort_order?: number; }
 
+const parseCategories = (value: string) => value.split(',').map(category => category.trim()).filter(Boolean);
+
 const fallbackTestimonials: Testimonial[] = [
   { id: 'ft1', client_name: 'Anna Bērziņa', client_role: 'Marketing Director, TechCorp', content_en: 'E9 Studija transformed our digital presence with an innovative AI-powered platform. The team\'s creativity and technical expertise exceeded all our expectations.', content_lv: 'E9 Studija pārveidoja mūsu digitālo klātbūtni ar inovatīvu AI platformu. Komandas radošums un tehniskā pieredze pārsniedza visas mūsu cerības.' },
   { id: 'ft2', client_name: 'Jānis Kalniņš', client_role: 'CEO, StartupHub Riga', content_en: 'The interactive learning platform they built for us increased student engagement by 40%. Their attention to detail and deep understanding of educational technology is outstanding.', content_lv: 'Interaktīvā mācību platforma, ko viņi izveidoja mums, palielināja studentu iesaistīšanos par 40%. Viņu uzmanība detaļām ir izcila.' },
@@ -411,7 +413,11 @@ export default function HomePage() {
                       )}
                     </div>
                     <div className="p-6">
-                      <span className="text-accent text-xs font-medium uppercase tracking-widest">{p.category}</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {parseCategories(p.category).map(category => (
+                          <span key={category} className="text-accent text-xs font-medium uppercase tracking-widest">{category}</span>
+                        ))}
+                      </div>
                       <h3 className="text-white font-semibold mt-2 mb-2">{title}</h3>
                       <p className="text-zinc-500 text-sm line-clamp-2">{desc}</p>
                       <div className="mt-4 flex items-center gap-1 text-accent text-sm font-medium">{t('projects.view')} <ChevronRight size={14} /></div>

@@ -21,6 +21,8 @@ const demoProjects: Project[] = [
   { id: 'demo6', title: 'Healthcare AI Workflow', title_lv: 'Veselības aprūpes AI Darbplūsma', category: 'AI Integration', short_description: 'Intelligent automation for patient data management.', short_description_lv: 'Inteliģenta automatizācija pacientu datu pārvaldībai.', thumbnail_url: '' },
 ];
 
+const parseCategories = (value: string) => value.split(',').map(category => category.trim()).filter(Boolean);
+
 export default function ProjectsPage() {
   const { t, language } = useLanguage();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -52,7 +54,7 @@ export default function ProjectsPage() {
   }, []);
 
   const filtered = activeCategory
-    ? projects.filter(p => p.category === activeCategory)
+    ? projects.filter(p => parseCategories(p.category).includes(activeCategory))
     : projects;
 
   return (
@@ -122,7 +124,11 @@ export default function ProjectsPage() {
                     )}
                   </div>
                   <div className="p-6">
-                    <span className="text-accent text-xs font-medium uppercase tracking-widest">{p.category}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {parseCategories(p.category).map(category => (
+                        <span key={category} className="text-accent text-xs font-medium uppercase tracking-widest">{category}</span>
+                      ))}
+                    </div>
                     <h3 className="text-white font-semibold mt-2 mb-2">{title}</h3>
                     <p className="text-neutral-500 text-sm line-clamp-2">{desc}</p>
                     <div className="mt-4 flex items-center gap-1 text-accent text-sm font-medium">
