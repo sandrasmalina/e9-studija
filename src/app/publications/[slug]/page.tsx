@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { ArrowLeft, CalendarDays, Clock, ExternalLink, Share2, User } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
@@ -67,6 +67,8 @@ const contentWithToc = (html: string) => {
 
 export default function PublicationPage() {
   const { slug } = useParams() as { slug: string };
+  const searchParams = useSearchParams();
+  const isPreview = searchParams.get('preview') === '1';
   const { language } = useLanguage();
   const [publication, setPublication] = useState<Publication | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -75,7 +77,12 @@ export default function PublicationPage() {
 
   useEffect(() => {
     const run = async () => {
-      const { data: publicationRow } = await supabase.from('publications').select('*,author:profiles(full_name,avatar_url,bio,bio_lv,role_title,linkedin_url)').eq('slug', slug).eq('status', 'published').single();
+      let publicationQuery = supabase
+        .from('publications')
+        .select('*,author:profiles(full_name,avatar_url,bio,bio_lv,role_title,linkedin_url)')
+        .eq('slug', slug);
+      if (!isPreview) publicationQuery = publicationQuery.eq('status', 'published');
+      const { data: publicationRow } = await publicationQuery.single();
       if (!publicationRow) { setLoading(false); return; }
       setPublication(publicationRow as unknown as Publication);
       const { data: linkRows } = await supabase.from('publication_category_links').select('category_id').eq('publication_id', publicationRow.id);
@@ -95,7 +102,7 @@ export default function PublicationPage() {
       setLoading(false);
     };
     run();
-  }, [slug]);
+  }, [slug, isPreview]);
 
   const title = publication ? (language === 'lv' && publication.title_lv ? publication.title_lv : publication.title_en) : '';
   const description = publication ? (language === 'lv' && publication.short_description_lv ? publication.short_description_lv : publication.short_description_en) : '';
@@ -139,6 +146,7 @@ export default function PublicationPage() {
   return (
     <div className="min-h-screen bg-bg pt-28 pb-24">
       <article className="max-w-4xl mx-auto px-6">
+        {isPreview && <div className="mb-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-3 text-sm text-amber-200">Preview mode: this draft is visible only to authorized admins/authors.</div>}
         <Link href="/publications" className="inline-flex items-center gap-2 text-neutral-500 hover:text-accent text-sm mb-10 transition-colors"><ArrowLeft size={14} /> {language === 'lv' ? 'Atpakaļ uz publikācijām' : 'Back to Publications'}</Link>
 
         <div className="flex flex-wrap gap-2 mb-5">

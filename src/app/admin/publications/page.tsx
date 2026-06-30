@@ -290,7 +290,7 @@ export default function AdminPublicationsPage() {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <p className="text-white font-medium truncate max-w-[220px]">{publication.title_en}</p>
-                          <Link href={`/publications/${publication.slug}`} target="_blank" className="text-zinc-600 hover:text-accent"><ExternalLink size={11} /></Link>
+                          <Link href={`/publications/${publication.slug}?preview=1`} target="_blank" className="text-zinc-600 hover:text-accent" title="Preview publication"><ExternalLink size={11} /></Link>
                         </div>
                         <p className="text-zinc-600 text-xs">{publication.author?.full_name ?? 'No author'}{publication.has_lv ? ' · LV' : ''}</p>
                       </div>
@@ -307,7 +307,7 @@ export default function AdminPublicationsPage() {
                   <td className="px-4 py-3 text-zinc-500 text-xs hidden lg:table-cell">{new Date(publication.publication_date).toLocaleDateString('en-GB')}</td>
                   <td className="px-4 py-3 text-center"><button onClick={() => toggleFeatured(publication)} className={`inline-flex p-1.5 rounded-lg transition-colors ${publication.is_featured ? 'bg-amber-500/20 text-amber-400' : 'bg-zinc-800 text-zinc-600 hover:text-amber-400'}`}><Star size={13} fill={publication.is_featured ? 'currentColor' : 'none'} /></button></td>
                   <td className="px-4 py-3 text-center"><button onClick={() => toggleStatus(publication)} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs capitalize ${publication.status === 'published' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>{publication.status === 'published' ? <Eye size={12} /> : <EyeOff size={12} />} {publication.status}</button></td>
-                  <td className="px-4 py-3 text-center"><div className="flex items-center justify-center gap-1.5"><button onClick={() => openEdit(publication)} className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white transition-colors"><Pencil size={13} /></button><button onClick={() => handleDelete(publication)} className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-red-400 transition-colors"><Trash2 size={13} /></button></div></td>
+                  <td className="px-4 py-3 text-center"><div className="flex items-center justify-center gap-1.5"><Link href={`/publications/${publication.slug}?preview=1`} target="_blank" className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-accent transition-colors" title="Preview"><ExternalLink size={13} /></Link><button onClick={() => openEdit(publication)} className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white transition-colors"><Pencil size={13} /></button><button onClick={() => handleDelete(publication)} className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-red-400 transition-colors"><Trash2 size={13} /></button></div></td>
                 </tr>
               ))}
             </tbody>
@@ -321,7 +321,10 @@ export default function AdminPublicationsPage() {
           <div className="w-full max-w-5xl bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
               <h2 className="text-white font-semibold">{modal.editing ? 'Edit Publication' : 'Add Publication'}</h2>
-              <button onClick={() => setModal({ open: false })} className="text-zinc-500 hover:text-white"><X size={18} /></button>
+              <div className="flex items-center gap-3">
+                {modal.editing && <Link href={`/publications/${modal.editing.slug}?preview=1`} target="_blank" className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 px-3 py-1.5 text-xs text-zinc-400 hover:border-accent/40 hover:text-accent transition-colors"><ExternalLink size={12} /> Preview</Link>}
+                <button onClick={() => setModal({ open: false })} className="text-zinc-500 hover:text-white"><X size={18} /></button>
+              </div>
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
               <FormSection title="1. Basic Information" subtitle="Title, language, status, author, and publication metadata." defaultOpen>
