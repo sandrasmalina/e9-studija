@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Mail, Lock, User } from 'lucide-react';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 interface Invitation { email: string; roles: string[] | null; status: string; expires_at: string | null; is_campaign?: boolean; campaign_label?: string | null; }
 
@@ -23,6 +24,7 @@ function RegisterForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   useEffect(() => {
     if (!token) { router.replace('/courses'); return; }
@@ -53,16 +55,17 @@ function RegisterForm() {
     if (!email.trim() || !email.includes('@')) { setError('Valid email is required'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
+    if (!turnstileToken) { setError('Please complete the security check.'); return; }
     setSaving(true); setError('');
     const supabase = createClient();
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
     const { error: signUpError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      options: { data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: fullName, invite_token: token } },
+      options: { captchaToken: turnstileToken, data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: fullName, invite_token: token } },
     });
     setSaving(false);
-    if (signUpError) { setError(signUpError.message); return; }
+    if (signUpError) { setError(signUpError.message); setTurnstileToken(''); return; }
     setDone(true);
   };
 
@@ -137,7 +140,14 @@ function RegisterForm() {
             <input type="password" value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none transition-colors" placeholder="Repeat password" />
           </div>
           {error && <p className="text-red-400 text-sm">{error}</p>}
-          <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent/90 disabled:opacity-60 transition-colors">
+
+          <TurnstileWidget
+            onVerify={(token) => { setTurnstileToken(token); setError(''); }}
+            onExpire={() => setTurnstileToken('')}
+            onError={() => { setTurnstileToken(''); setError('Security check failed. Please try again.'); }}
+          />
+
+          <button type="submit" disabled={saving || !turnstileToken} className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent/90 disabled:opacity-60 transition-colors">
             {saving ? 'Creating…' : 'Create Account'}
           </button>
         </form>
