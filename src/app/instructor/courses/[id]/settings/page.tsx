@@ -103,7 +103,7 @@ export default function CourseSettingsPage() {
           <h1 className="text-xl font-bold text-white">Course Settings</h1>
           <p className="text-zinc-500 text-sm truncate">{settings.title_en}</p>
         </div>
-        <Link href={`/courses/${settings.slug}`} target="_blank"
+        <Link href={`/courses/${settings.slug}?preview=1`} target="_blank"
           className="flex items-center gap-1.5 text-zinc-500 hover:text-white text-xs transition-colors">
           <ExternalLink size={13} /> Preview
         </Link>
