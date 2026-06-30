@@ -55,7 +55,7 @@ export default function AdminUsers() {
   const load = async () => {
     setLoading(true);
     const [{ data: profileData }, { data: roleData }, { data: userRoleData }] = await Promise.all([
-      supabase.from('profiles').select('id,full_name,avatar_url,role,stripe_account_id,platform_fee_pct,revenue_share_pct,created_at').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id,full_name,avatar_url,role,stripe_account_id,revenue_share_pct,created_at').order('created_at', { ascending: false }),
       supabase.from('roles').select('id,name,display_name,sort_order').order('sort_order', { ascending: true }),
       supabase.from('user_roles').select('user_id,roles(name)'),
     ]);
@@ -70,10 +70,11 @@ export default function AdminUsers() {
     setUsers((profileData ?? []).map((profile: any) => {
       const assigned = new Set<string>(roleMap.get(profile.id) ?? []);
       if (profile.role) assigned.add(profile.role);
-      return { ...profile, roles: [...assigned] };
+      const platformFee = 100 - (profile.revenue_share_pct ?? 70);
+      return { ...profile, platform_fee_pct: platformFee, roles: [...assigned] };
     }) as UserProfile[]);
     const drafts: Record<string, string> = {};
-    (profileData ?? []).forEach((profile: any) => { drafts[profile.id] = String(profile.platform_fee_pct ?? 30); });
+    (profileData ?? []).forEach((profile: any) => { drafts[profile.id] = String(100 - (profile.revenue_share_pct ?? 70)); });
     setPayoutDrafts(drafts);
     setLoading(false);
   };
