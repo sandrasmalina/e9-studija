@@ -7,6 +7,8 @@ import AdminNav from '@/components/AdminNav';
 
 const pageTitles: Record<string, string> = {
   '/admin/dashboard':   'Dashboard',
+  '/admin/publications': 'Publications',
+  '/admin/publication-categories': 'Publication Categories',
   '/admin/projects':    'Projects',
   '/admin/team':        'Team Members',
   '/admin/contacts':    'Contacts',
@@ -29,8 +31,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (isLoginPage) { setChecking(false); return; }
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { router.replace('/admin'); return; }
+      const [{ data: profile }, { data: assignedRoles }] = await Promise.all([
+        supabase.from('profiles').select('role').eq('id', data.user.id).single(),
+        supabase.from('user_roles').select('roles(name)').eq('user_id', data.user.id),
+      ]);
+      const roles = new Set<string>();
+      if (profile?.role) roles.add(profile.role);
+      (assignedRoles ?? []).forEach((row: any) => row.roles?.name && roles.add(row.roles.name));
+      const canAccessPublications = pathname.startsWith('/admin/publications') && (roles.has('admin') || roles.has('author'));
+      const canAccessAdminOnly = roles.has('admin');
+      if (!canAccessAdminOnly && !canAccessPublications) { router.replace('/dashboard'); return; }
       setEmail(data.user.email ?? '');
       setChecking(false);
     }).catch(() => { setChecking(false); });

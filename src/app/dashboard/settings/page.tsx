@@ -7,12 +7,15 @@ import { Save, Upload, Eye, EyeOff } from 'lucide-react';
 interface Profile {
   full_name: string;
   bio: string;
+  bio_lv: string;
+  role_title: string;
+  linkedin_url: string;
   avatar_url: string | null;
 }
 
 export default function DashboardSettingsPage() {
   const [userId, setUserId] = useState('');
-  const [profile, setProfile] = useState<Profile>({ full_name: '', bio: '', avatar_url: null });
+  const [profile, setProfile] = useState<Profile>({ full_name: '', bio: '', bio_lv: '', role_title: '', linkedin_url: '', avatar_url: null });
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,15 +40,15 @@ export default function DashboardSettingsPage() {
       if (!user) return;
       setUserId(user.id);
       setEmail(user.email ?? '');
-      const { data } = await supabase.from('profiles').select('full_name, bio, avatar_url').eq('id', user.id).single();
-      if (data) setProfile({ full_name: data.full_name ?? '', bio: data.bio ?? '', avatar_url: data.avatar_url ?? null });
+      const { data } = await supabase.from('profiles').select('full_name, bio, bio_lv, role_title, linkedin_url, avatar_url').eq('id', user.id).single();
+      if (data) setProfile({ full_name: data.full_name ?? '', bio: data.bio ?? '', bio_lv: data.bio_lv ?? '', role_title: data.role_title ?? '', linkedin_url: data.linkedin_url ?? '', avatar_url: data.avatar_url ?? null });
       setLoading(false);
     })();
   }, []);
 
   const handleSaveProfile = async () => {
     setSaving(true); setErrMsg(''); setSavedMsg('');
-    const { error } = await supabase.from('profiles').update({ full_name: profile.full_name, bio: profile.bio }).eq('id', userId);
+    const { error } = await supabase.from('profiles').update({ full_name: profile.full_name, bio: profile.bio, bio_lv: profile.bio_lv, role_title: profile.role_title, linkedin_url: profile.linkedin_url }).eq('id', userId);
     setSaving(false);
     if (error) { setErrMsg(error.message); return; }
     setSavedMsg('Profile saved!');
@@ -133,10 +136,31 @@ export default function DashboardSettingsPage() {
 
         {/* Bio */}
         <div>
+          <label className="block text-white text-sm font-medium mb-1.5">Public Role / Title <span className="text-zinc-600 font-normal">(optional)</span></label>
+          <input value={profile.role_title} onChange={e => setProfile(p => ({ ...p, role_title: e.target.value }))}
+            className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600"
+            placeholder="Founder, Author, Instructor…" />
+        </div>
+
+        <div>
           <label className="block text-white text-sm font-medium mb-1.5">Bio <span className="text-zinc-600 font-normal">(optional)</span></label>
           <textarea value={profile.bio} onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))} rows={3}
             placeholder="Tell us a bit about yourself…"
             className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600 resize-none" />
+        </div>
+
+        <div>
+          <label className="block text-white text-sm font-medium mb-1.5">Bio (LV) <span className="text-zinc-600 font-normal">(optional)</span></label>
+          <textarea value={profile.bio_lv} onChange={e => setProfile(p => ({ ...p, bio_lv: e.target.value }))} rows={3}
+            placeholder="Īss apraksts latviski…"
+            className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600 resize-none" />
+        </div>
+
+        <div>
+          <label className="block text-white text-sm font-medium mb-1.5">LinkedIn URL <span className="text-zinc-600 font-normal">(optional)</span></label>
+          <input value={profile.linkedin_url} onChange={e => setProfile(p => ({ ...p, linkedin_url: e.target.value }))}
+            className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600"
+            placeholder="https://www.linkedin.com/in/..." />
         </div>
 
         {errMsg && <p className="text-red-400 text-sm">{errMsg}</p>}

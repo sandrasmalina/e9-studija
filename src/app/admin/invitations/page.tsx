@@ -7,12 +7,15 @@ import { Send, RefreshCw, Copy, Check, Clock, X } from 'lucide-react';
 interface Invitation {
   id: string;
   email: string;
+  roles: string[] | null;
   status: string;
   token: string;
   expires_at: string;
   created_at: string;
   used_at: string | null;
 }
+
+const AVAILABLE_ROLES = ['student', 'instructor', 'author', 'admin'];
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-900/40 text-yellow-400',
@@ -24,6 +27,7 @@ export default function AdminInvitations() {
   const [invites, setInvites] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(['student']);
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
@@ -41,11 +45,27 @@ export default function AdminInvitations() {
     setSending(true); setErr('');
     const token = crypto.randomUUID();
     const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { error } = await supabase.from('invitations').insert({ email: email.trim().toLowerCase(), token, expires_at: expires, status: 'pending' });
+    const roles = selectedRoles.length > 0 ? selectedRoles : ['student'];
+    const { error } = await supabase.from('invitations').insert({
+      email: email.trim().toLowerCase(),
+      token,
+      expires_at: expires,
+      status: 'pending',
+      roles,
+      role: roles.includes('admin') ? 'admin' : roles.includes('instructor') ? 'instructor' : 'student',
+    });
     if (error) { setErr(error.message); setSending(false); return; }
     setEmail('');
+    setSelectedRoles(['student']);
     setSending(false);
     load();
+  };
+
+  const toggleRole = (role: string) => {
+    setSelectedRoles(current => {
+      if (current.includes(role)) return current.length === 1 ? current : current.filter(item => item !== role);
+      return [...current, role];
+    });
   };
 
   const copyLink = (token: string) => {
@@ -87,6 +107,21 @@ export default function AdminInvitations() {
             <Send size={15} /> {sending ? 'Creating…' : 'Create Invite'}
           </button>
         </div>
+        <div className="flex flex-wrap gap-2 mt-4">
+          {AVAILABLE_ROLES.map(role => {
+            const checked = selectedRoles.includes(role);
+            return (
+              <button
+                key={role}
+                type="button"
+                onClick={() => toggleRole(role)}
+                className={`px-3 py-1.5 rounded-lg border text-xs capitalize transition-colors ${checked ? 'border-accent/50 bg-accent/10 text-white' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'}`}
+              >
+                {role === 'instructor' ? 'Teacher' : role}
+              </button>
+            );
+          })}
+        </div>
         {err && <p className="text-red-400 text-xs mt-2">{err}</p>}
         <p className="text-zinc-600 text-xs mt-2">Generates a unique registration link. Valid for 7 days.</p>
       </div>
@@ -103,6 +138,7 @@ export default function AdminInvitations() {
           <table className="w-full">
             <thead><tr className="border-b border-zinc-800 bg-zinc-900/60">
               <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">Email</th>
+              <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden md:table-cell">Roles</th>
               <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">Status</th>
               <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden md:table-cell">Expires</th>
               <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden lg:table-cell">Sent</th>
@@ -114,6 +150,13 @@ export default function AdminInvitations() {
                 return (
                   <tr key={inv.id} className="hover:bg-zinc-900/40 transition-colors">
                     <td className="px-4 py-3 text-white text-sm">{inv.email}</td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <div className="flex flex-wrap gap-1.5">
+                        {(inv.roles && inv.roles.length > 0 ? inv.roles : ['student']).map(role => (
+                          <span key={role} className="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 text-[11px] capitalize">{role === 'instructor' ? 'Teacher' : role}</span>
+                        ))}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`px-2.5 py-1 rounded-lg text-xs font-medium capitalize ${STATUS_COLORS[status]}`}>{status}</span>
                     </td>

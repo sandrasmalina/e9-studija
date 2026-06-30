@@ -46,10 +46,14 @@ function LoginForm() {
       return;
     }
     // Redirect based on role
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+    const [{ data: profile }, { data: assignedRoles }] = await Promise.all([
+      supabase.from('profiles').select('role').eq('id', data.user.id).single(),
+      supabase.from('user_roles').select('roles(name)').eq('user_id', data.user.id),
+    ]);
     const role = profile?.role ?? 'student';
     if (role === 'admin') { router.replace('/admin'); return; }
     if (role === 'instructor') { router.replace('/instructor/dashboard'); return; }
+    if ((assignedRoles ?? []).some((row: any) => row.roles?.name === 'author')) { router.replace('/admin/publications'); return; }
     router.replace(redirect);
   };
 
