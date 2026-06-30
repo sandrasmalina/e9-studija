@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 import { supabase } from '@/lib/supabase';
 
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
     // 2. Fetch course
     const { data: course, error: courseErr } = await supabase
       .from('courses')
-      .select('id, title_en, slug, price, discount_price, currency, thumbnail_url, is_free')
+      .select('id, title_en, slug, price, discount_price, currency, thumbnail_url, is_free, instructor_id, profiles!courses_instructor_id_fkey(stripe_account_id,platform_fee_pct)')
       .eq('slug', courseSlug)
       .single();
 
@@ -50,6 +51,24 @@ export async function POST(req: NextRequest) {
 
     const unitAmount = Math.round((course.discount_price ?? course.price) * 100);
     const origin = req.headers.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+    const instructorProfile = Array.isArray(course.profiles) ? course.profiles[0] : course.profiles;
+    const stripeAccountId = instructorProfile?.stripe_account_id;
+    const platformFeePct = Math.max(0, Math.min(100, instructorProfile?.platform_fee_pct ?? 30));
+    let paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData | undefined;
+
+    if (stripeAccountId) {
+      try {
+        const account = await stripe.accounts.retrieve(stripeAccountId);
+        if (!account.deleted && account.charges_enabled && account.payouts_enabled) {
+          paymentIntentData = {
+            application_fee_amount: Math.round(unitAmount * (platformFeePct / 100)),
+            transfer_data: { destination: stripeAccountId },
+          };
+        }
+      } catch (connectErr) {
+        console.warn('[stripe/checkout] connect account unavailable:', connectErr);
+      }
+    }
 
     // 4. Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -74,10 +93,15 @@ export async function POST(req: NextRequest) {
       metadata: {
         course_id: course.id,
         course_slug: course.slug,
+        instructor_id: course.instructor_id ?? '',
+        platform_fee_pct: String(platformFeePct),
+        connect_account_id: stripeAccountId ?? '',
+        transfer_status: paymentIntentData ? 'automatic' : 'platform_hold',
         ...(user
           ? { user_id: user.id }
           : { guest_email: guestEmail, guest_name: guestName ?? '' }),
       },
+      ...(paymentIntentData ? { payment_intent_data: paymentIntentData } : {}),
       success_url: `${origin}/checkout/${course.slug}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/courses/${course.slug}`,
     });

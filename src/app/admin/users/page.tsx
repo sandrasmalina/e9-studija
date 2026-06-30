@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Search, RefreshCw, ShieldCheck, User, Users as UsersIcon, GraduationCap, PenLine, Plus, Send, X, Copy, Check } from 'lucide-react';
+import { Search, RefreshCw, ShieldCheck, User, Users as UsersIcon, GraduationCap, PenLine, Plus, Send, X, Copy, Check, CreditCard, Percent } from 'lucide-react';
 
 interface UserProfile {
   id: string;
@@ -10,6 +10,9 @@ interface UserProfile {
   avatar_url: string | null;
   role: string;
   roles: string[];
+  stripe_account_id: string | null;
+  platform_fee_pct: number | null;
+  revenue_share_pct: number | null;
   created_at: string;
   email?: string;
 }
@@ -47,11 +50,12 @@ export default function AdminUsers() {
   const [inviteSaving, setInviteSaving] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const [payoutDrafts, setPayoutDrafts] = useState<Record<string, string>>({});
 
   const load = async () => {
     setLoading(true);
     const [{ data: profileData }, { data: roleData }, { data: userRoleData }] = await Promise.all([
-      supabase.from('profiles').select('id,full_name,avatar_url,role,created_at').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id,full_name,avatar_url,role,stripe_account_id,platform_fee_pct,revenue_share_pct,created_at').order('created_at', { ascending: false }),
       supabase.from('roles').select('id,name,display_name,sort_order').order('sort_order', { ascending: true }),
       supabase.from('user_roles').select('user_id,roles(name)'),
     ]);
@@ -68,6 +72,9 @@ export default function AdminUsers() {
       if (profile.role) assigned.add(profile.role);
       return { ...profile, roles: [...assigned] };
     }) as UserProfile[]);
+    const drafts: Record<string, string> = {};
+    (profileData ?? []).forEach((profile: any) => { drafts[profile.id] = String(profile.platform_fee_pct ?? 30); });
+    setPayoutDrafts(drafts);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -91,6 +98,19 @@ export default function AdminUsers() {
     const legacyRole = nextUserRoles.includes('admin') ? 'admin' : nextUserRoles.includes('instructor') ? 'instructor' : 'student';
     await supabase.from('profiles').update({ role: legacyRole }).eq('id', user.id);
     setUsers(current => current.map(item => item.id === user.id ? { ...item, role: legacyRole, roles: nextUserRoles } : item));
+    setUpdating(null);
+  };
+
+  const handlePayoutSave = async (user: UserProfile) => {
+    const rawFee = Number(payoutDrafts[user.id]);
+    if (!Number.isFinite(rawFee) || rawFee < 0 || rawFee > 100) return;
+    setUpdating(user.id);
+    const platformFee = Math.round(rawFee);
+    const revenueShare = 100 - platformFee;
+    const { error } = await supabase.from('profiles').update({ platform_fee_pct: platformFee, revenue_share_pct: revenueShare }).eq('id', user.id);
+    if (!error) {
+      setUsers(current => current.map(item => item.id === user.id ? { ...item, platform_fee_pct: platformFee, revenue_share_pct: revenueShare } : item));
+    }
     setUpdating(null);
   };
 
@@ -231,6 +251,11 @@ export default function AdminUsers() {
                         <div>
                           <p className="text-white text-sm font-medium">{u.full_name || 'Unnamed User'}</p>
                           <p className="text-zinc-600 text-xs font-mono">{u.id.slice(0, 8)}…</p>
+                          {u.roles.includes('instructor') && (
+                            <p className={`mt-1 inline-flex items-center gap-1 text-[11px] ${u.stripe_account_id ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                              <CreditCard size={11} /> {u.stripe_account_id ? 'Stripe connected' : 'Stripe not connected'}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -266,6 +291,30 @@ export default function AdminUsers() {
                           );
                         })}
                       </div>
+                      {u.roles.includes('instructor') && (
+                        <div className="mt-2 flex justify-end gap-1.5">
+                          <div className="relative w-24">
+                            <Percent size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-600" />
+                            <input
+                              value={payoutDrafts[u.id] ?? ''}
+                              onChange={event => setPayoutDrafts(current => ({ ...current, [u.id]: event.target.value }))}
+                              type="number"
+                              min="0"
+                              max="100"
+                              className="w-full rounded-lg border border-zinc-800 bg-zinc-900 py-1 pl-7 pr-2 text-xs text-white focus:border-accent/50 focus:outline-none"
+                              title="Platform fee percentage"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handlePayoutSave(u)}
+                            disabled={updating === u.id}
+                            className="rounded-lg border border-zinc-800 px-2.5 py-1 text-[11px] text-zinc-400 hover:text-white disabled:opacity-40"
+                          >
+                            Save fee
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

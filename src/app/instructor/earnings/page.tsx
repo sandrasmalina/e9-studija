@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { TrendingUp, DollarSign, Users, BookOpen } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, BookOpen, CreditCard, ExternalLink } from 'lucide-react';
 
 interface Enrollment {
   id: string;
@@ -18,6 +18,8 @@ export default function EarningsPage() {
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [revenueShare, setRevenueShare] = useState(70);
+  const [stripeAccountId, setStripeAccountId] = useState('');
+  const [connectingStripe, setConnectingStripe] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -26,8 +28,9 @@ export default function EarningsPage() {
 
       // Get profile for revenue share %
       const { data: profile } = await supabase.from('profiles')
-        .select('revenue_share_pct').eq('id', user.id).single();
+        .select('revenue_share_pct,stripe_account_id').eq('id', user.id).single();
       if (profile?.revenue_share_pct) setRevenueShare(profile.revenue_share_pct);
+      if (profile?.stripe_account_id) setStripeAccountId(profile.stripe_account_id);
 
       // Get instructor's courses
       const { data: courses } = await supabase.from('courses')
@@ -54,6 +57,18 @@ export default function EarningsPage() {
     load();
   }, []);
 
+  const connectStripe = async () => {
+    setConnectingStripe(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/stripe/connect', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+    });
+    const data = await res.json();
+    setConnectingStripe(false);
+    if (data.url) window.location.href = data.url;
+  };
+
   const myEarnings = (totalRevenue * revenueShare) / 100;
 
   const statCards = [
@@ -65,7 +80,17 @@ export default function EarningsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-white mb-8">Earnings</h1>
+      <div className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Earnings</h1>
+          <p className="text-zinc-500 text-sm mt-1">Connect Stripe to receive automatic payouts from course sales.</p>
+        </div>
+        <button onClick={connectStripe} disabled={connectingStripe}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:border-accent/50 disabled:opacity-50">
+          {stripeAccountId ? <ExternalLink size={15} /> : <CreditCard size={15} />}
+          {connectingStripe ? 'Opening Stripe…' : stripeAccountId ? 'Manage Stripe Connect' : 'Connect Stripe'}
+        </button>
+      </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 mb-8 sm:grid-cols-4">

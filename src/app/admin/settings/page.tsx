@@ -10,7 +10,8 @@ interface Setting {
 }
 
 const SETTING_FIELDS = [
-  { key: 'instructor_revenue_share_pct', label: 'Instructor Revenue Share (%)', desc: 'Default percentage instructors earn per sale (e.g. 70)', type: 'number', placeholder: '70' },
+  { key: 'platform_fee_pct', label: 'Platform Fee (%)', desc: 'Default percentage E9 Studija keeps from each paid course sale', type: 'number', placeholder: '30' },
+  { key: 'instructor_revenue_share_pct', label: 'Teacher Revenue Share (%)', desc: 'Compatibility value for older reports; usually 100 minus platform fee', type: 'number', placeholder: '70' },
   { key: 'affiliate_commission_pct', label: 'Affiliate Commission (%)', desc: 'Default affiliate commission percentage per referred sale', type: 'number', placeholder: '10' },
   { key: 'platform_name', label: 'Platform Name', desc: 'Shown in emails and certificates', type: 'text', placeholder: 'E9 Studija' },
   { key: 'support_email', label: 'Support Email', desc: 'Replies from students are forwarded here', type: 'email', placeholder: 'hello@e9studija.com' },
@@ -36,9 +37,12 @@ export default function AdminSettings() {
 
   const handleSave = async () => {
     setSaving(true); setErr(''); setSaved(false);
-    const upserts = SETTING_FIELDS.map(f => ({ key: f.key, value: settings[f.key] ?? '' }));
+    const platformFee = Number(settings.platform_fee_pct);
+    const nextSettings = Number.isFinite(platformFee) ? { ...settings, instructor_revenue_share_pct: String(100 - platformFee) } : settings;
+    const upserts = SETTING_FIELDS.map(f => ({ key: f.key, value: nextSettings[f.key] ?? '' }));
     const { error } = await supabase.from('platform_settings').upsert(upserts, { onConflict: 'key' });
     if (error) { setErr(error.message); setSaving(false); return; }
+    setSettings(nextSettings);
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
