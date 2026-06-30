@@ -72,6 +72,7 @@ export default function AdminNav() {
 
   const canSee = (itemRoles?: string[]) => !itemRoles || itemRoles.some(role => roles.includes(role));
   const itemIsActive = (href: string) => pathname === href.split('?')[0] || (href !== '/admin/dashboard' && pathname.startsWith(href.split('?')[0]));
+  const isCourseEditor = pathname === '/admin/courses/new' || /^\/admin\/courses\/[^/]+\/edit$/.test(pathname);
   const isAuthorWorkspace = pathname.startsWith('/admin/publications') || pathname.startsWith('/admin/publication-categories') || (pathname === '/admin/users' && searchParams.get('role') === 'author');
   const workspaceGroups = isAuthorWorkspace ? navGroups.filter(group => group.labelKey === 'admin.nav.publications') : navGroups.filter(group => group.labelKey !== 'admin.nav.publications');
   const currentWorkspace = isAuthorWorkspace
@@ -172,7 +173,7 @@ export default function AdminNav() {
           </div>
           );
         })}
-        <DashboardSpaces />
+        {!isCourseEditor && <DashboardSpaces />}
       </nav>
 
       {/* Footer actions */}

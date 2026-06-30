@@ -85,13 +85,15 @@ interface Course {
   what_you_learn: string[] | null;
   target_audience: string | null;
   published_at: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
   instructor: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; website: string | null } | null;
   category: { name_en: string; name_lv: string | null; slug: string; icon: string | null } | null;
   sections: Section[];
   reviews: Review[];
 }
 
-export default function CourseSlugClient({ course }: { course: Course }) {
+export default function CourseSlugClient({ course, isPreview = false }: { course: Course; isPreview?: boolean }) {
   const { t, language } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -266,6 +268,11 @@ export default function CourseSlugClient({ course }: { course: Course }) {
 
   return (
     <div className="min-h-screen bg-bg">
+      {isPreview && (
+        <div className="fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-full border border-amber-400/30 bg-amber-500/15 px-4 py-2 text-xs font-semibold text-amber-200 shadow-2xl backdrop-blur">
+          Draft preview
+        </div>
+      )}
       {/* Hero */}
       <div className="bg-[#0f0c1e] border-b border-white/5 pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-6">
@@ -356,27 +363,32 @@ export default function CourseSlugClient({ course }: { course: Course }) {
 
                 {/* Enrollment CTA — dynamic based on auth + enrollment state */}
                 <div className="mt-4">
-                  {enrollState === 'loading' && (
+                  {isPreview && (
+                    <div className="w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 text-center text-sm font-medium text-zinc-400">
+                      Preview mode — enrollment disabled
+                    </div>
+                  )}
+                  {!isPreview && enrollState === 'loading' && (
                     <div className="w-full py-3 flex items-center justify-center rounded-xl bg-accent/10">
                       <Loader2 size={18} className="text-accent animate-spin" />
                     </div>
                   )}
-                  {enrollState === 'enrolled' && (
+                  {!isPreview && enrollState === 'enrolled' && (
                     <Link href={`/learn/${course.slug}`}>
                       <Button className="w-full text-base py-3">{t('courses.cta.continue') || 'Continue Learning →'}</Button>
                     </Link>
                   )}
-                  {enrollState === 'not-enrolled' && (course.is_free || course.price === 0) && (
+                  {!isPreview && enrollState === 'not-enrolled' && (course.is_free || course.price === 0) && (
                     <Button className="w-full text-base py-3" onClick={handleEnrollFree} disabled={enrolling}>
                       {enrolling ? <Loader2 size={16} className="animate-spin mx-auto" /> : (t('courses.enroll.free') || 'Enroll for Free')}
                     </Button>
                   )}
-                  {enrollState === 'not-enrolled' && !course.is_free && course.price > 0 && (
+                  {!isPreview && enrollState === 'not-enrolled' && !course.is_free && course.price > 0 && (
                     <Link href={`/checkout/${course.slug}`}>
                       <Button className="w-full text-base py-3">{t('courses.enroll.paid') || 'Buy Course'}</Button>
                     </Link>
                   )}
-                  {enrollState === 'not-authed' && (
+                  {!isPreview && enrollState === 'not-authed' && (
                     <Button className="w-full text-base py-3" onClick={() => setShowModal(true)}>
                       {course.is_free || course.price === 0 ? (t('courses.enroll.free') || 'Enroll for Free') : (t('courses.enroll.paid') || 'Buy Course')}
                     </Button>
@@ -394,6 +406,12 @@ export default function CourseSlugClient({ course }: { course: Course }) {
                   <li className="flex items-center gap-2"><Clock size={14} className="text-accent shrink-0" />{t('courses.feature.lifetime')}</li>
                   {totalLectures > 0 && (
                     <li className="flex items-center gap-2"><BookOpen size={14} className="text-accent shrink-0" />{totalLectures} {t('courses.feature.lectures')}</li>
+                  )}
+                  {course.starts_at && (
+                    <li className="flex items-center gap-2"><Clock size={14} className="text-accent shrink-0" />Opens {new Date(course.starts_at).toLocaleDateString('en-GB')}</li>
+                  )}
+                  {course.ends_at && (
+                    <li className="flex items-center gap-2"><Clock size={14} className="text-accent shrink-0" />Finishes {new Date(course.ends_at).toLocaleDateString('en-GB')}</li>
                   )}
                 </ul>
               </div>

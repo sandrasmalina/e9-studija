@@ -6,29 +6,39 @@ import CourseSlugClient from './CourseSlugClient';
 
 interface Props {
   params: { slug: string };
+  searchParams?: { preview?: string };
 }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params, searchParams }: Props) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const preview = searchParams?.preview === '1';
+  const query = supabase
     .from('courses')
-    .select('title_en, title_lv, short_description_en, meta_title, meta_description')
-    .eq('slug', params.slug)
-    .eq('status', 'published')
-    .single();
+    .select('title_en, title_lv, short_description_en, thumbnail_url, meta_title, meta_description, og_title, og_description, og_image, canonical_url, no_index')
+    .eq('slug', params.slug);
+  if (!preview) query.eq('status', 'published');
+  const { data } = await query.single();
 
   if (!data) return { title: 'Course Not Found' };
 
   return {
     title: data.meta_title || data.title_en,
     description: data.meta_description || data.short_description_en || '',
+    alternates: data.canonical_url ? { canonical: data.canonical_url } : undefined,
+    robots: data.no_index || preview ? { index: false, follow: false } : undefined,
+    openGraph: {
+      title: data.og_title || data.meta_title || data.title_en,
+      description: data.og_description || data.meta_description || data.short_description_en || '',
+      images: data.og_image || data.thumbnail_url ? [data.og_image || data.thumbnail_url] : undefined,
+    },
   };
 }
 
-export default async function CourseSlugPage({ params }: Props) {
+export default async function CourseSlugPage({ params, searchParams }: Props) {
   const supabase = await createClient();
+  const preview = searchParams?.preview === '1';
 
-  const { data: course, error } = await supabase
+  const query = supabase
     .from('courses')
     .select(`
       *,
@@ -43,9 +53,9 @@ export default async function CourseSlugPage({ params }: Props) {
       )
     `)
     .eq('slug', params.slug)
-    .eq('status', 'published')
-    .order('sort_order', { referencedTable: 'sections', ascending: true })
-    .single();
+    .order('sort_order', { referencedTable: 'sections', ascending: true });
+  if (!preview) query.eq('status', 'published');
+  const { data: course, error } = await query.single();
 
   if (error || !course) notFound();
 
@@ -60,6 +70,7 @@ export default async function CourseSlugPage({ params }: Props) {
   return (
     <CourseSlugClient
       course={{ ...course, sections: sectionsWithSortedLectures }}
+      isPreview={preview}
     />
   );
 }

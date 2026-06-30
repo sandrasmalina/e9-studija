@@ -15,6 +15,7 @@ interface CourseForm {
   short_description_en: string;
   short_description_lv: string;
   description_en: string;
+  description_lv: string;
   thumbnail_url: string;
   promo_video_url: string;
   promo_video_type: string;
@@ -25,7 +26,24 @@ interface CourseForm {
   target_audience: string;
   price: string;
   discount_price: string;
+  discount_ends_at: string;
   is_free: boolean;
+  starts_at: string;
+  ends_at: string;
+  meta_title: string;
+  meta_description: string;
+  meta_keywords: string;
+  og_title: string;
+  og_description: string;
+  og_image: string;
+  canonical_url: string;
+  no_index: boolean;
+  ai_summary: string;
+  key_takeaways: string;
+  faq_items: string;
+  tags_ai_topics: string;
+  expertise_level: string;
+  industry: string;
   certificate_enabled: boolean;
   status: string;
   category_id: string;
@@ -34,9 +52,12 @@ interface CourseForm {
 
 const EMPTY: CourseForm = {
   title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
-  description_en: '', thumbnail_url: '', promo_video_url: '', promo_video_type: 'youtube',
+  description_en: '', description_lv: '', thumbnail_url: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '',
-  price: '0', discount_price: '', is_free: false, certificate_enabled: true, status: 'draft',
+  price: '0', discount_price: '', discount_ends_at: '', is_free: false, starts_at: '', ends_at: '',
+  meta_title: '', meta_description: '', meta_keywords: '', og_title: '', og_description: '', og_image: '', canonical_url: '', no_index: false,
+  ai_summary: '', key_takeaways: '', faq_items: '', tags_ai_topics: '', expertise_level: '', industry: '',
+  certificate_enabled: true, status: 'draft',
   category_id: '', instructor_id: '',
 };
 
@@ -68,7 +89,7 @@ export default function AdminCourseEditPage() {
       const [{ data: cats }, { data: course }, { data: instructorList }] = await Promise.all([
         supabase.from('categories').select('id, name_en').order('name_en'),
         supabase.from('courses')
-          .select('title_en, title_lv, slug, short_description_en, short_description_lv, description_en, thumbnail_url, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience, price, discount_price, is_free, certificate_enabled, status, category_id, instructor_id')
+          .select('title_en, title_lv, slug, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience, price, discount_price, discount_ends_at, is_free, starts_at, ends_at, meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url, no_index, ai_summary, key_takeaways, faq_items, tags_ai_topics, expertise_level, industry, certificate_enabled, status, category_id, instructor_id')
           .eq('id', id).single(),
         supabase.from('profiles').select('id, full_name').in('role', ['instructor', 'admin']).order('full_name'),
       ]);
@@ -85,6 +106,7 @@ export default function AdminCourseEditPage() {
           short_description_en: course.short_description_en ?? '',
           short_description_lv: course.short_description_lv ?? '',
           description_en: course.description_en ?? '',
+          description_lv: course.description_lv ?? '',
           thumbnail_url: course.thumbnail_url ?? '',
           promo_video_url: course.promo_video_url ?? '',
           promo_video_type: course.promo_video_type ?? 'youtube',
@@ -95,7 +117,24 @@ export default function AdminCourseEditPage() {
           target_audience: course.target_audience ?? '',
           price: course.price != null ? String(course.price) : '0',
           discount_price: course.discount_price != null ? String(course.discount_price) : '',
+          discount_ends_at: course.discount_ends_at ? course.discount_ends_at.slice(0, 16) : '',
           is_free: course.is_free ?? false,
+          starts_at: course.starts_at ? course.starts_at.slice(0, 16) : '',
+          ends_at: course.ends_at ? course.ends_at.slice(0, 16) : '',
+          meta_title: course.meta_title ?? '',
+          meta_description: course.meta_description ?? '',
+          meta_keywords: course.meta_keywords ?? '',
+          og_title: course.og_title ?? '',
+          og_description: course.og_description ?? '',
+          og_image: course.og_image ?? '',
+          canonical_url: course.canonical_url ?? '',
+          no_index: course.no_index ?? false,
+          ai_summary: course.ai_summary ?? '',
+          key_takeaways: course.key_takeaways ?? '',
+          faq_items: course.faq_items ?? '',
+          tags_ai_topics: course.tags_ai_topics ?? '',
+          expertise_level: course.expertise_level ?? '',
+          industry: course.industry ?? '',
           certificate_enabled: course.certificate_enabled ?? true,
           status: course.status ?? 'draft',
           category_id: course.category_id ?? '',
@@ -132,6 +171,7 @@ export default function AdminCourseEditPage() {
       short_description_en: form.short_description_en.trim() || null,
       short_description_lv: form.short_description_lv.trim() || null,
       description_en: form.description_en.trim() || null,
+      description_lv: form.description_lv.trim() || null,
       thumbnail_url: form.thumbnail_url.trim() || null,
       promo_video_url: form.promo_video_url.trim() || null,
       promo_video_type: form.promo_video_url.trim() ? form.promo_video_type : null,
@@ -142,7 +182,24 @@ export default function AdminCourseEditPage() {
       target_audience: form.target_audience.trim() || null,
       price: form.is_free ? 0 : Number(form.price) || 0,
       discount_price: form.discount_price ? Number(form.discount_price) : null,
+      discount_ends_at: form.discount_ends_at || null,
       is_free: form.is_free,
+      starts_at: form.starts_at || null,
+      ends_at: form.ends_at || null,
+      meta_title: form.meta_title.trim() || form.title_en.trim(),
+      meta_description: form.meta_description.trim() || form.short_description_en.trim() || null,
+      meta_keywords: form.meta_keywords.trim() || null,
+      og_title: form.og_title.trim() || form.meta_title.trim() || form.title_en.trim(),
+      og_description: form.og_description.trim() || form.meta_description.trim() || form.short_description_en.trim() || null,
+      og_image: form.og_image.trim() || form.thumbnail_url.trim() || null,
+      canonical_url: form.canonical_url.trim() || (courseSlug ? `/courses/${courseSlug}` : null),
+      no_index: form.no_index,
+      ai_summary: form.ai_summary.trim() || null,
+      key_takeaways: form.key_takeaways.trim() || null,
+      faq_items: form.faq_items.trim() || null,
+      tags_ai_topics: form.tags_ai_topics.trim() || null,
+      expertise_level: form.expertise_level.trim() || null,
+      industry: form.industry.trim() || null,
       certificate_enabled: form.certificate_enabled,
       status: form.status,
       category_id: form.category_id || null,
@@ -182,9 +239,9 @@ export default function AdminCourseEditPage() {
             <BookOpen size={14} /> Curriculum
           </Link>
           {courseSlug && (
-            <a href={`/courses/${courseSlug}`} target="_blank" rel="noopener noreferrer"
+            <a href={`/courses/${courseSlug}?preview=1`} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-500 text-sm transition-colors">
-              <ExternalLink size={14} /> View Course
+              <ExternalLink size={14} /> Preview
             </a>
           )}
         </div>
@@ -257,6 +314,9 @@ export default function AdminCourseEditPage() {
           <Field label="Full Description">
             <RichTextEditor value={form.description_en} onChange={v => set('description_en', v)} placeholder="Detailed course description…" minHeight="280px" />
           </Field>
+          <Field label="Full Description (LV)" hint="Optional — supports headings, images, tables, embeds, and code blocks">
+            <RichTextEditor value={form.description_lv} onChange={v => set('description_lv', v)} placeholder="Detalizēts kursa apraksts latviešu valodā…" minHeight="240px" />
+          </Field>
           <Field label="Target Audience">
             <input type="text" value={form.target_audience} onChange={e => set('target_audience', e.target.value)} placeholder="Who is this course for?" className={inputCls} />
           </Field>
@@ -320,8 +380,24 @@ export default function AdminCourseEditPage() {
               <Field label="Discount Price (€)">
                 <input type="number" min="0" step="0.01" value={form.discount_price} onChange={e => set('discount_price', e.target.value)} placeholder="Optional" className={inputCls} />
               </Field>
+              <Field label="Discount Ends">
+                <input type="datetime-local" value={form.discount_ends_at} onChange={e => set('discount_ends_at', e.target.value)} className={inputCls} />
+              </Field>
             </div>
           )}
+        </div>
+
+        {/* Course availability */}
+        <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/50 p-6 space-y-4">
+          <h2 className="text-white font-semibold">Course Availability</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Course Opens">
+              <input type="datetime-local" value={form.starts_at} onChange={e => set('starts_at', e.target.value)} className={inputCls} />
+            </Field>
+            <Field label="Course Finishes">
+              <input type="datetime-local" value={form.ends_at} onChange={e => set('ends_at', e.target.value)} className={inputCls} />
+            </Field>
+          </div>
         </div>
 
         {/* Options */}
@@ -342,6 +418,34 @@ export default function AdminCourseEditPage() {
           <Field label="Requirements" hint="One item per line">
             <textarea value={form.requirements} onChange={e => set('requirements', e.target.value)} rows={4} placeholder={"Basic JavaScript\nNode.js installed"} className={textareaCls} />
           </Field>
+        </div>
+
+        {/* SEO and AI search */}
+        <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/50 p-6 space-y-4">
+          <h2 className="text-white font-semibold">SEO and AI Search</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="SEO Title"><input value={form.meta_title} onChange={e => set('meta_title', e.target.value)} placeholder="Defaults to course title" className={inputCls} /></Field>
+            <Field label="Canonical URL"><input value={form.canonical_url} onChange={e => set('canonical_url', e.target.value)} placeholder="/courses/course-slug" className={inputCls} /></Field>
+          </div>
+          <Field label="SEO Description"><textarea value={form.meta_description} onChange={e => set('meta_description', e.target.value)} rows={3} placeholder="Search result description" className={textareaCls} /></Field>
+          <Field label="SEO / AI Keywords"><input value={form.meta_keywords} onChange={e => set('meta_keywords', e.target.value)} placeholder="automation, education, AI workflows" className={inputCls} /></Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Open Graph Title"><input value={form.og_title} onChange={e => set('og_title', e.target.value)} placeholder="Social preview title" className={inputCls} /></Field>
+            <Field label="Open Graph Image"><input value={form.og_image} onChange={e => set('og_image', e.target.value)} placeholder="Defaults to thumbnail" className={inputCls} /></Field>
+          </div>
+          <Field label="Open Graph Description"><textarea value={form.og_description} onChange={e => set('og_description', e.target.value)} rows={3} placeholder="Social preview description" className={textareaCls} /></Field>
+          <Field label="AI Summary"><textarea value={form.ai_summary} onChange={e => set('ai_summary', e.target.value)} rows={3} placeholder="Short answer-style summary for AI search" className={textareaCls} /></Field>
+          <Field label="Key Takeaways" hint="One item per line"><textarea value={form.key_takeaways} onChange={e => set('key_takeaways', e.target.value)} rows={4} placeholder={"Learn practical automation\nBuild reusable workflows"} className={textareaCls} /></Field>
+          <Field label="FAQ Items" hint="Question and answer text for AI/search snippets"><textarea value={form.faq_items} onChange={e => set('faq_items', e.target.value)} rows={4} placeholder={"Who is this course for?\nBeginners and professionals…"} className={textareaCls} /></Field>
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="AI Topics"><input value={form.tags_ai_topics} onChange={e => set('tags_ai_topics', e.target.value)} placeholder="topics, separated, by commas" className={inputCls} /></Field>
+            <Field label="Expertise Level"><input value={form.expertise_level} onChange={e => set('expertise_level', e.target.value)} placeholder="Beginner / Professional" className={inputCls} /></Field>
+            <Field label="Industry"><input value={form.industry} onChange={e => set('industry', e.target.value)} placeholder="Creative, SaaS, Education" className={inputCls} /></Field>
+          </div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" checked={form.no_index} onChange={e => set('no_index', e.target.checked)} className="w-4 h-4 rounded accent-purple-500" />
+            <span className="text-zinc-300 text-sm font-medium">Hide this course from search engines</span>
+          </label>
         </div>
 
         {err && <p className="text-red-400 text-sm">{err}</p>}

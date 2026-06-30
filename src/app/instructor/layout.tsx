@@ -394,7 +394,6 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
               {pathname === `/instructor/courses/${courseId}/settings` && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />}
               Settings
             </Link>
-            <DashboardSpaces />
           </nav>
 
           <SidebarFooter />

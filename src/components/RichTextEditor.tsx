@@ -134,6 +134,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         {btn(() => editor.chain().focus().toggleUnderline().run(), editor.isActive('underline'), 'Underline', <UnderlineIcon size={13} />)}
         {btn(() => editor.chain().focus().toggleStrike().run(), editor.isActive('strike'), 'Strikethrough', <Strikethrough size={13} />)}
         {btn(() => editor.chain().focus().toggleCode().run(), editor.isActive('code'), 'Inline code', <Code2 size={13} />)}
+        {btn(() => editor.chain().focus().toggleCodeBlock().run(), editor.isActive('codeBlock'), 'Code block', <span className="font-mono text-[10px]">{'{}'}</span>)}
         {btn(() => editor.chain().focus().toggleHighlight({ color: '#7c3aed' }).run(), editor.isActive('highlight'), 'Highlight', <Highlighter size={13} />)}
         {divider('d2')}
         {btn(() => editor.chain().focus().toggleBulletList().run(), editor.isActive('bulletList'), 'Bullet list', <List size={13} />)}
