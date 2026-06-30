@@ -35,7 +35,14 @@ export default function AdminSocialPage() {
   const [error, setError] = useState('');
 
   const load = async () => {
-    const { data } = await supabase.from('social_links').select('*').order('sort_order');
+    setError('');
+    const { data, error: loadError } = await supabase.from('social_links').select('*').order('sort_order');
+    if (loadError) {
+      setError(loadError.message);
+      setLinks([]);
+      setLoading(false);
+      return;
+    }
     setLinks(data ?? []);
     setLoading(false);
   };
@@ -158,6 +165,12 @@ export default function AdminSocialPage() {
       {/* List */}
       {loading ? (
         <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" /></div>
+      ) : error ? (
+        <div className="text-center py-16 text-red-400 rounded-2xl border border-red-900/40 bg-red-950/20">
+          <Share2 size={28} className="mx-auto mb-3 opacity-40" />
+          <p className="text-sm font-medium">Social links could not be loaded.</p>
+          <p className="text-xs text-red-300/70 mt-2">{error}</p>
+        </div>
       ) : links.length === 0 ? (
         <div className="text-center py-16 text-zinc-500 rounded-2xl border border-zinc-800">
           <Share2 size={28} className="mx-auto mb-3 opacity-30" />
@@ -202,22 +215,6 @@ export default function AdminSocialPage() {
           ))}
         </div>
       )}
-
-      <div className="mt-8 p-4 rounded-xl border border-zinc-800 bg-zinc-950/30">
-        <p className="text-zinc-500 text-xs font-medium mb-2 uppercase tracking-wider">Supabase table needed</p>
-        <pre className="text-zinc-400 text-xs leading-relaxed overflow-x-auto">{`CREATE TABLE IF NOT EXISTS social_links (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  platform TEXT NOT NULL,
-  url TEXT NOT NULL,
-  icon_name TEXT DEFAULT 'Globe',
-  sort_order INTEGER DEFAULT 0,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE social_links ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public read" ON social_links FOR SELECT USING (true);
-CREATE POLICY "Auth write" ON social_links FOR ALL USING (auth.role() = 'authenticated');`}</pre>
-      </div>
     </div>
   );
 }
