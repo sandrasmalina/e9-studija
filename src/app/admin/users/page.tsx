@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Search, RefreshCw, ShieldCheck, User, GraduationCap, PenLine } from 'lucide-react';
+import { Search, RefreshCw, ShieldCheck, User, Users as UsersIcon, GraduationCap, PenLine, Plus, Send, X, Copy, Check } from 'lucide-react';
 
 interface UserProfile {
   id: string;
@@ -40,6 +40,13 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
+  const [inviteModal, setInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRoles, setInviteRoles] = useState<string[]>(['student']);
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSaving, setInviteSaving] = useState(false);
+  const [inviteLink, setInviteLink] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -100,14 +107,87 @@ export default function AdminUsers() {
     return acc;
   }, {});
 
+  const roleLabel = (roleName: string) => {
+    if (roleName === 'all') return 'All Users';
+    return roles.find(role => role.name === roleName)?.display_name ?? roleName;
+  };
+
+  const toggleInviteRole = (roleName: string) => {
+    setInviteRoles(current => {
+      if (current.includes(roleName)) return current.length === 1 ? current : current.filter(role => role !== roleName);
+      return [...current, roleName];
+    });
+  };
+
+  const openInviteModal = () => {
+    setInviteEmail('');
+    setInviteRoles(['student']);
+    setInviteError('');
+    setInviteLink('');
+    setCopied(false);
+    setInviteModal(true);
+  };
+
+  const handleCreateInvite = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!inviteEmail.trim() || !inviteEmail.includes('@')) { setInviteError('Enter a valid email address'); return; }
+    setInviteSaving(true); setInviteError(''); setInviteLink('');
+    const token = crypto.randomUUID();
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const selectedRoles = inviteRoles.length > 0 ? inviteRoles : ['student'];
+    const { error } = await supabase.from('invitations').insert({
+      email: inviteEmail.trim().toLowerCase(),
+      token,
+      expires_at: expires,
+      status: 'pending',
+      roles: selectedRoles,
+      role: selectedRoles.includes('admin') ? 'admin' : selectedRoles.includes('instructor') ? 'instructor' : 'student',
+    });
+    setInviteSaving(false);
+    if (error) { setInviteError(error.message); return; }
+    setInviteLink(`${window.location.origin}/auth/register?invite=${token}`);
+    setInviteEmail('');
+  };
+
+  const copyInviteLink = () => {
+    if (!inviteLink) return;
+    navigator.clipboard.writeText(inviteLink).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">Students & Users</h1>
-          <p className="text-zinc-500 text-sm mt-1">{users.length} registered users</p>
+          <h1 className="text-2xl font-bold text-white">Platform Users</h1>
+          <p className="text-zinc-500 text-sm mt-1">Manage admins, authors, teachers, and students.</p>
         </div>
-        <button onClick={load} className="p-2.5 rounded-xl border border-zinc-800 text-zinc-500 hover:text-white transition-colors"><RefreshCw size={15} /></button>
+        <div className="flex items-center gap-2">
+          <button onClick={load} className="p-2.5 rounded-xl border border-zinc-800 text-zinc-500 hover:text-white transition-colors"><RefreshCw size={15} /></button>
+          <button onClick={openInviteModal} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"><Plus size={15} /> Add User</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+        {roleFilters.map(roleName => {
+          const Icon = roleName === 'all' ? UsersIcon : ROLE_ICONS[roleName] ?? User;
+          return (
+            <button
+              key={roleName}
+              type="button"
+              onClick={() => setRoleFilter(roleName)}
+              className={`rounded-2xl border p-4 text-left transition-all ${roleFilter === roleName ? 'border-accent/50 bg-accent/10' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <Icon size={16} className={roleFilter === roleName ? 'text-accent' : 'text-zinc-500'} />
+                <span className="text-xl font-bold text-white">{counts[roleName] ?? 0}</span>
+              </div>
+              <p className="mt-2 text-xs font-medium text-zinc-400">{roleLabel(roleName)}</p>
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -116,11 +196,11 @@ export default function AdminUsers() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name…"
             className="w-full pl-9 pr-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-accent/50" />
         </div>
-        <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1">
+        <div className="flex flex-wrap gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1">
           {roleFilters.map(r => (
             <button key={r} onClick={() => setRoleFilter(r)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize whitespace-nowrap transition-all ${roleFilter === r ? 'bg-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}>
-              {r} {counts[r] > 0 && <span className="ml-0.5 opacity-70">({counts[r]})</span>}
+              {roleLabel(r)} {counts[r] > 0 && <span className="ml-0.5 opacity-70">({counts[r]})</span>}
             </button>
           ))}
         </div>
@@ -193,6 +273,49 @@ export default function AdminUsers() {
             </tbody>
           </table>
           {filtered.length === 0 && <p className="text-center text-zinc-600 py-10 text-sm">No users found</p>}
+        </div>
+      )}
+
+      {inviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
+              <h2 className="font-semibold text-white">Add Platform User</h2>
+              <button onClick={() => setInviteModal(false)} className="text-zinc-500 hover:text-white"><X size={18} /></button>
+            </div>
+            <form onSubmit={handleCreateInvite} className="space-y-5 p-6">
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5">Email</label>
+                <input value={inviteEmail} onChange={event => { setInviteEmail(event.target.value); setInviteError(''); }} type="email" className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:border-accent/50 focus:outline-none" placeholder="person@example.com" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-2">Assign roles</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {roles.map(role => {
+                    const checked = inviteRoles.includes(role.name);
+                    return (
+                      <button key={role.name} type="button" onClick={() => toggleInviteRole(role.name)} className={`rounded-xl border px-3 py-2 text-sm transition-colors ${checked ? 'border-accent/50 bg-accent/10 text-white' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'}`}>
+                        {role.display_name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {inviteError && <p className="rounded-lg border border-red-900/40 bg-red-950/30 px-3 py-2 text-xs text-red-400">{inviteError}</p>}
+              {inviteLink && (
+                <div className="rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-3">
+                  <p className="text-xs text-emerald-400 mb-2">Invitation created. Copy and send this link:</p>
+                  <button type="button" onClick={copyInviteLink} className="flex w-full items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-left text-xs text-zinc-300 hover:text-white">
+                    {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                    <span className="truncate">{inviteLink}</span>
+                  </button>
+                </div>
+              )}
+              <button type="submit" disabled={inviteSaving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50">
+                <Send size={14} /> {inviteSaving ? 'Creating…' : 'Create Invitation'}
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>

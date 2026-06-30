@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 
 const navGroups = [
   {
-    label: 'Overview',
+    label: 'Dashboard',
     items: [
       { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'author'] },
     ],
