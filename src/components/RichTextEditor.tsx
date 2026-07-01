@@ -6,6 +6,8 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
+import Color from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { Table } from '@tiptap/extension-table';
@@ -14,7 +16,7 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import Image from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
-import { Bold, Code2, Heading4, Highlighter, ImageIcon, Italic, Link2, List, ListChecks, ListOrdered, Minus, Quote, Redo2, Strikethrough, Table2, Underline as UnderlineIcon, Undo2, Video } from 'lucide-react';
+import { Bold, Code2, Heading4, Highlighter, ImageIcon, Italic, Link2, List, ListChecks, ListOrdered, Minus, Palette, Quote, Redo2, Strikethrough, Table2, Underline as UnderlineIcon, Undo2, Video } from 'lucide-react';
 
 interface Props {
   value: string;
@@ -22,6 +24,17 @@ interface Props {
   placeholder?: string;
   minHeight?: string;
 }
+
+const TEXT_COLORS = [
+  { label: 'White', value: '#f8fafc' },
+  { label: 'Gray', value: '#a1a1aa' },
+  { label: 'Black', value: '#18181b' },
+  { label: 'Purple', value: '#a855f7' },
+  { label: 'Blue', value: '#38bdf8' },
+  { label: 'Green', value: '#22c55e' },
+  { label: 'Amber', value: '#f59e0b' },
+  { label: 'Red', value: '#ef4444' },
+];
 
 export default function RichTextEditor({ value, onChange, placeholder, minHeight = '160px' }: Props) {
   const [mounted, setMounted] = useState(false);
@@ -32,6 +45,8 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
   const editor = useEditor({
     extensions: [
       StarterKit,
+      TextStyle,
+      Color,
       Underline,
       Highlight.configure({ multicolor: true }),
       TaskList,
@@ -136,6 +151,27 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         {btn(() => editor.chain().focus().toggleCode().run(), editor.isActive('code'), 'Inline code', <Code2 size={13} />)}
         {btn(() => editor.chain().focus().toggleCodeBlock().run(), editor.isActive('codeBlock'), 'Code block', <span className="font-mono text-[10px]">{'{}'}</span>)}
         {btn(() => editor.chain().focus().toggleHighlight({ color: '#7c3aed' }).run(), editor.isActive('highlight'), 'Highlight', <Highlighter size={13} />)}
+        <div key="text-colors" className="flex items-center gap-0.5 px-1" title="Text color">
+          <Palette size={13} className="text-zinc-500" />
+          {TEXT_COLORS.map(color => (
+            <button
+              key={color.value}
+              type="button"
+              title={`Text color: ${color.label}`}
+              onMouseDown={e => { e.preventDefault(); editor.chain().focus().setColor(color.value).run(); }}
+              className={`h-6 w-6 rounded-lg border transition-transform hover:scale-105 ${editor.isActive('textStyle', { color: color.value }) ? 'border-white' : 'border-white/10'}`}
+              style={{ backgroundColor: color.value }}
+            />
+          ))}
+          <button
+            type="button"
+            title="Reset text color"
+            onMouseDown={e => { e.preventDefault(); editor.chain().focus().unsetColor().run(); }}
+            className="flex h-6 w-6 items-center justify-center rounded-lg border border-white/10 text-[10px] font-semibold text-zinc-500 transition-colors hover:bg-white/[0.07] hover:text-white"
+          >
+            ×
+          </button>
+        </div>
         {divider('d2')}
         {btn(() => editor.chain().focus().toggleBulletList().run(), editor.isActive('bulletList'), 'Bullet list', <List size={13} />)}
         {btn(() => editor.chain().focus().toggleOrderedList().run(), editor.isActive('orderedList'), 'Numbered list', <ListOrdered size={13} />)}
