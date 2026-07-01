@@ -82,10 +82,10 @@ export default function DashboardSettingsPage() {
     if (!file || !userId) return;
     setUploading(true); setErrMsg(''); setSavedMsg('');
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const path = `${userId}/avatar-${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { contentType: file.type });
+    const path = `profile-avatars/${userId}/avatar-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from('images').upload(path, file, { contentType: file.type });
     if (upErr) { setErrMsg(upErr.message); setUploading(false); return; }
-    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    const { data } = supabase.storage.from('images').getPublicUrl(path);
     const avatarUrl = data.publicUrl;
     const { data: updatedProfile, error: profileErr } = await supabase
       .from('profiles')
