@@ -352,7 +352,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
               </div>
 
               {course.instructor?.full_name && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mb-6">
                   {course.instructor.avatar_url && (
                     <Image src={course.instructor.avatar_url} alt={course.instructor.full_name} width={32} height={32}
                       className="rounded-full object-cover" />
@@ -360,6 +360,20 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                   <span className="text-neutral-400 text-sm">
                     {t('courses.by')} <span className="text-accent">{course.instructor.full_name}</span>
                   </span>
+                </div>
+              )}
+
+              {course.what_you_learn && course.what_you_learn.length > 0 && (
+                <div className="mt-6 rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+                  <h2 className="text-base font-bold text-white mb-4">{t('courses.section.learn')}</h2>
+                  <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3">
+                    {course.what_you_learn.map((item, i) => (
+                      <div key={i} className="flex items-start gap-2 text-sm text-neutral-300">
+                        <CheckCircle size={14} className="text-accent shrink-0 mt-0.5" />
+                        {item}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </motion.div>
@@ -458,21 +472,6 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
       <div className="max-w-7xl mx-auto px-6 py-10">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,404px)] gap-8 xl:gap-10">
           <div className="space-y-10">
-
-            {/* What you'll learn */}
-            {course.what_you_learn && course.what_you_learn.length > 0 && (
-              <section>
-                <h2 className="text-xl font-bold text-white mb-5">{t('courses.section.learn')}</h2>
-                <div className="grid sm:grid-cols-2 gap-3 p-6 rounded-xl border border-white/8 bg-[#0f0c1e]">
-                  {course.what_you_learn.map((item, i) => (
-                    <div key={i} className="flex items-start gap-2 text-sm text-neutral-300">
-                      <CheckCircle size={14} className="text-accent shrink-0 mt-0.5" />
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
 
             {((course.requirements && course.requirements.length > 0) || targetAudience.length > 0) && (
               <div className="grid gap-8 lg:grid-cols-2">
