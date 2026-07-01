@@ -62,7 +62,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
       }),
     ],
-    content: '',
+    content: value || '',
     onUpdate({ editor }) {
       onChange(editor.isEmpty ? '' : editor.getHTML());
     },
