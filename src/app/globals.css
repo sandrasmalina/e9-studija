@@ -190,6 +190,7 @@
   .content-page.content-theme-light [class~="bg-bg-secondary"],
   .content-page.content-theme-light [class~="bg-[#0f0c1e]"],
   .content-page.content-theme-light [class~="bg-[#16122a]"],
+  .content-page.content-theme-light [class~="bg-[#0b0915]"],
   .content-page.content-theme-light [class~="bg-white/[0.02]"],
   .content-page.content-theme-light [class~="bg-white/[0.03]"],
   .content-page.content-theme-light [class~="bg-white/[0.04]"] {
@@ -198,7 +199,8 @@
   .content-page.content-theme-light [class~="border-white/5"],
   .content-page.content-theme-light [class~="border-white/8"],
   .content-page.content-theme-light [class~="border-white/10"],
-  .content-page.content-theme-light [class~="border-white/20"] {
+  .content-page.content-theme-light [class~="border-white/20"],
+  .content-page.content-theme-light [class~="border-white/[0.06]"] {
     border-color: #e6dfd3 !important;
   }
   .content-page.content-theme-light [class~="text-white"],
@@ -214,7 +216,8 @@
   .content-page.content-theme-light [class~="text-neutral-600"],
   .content-page.content-theme-light [class~="text-zinc-400"],
   .content-page.content-theme-light [class~="text-zinc-500"],
-  .content-page.content-theme-light [class~="text-zinc-600"] {
+  .content-page.content-theme-light [class~="text-zinc-600"],
+  .content-page.content-theme-light [class~="text-zinc-700"] {
     color: #6b7280 !important;
   }
   .content-page.content-theme-light .prose {
@@ -249,6 +252,15 @@
   }
   .content-page.content-theme-light .course-description-content figcaption {
     color: #6b7280;
+  }
+  .content-page.content-theme-light .lecture-content {
+    --tw-prose-body: #4b5563;
+    --tw-prose-headings: #171717;
+    --tw-prose-links: #7c3aed;
+    --tw-prose-bold: #171717;
+    --tw-prose-bullets: #7c3aed;
+    --tw-prose-quotes: #374151;
+    --tw-prose-quote-borders: #a855f7;
   }
   .content-page.content-theme-light img,
   .content-page.content-theme-light video,

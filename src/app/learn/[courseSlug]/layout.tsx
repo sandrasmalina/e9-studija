@@ -5,7 +5,7 @@ import { useRouter, usePathname, useParams, useSearchParams } from 'next/navigat
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { LearnerContext, LearnerCtxValue, SectionMeta, LectureMeta } from '@/contexts/LearnerContext';
-import { CheckCircle2, Circle, ChevronDown, ChevronRight, X, Menu } from 'lucide-react';
+import { CheckCircle2, Circle, ChevronDown, ChevronRight, X, Menu, Moon, Sun } from 'lucide-react';
 
 function fmtSeconds(s: number) {
   if (s < 60) return `${s}s`;
@@ -41,10 +41,24 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userId, setUserId] = useState('');
+  const [contentTheme, setContentTheme] = useState<'dark' | 'light'>('dark');
 
   // Extract current lectureId from /learn/courseSlug/lectureId
   const pathParts = pathname.split('/');
   const currentLectureId = pathParts.length >= 4 ? pathParts[3] : null;
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('e9-content-theme');
+    if (saved === 'light' || saved === 'dark') setContentTheme(saved);
+  }, []);
+
+  const toggleContentTheme = () => {
+    setContentTheme(current => {
+      const next = current === 'dark' ? 'light' : 'dark';
+      window.localStorage.setItem('e9-content-theme', next);
+      return next;
+    });
+  };
 
   useEffect(() => {
     (async () => {
@@ -284,7 +298,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
 
   return (
     <LearnerContext.Provider value={ctxValue}>
-      <div className="min-h-screen bg-[#0b0915] flex flex-col">
+      <div className={`content-page content-theme-${contentTheme} min-h-screen bg-[#0b0915] flex flex-col`} style={{ background: contentTheme === 'light' ? '#f8f5ef' : '#0b0915' }}>
         {/* Top bar */}
         <header className="h-14 bg-[#0f0c1e] border-b border-white/[0.06] flex items-center px-4 gap-3 shrink-0 z-30 sticky top-0">
           <Link href={isPreview ? `/instructor/courses/${course.id}/curriculum` : '/dashboard'}
@@ -294,6 +308,14 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate">{course.title_en}</p>
           </div>
+          <button
+            type="button"
+            onClick={toggleContentTheme}
+            title={contentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="p-2 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all"
+          >
+            {contentTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           {/* Progress */}
           <div className="hidden sm:flex items-center gap-2.5 shrink-0">
             {isPreview ? (

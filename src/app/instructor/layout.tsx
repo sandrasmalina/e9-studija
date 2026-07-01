@@ -104,7 +104,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
       const { data } = await supabase
         .from('courses')
         .select('title_en, sections(id, title_en, sort_order, lectures(id, title_en, content_type, sort_order))')
-        .eq('id', courseId).single();
+        .eq('id', courseId).maybeSingle();
       if (!data) return;
       setCourseTitle(data.title_en ?? '');
       setSections(

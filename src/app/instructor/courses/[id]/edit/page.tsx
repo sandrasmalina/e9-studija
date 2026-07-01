@@ -126,19 +126,26 @@ export default function CourseEditPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [availabilityGroups, setAvailabilityGroups] = useState<AvailabilityGroup[]>([]);
+  const [canManageTeacherAssignments, setCanManageTeacherAssignments] = useState(false);
 
   useEffect(() => {
     const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       const { data, error: courseError } = await supabase.from('courses')
         .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, fake_enrollment_count, starts_at, ends_at, certificate_enabled')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (courseError || !data) {
-        setErr(courseError?.message || 'Could not load course');
+        setErr(courseError?.message || 'Course not found or you do not have access to edit it.');
         setLoading(false);
         return;
       }
+
+      const { data: profile } = user
+        ? await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+        : { data: null };
+      setCanManageTeacherAssignments(profile?.role === 'admin' || data.instructor_id === user?.id);
 
       setCourseTitle(data.title_en);
       setCourseSlug(data.slug ?? '');
@@ -216,7 +223,7 @@ export default function CourseEditPage() {
     if (!form.title_en.trim()) { setErr('Title is required'); return; }
     setSaving(true); setErr(''); setSaved(false);
 
-    const { error } = await supabase.from('courses').update({
+    const coursePayload: Record<string, unknown> = {
       title_en: form.title_en.trim(),
       title_lv: form.title_lv.trim() || null,
       short_description_en: form.short_description_en.trim() || null,
@@ -236,7 +243,6 @@ export default function CourseEditPage() {
       target_audience: form.target_audience.trim() || null,
       target_audience_lv: form.target_audience_lv.trim() || null,
       delivery_mode: form.delivery_mode,
-      instructor_id: selectedTeacherIds[0] || null,
       price: form.is_free ? 0 : Number(form.price) || 0,
       is_free: form.is_free,
       fake_enrollment_count: Math.max(0, Number(form.fake_enrollment_count) || 0),
@@ -247,19 +253,24 @@ export default function CourseEditPage() {
       ends_at: form.ends_at || null,
       certificate_enabled: form.certificate_enabled,
       updated_at: new Date().toISOString(),
-    }).eq('id', id);
+    };
+    if (canManageTeacherAssignments) coursePayload.instructor_id = selectedTeacherIds[0] || null;
 
-    if (error) { setErr(error.message); return; }
+    const { error } = await supabase.from('courses').update(coursePayload).eq('id', id);
 
-    await supabase.from('course_instructors').delete().eq('course_id', id);
-    if (selectedTeacherIds.length > 0) {
-      const { error: teacherError } = await supabase.from('course_instructors').insert(selectedTeacherIds.map((teacherId, index) => ({
-        course_id: id,
-        instructor_id: teacherId,
-        role: index === 0 ? 'lead' : 'teacher',
-        sort_order: index,
-      })));
-      if (teacherError) { setSaving(false); setErr(teacherError.message); return; }
+    if (error) { setSaving(false); setErr(error.message); return; }
+
+    if (canManageTeacherAssignments) {
+      await supabase.from('course_instructors').delete().eq('course_id', id);
+      if (selectedTeacherIds.length > 0) {
+        const { error: teacherError } = await supabase.from('course_instructors').insert(selectedTeacherIds.map((teacherId, index) => ({
+          course_id: id,
+          instructor_id: teacherId,
+          role: index === 0 ? 'lead' : 'teacher',
+          sort_order: index,
+        })));
+        if (teacherError) { setSaving(false); setErr(teacherError.message); return; }
+      }
     }
 
     const normalizedGroups = availabilityGroups
@@ -288,6 +299,10 @@ export default function CourseEditPage() {
 
   if (loading) {
     return <div className="space-y-4">{[...Array(5)].map((_, i) => <div key={i} className="h-20 rounded-xl bg-white/[0.04] animate-pulse" />)}</div>;
+  }
+
+  if (err && !courseTitle) {
+    return <p className="text-red-400 text-sm">{err}</p>;
   }
 
   return (
@@ -320,6 +335,8 @@ export default function CourseEditPage() {
           }`}>{label}</button>
         ))}
       </div>
+
+      {err && <p className="mb-5 text-red-400 text-sm">{err}</p>}
 
       <div className="space-y-5">
         {/* Basic info */}
@@ -517,11 +534,11 @@ export default function CourseEditPage() {
               <p className="text-zinc-600 text-xs">Students receive a certificate when they complete this course.</p>
             </div>
           </label>
-          <Field label="Lecturers / Teachers" hint="Select one or several teachers. The first selected teacher is the lead instructor.">
+          <Field label="Lecturers / Teachers" hint={canManageTeacherAssignments ? 'Select one or several teachers. The first selected teacher is the lead instructor.' : 'Only admins and the lead instructor can change teacher assignments.'}>
             <div className="grid grid-cols-2 gap-2">
               {teachers.map(teacher => (
-                <label key={teacher.id} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[#0b0915] px-3 py-2 text-sm text-zinc-300">
-                  <input type="checkbox" checked={selectedTeacherIds.includes(teacher.id)} onChange={() => toggleTeacher(teacher.id)} className="h-4 w-4 rounded accent-purple-500" />
+                <label key={teacher.id} className={`flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[#0b0915] px-3 py-2 text-sm text-zinc-300 ${canManageTeacherAssignments ? '' : 'opacity-70'}`}>
+                  <input type="checkbox" checked={selectedTeacherIds.includes(teacher.id)} disabled={!canManageTeacherAssignments} onChange={() => toggleTeacher(teacher.id)} className="h-4 w-4 rounded accent-purple-500 disabled:opacity-50" />
                   <span className="truncate">{teacher.full_name || teacher.id}</span>
                 </label>
               ))}

@@ -21,7 +21,7 @@ interface CourseSettings {
 
 const STATUS_INFO: Record<string, { label: string; desc: string; color: string }> = {
   draft:       { label: 'Draft',       desc: 'Only visible to you. Not submitted for review.', color: 'text-zinc-400' },
-  review:      { label: 'In Review',   desc: 'Submitted to admin for approval before publishing.', color: 'text-yellow-400' },
+  review:      { label: 'In Review',   desc: 'This course was previously submitted for review. You can publish it directly now.', color: 'text-yellow-400' },
   published:   { label: 'Published',   desc: 'Live and visible to all students.', color: 'text-green-400' },
   unpublished: { label: 'Unpublished', desc: 'Was published but now hidden from students.', color: 'text-red-400' },
 };
@@ -38,8 +38,10 @@ export default function CourseSettingsPage() {
     supabase.from('courses')
       .select('title_en, slug, price, discount_price, discount_starts_at, discount_ends_at, is_free, certificate_enabled, status')
       .eq('id', id)
-      .single()
-      .then(({ data }) => {
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) setErr(error.message);
+        if (!error && !data) setErr('Course not found or you do not have access to edit it.');
         if (data) {
           setSettings({
             title_en: data.title_en,
@@ -65,9 +67,7 @@ export default function CourseSettingsPage() {
     if (!settings) return;
     setSaving(true); setErr(''); setSaved(false);
 
-    // Only allow instructor to set draft or review (not published directly)
-    const allowedStatuses = ['draft', 'review'];
-    const status = allowedStatuses.includes(settings.status) ? settings.status : settings.status;
+    const status = settings.status;
 
     const { error } = await supabase.from('courses').update({
       price: settings.is_free ? 0 : Number(settings.price),
@@ -78,7 +78,7 @@ export default function CourseSettingsPage() {
       certificate_enabled: settings.certificate_enabled,
       status,
       updated_at: new Date().toISOString(),
-      ...(status === 'review' ? { published_at: new Date().toISOString() } : {}),
+      published_at: status === 'published' ? new Date().toISOString() : null,
     }).eq('id', id);
 
     setSaving(false);
@@ -87,8 +87,12 @@ export default function CourseSettingsPage() {
     setTimeout(() => setSaved(false), 3000);
   };
 
-  if (loading || !settings) {
+  if (loading) {
     return <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="h-20 rounded-xl bg-white/[0.04] animate-pulse" />)}</div>;
+  }
+
+  if (!settings) {
+    return <p className="text-red-400 text-sm">{err || 'Course not found or you do not have access to edit it.'}</p>;
   }
 
   const statusInfo = STATUS_INFO[settings.status];
@@ -125,31 +129,25 @@ export default function CourseSettingsPage() {
             </div>
           </div>
 
-          {/* Allow instructor to set draft or submit for review */}
-          {(settings.status === 'draft' || settings.status === 'review') && (
-            <div className="flex gap-2">
-              <button onClick={() => set('status', 'draft')}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                  settings.status === 'draft' ? 'bg-zinc-800 border-zinc-600 text-white' : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'
-                }`}>Save as Draft</button>
-              <button onClick={() => set('status', 'review')}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                  settings.status === 'review' ? 'bg-yellow-900/30 border-yellow-500/40 text-yellow-400' : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'
-                }`}>Submit for Review</button>
-            </div>
-          )}
-
-          {settings.status === 'published' && (
+          <div className="grid gap-2 sm:grid-cols-3">
+            <button onClick={() => set('status', 'draft')}
+              className={`py-2.5 rounded-xl text-sm font-medium border transition-all ${
+                settings.status === 'draft' ? 'bg-zinc-800 border-zinc-600 text-white' : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'
+              }`}>Save as Draft</button>
+            <button onClick={() => set('status', 'published')}
+              className={`py-2.5 rounded-xl text-sm font-medium border transition-all ${
+                settings.status === 'published' ? 'bg-green-900/30 border-green-500/40 text-green-400' : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'
+              }`}>Publish Course</button>
             <button onClick={() => set('status', 'unpublished')}
-              className="w-full py-2.5 rounded-xl text-sm font-medium border border-red-500/20 text-red-400 hover:bg-red-900/10 transition-all">
-              Unpublish Course
-            </button>
-          )}
+              className={`py-2.5 rounded-xl text-sm font-medium border transition-all ${
+                settings.status === 'unpublished' ? 'bg-red-900/20 border-red-500/30 text-red-400' : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'
+              }`}>Unpublish</button>
+          </div>
 
           {settings.status === 'review' && (
             <div className="flex items-start gap-2 p-3 rounded-xl bg-yellow-900/10 border border-yellow-500/15">
               <AlertTriangle size={14} className="text-yellow-400 mt-0.5 shrink-0" />
-              <p className="text-yellow-400/80 text-xs">Submitted for admin review. You'll be notified when it's approved and published.</p>
+              <p className="text-yellow-400/80 text-xs">Review is no longer required. Choose Publish Course and save settings to make it live.</p>
             </div>
           )}
         </div>

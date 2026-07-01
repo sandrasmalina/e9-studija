@@ -26,6 +26,15 @@ const STATUS_COLORS: Record<string, string> = {
   unpublished: 'bg-red-900/20 text-red-400 border-red-500/20',
 };
 
+const STATUS_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'published', label: 'Published' },
+  { value: 'unpublished', label: 'Unpublished' },
+  { value: 'review', label: 'Review' },
+] as const;
+
+type CourseStatus = typeof STATUS_OPTIONS[number]['value'];
+
 function toSlug(title: string): string {
   return title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'course';
 }
@@ -34,6 +43,14 @@ export default function InstructorCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const courseSelect = 'id, title_en, slug, status, is_free, price, enrollment_count, rating_avg, total_lectures, created_at, category:categories!category_id(name_en)';
+
+  const mergeCourses = (courseRows: Course[]) => {
+    const byId = new Map<string, Course>();
+    courseRows.forEach(course => byId.set(course.id, course));
+    return Array.from(byId.values()).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  };
 
   useEffect(() => {
     (async () => {
@@ -45,13 +62,23 @@ export default function InstructorCoursesPage() {
         .from('profiles').select('role').eq('id', user.id).single();
       const isAdmin = profile?.role === 'admin';
 
-      const base = supabase
-        .from('courses')
-        .select('id, title_en, slug, status, is_free, price, enrollment_count, rating_avg, total_lectures, created_at, category:categories!category_id(name_en)')
-        .order('created_at', { ascending: false });
-
-      const { data } = await (isAdmin ? base : base.eq('instructor_id', user.id));
-      setCourses((data ?? []) as unknown as Course[]);
+      if (isAdmin) {
+        const { data } = await supabase
+          .from('courses')
+          .select(courseSelect)
+          .order('created_at', { ascending: false });
+        setCourses((data ?? []) as unknown as Course[]);
+      } else {
+        const [{ data: ownedCourses }, { data: assignments }] = await Promise.all([
+          supabase.from('courses').select(courseSelect).eq('instructor_id', user.id).order('created_at', { ascending: false }),
+          supabase.from('course_instructors').select('course_id').eq('instructor_id', user.id),
+        ]);
+        const assignedIds = Array.from(new Set((assignments ?? []).map(row => row.course_id)));
+        const { data: assignedCourses } = assignedIds.length > 0
+          ? await supabase.from('courses').select(courseSelect).in('id', assignedIds).order('created_at', { ascending: false })
+          : { data: [] };
+        setCourses(mergeCourses([...(ownedCourses ?? []), ...(assignedCourses ?? [])] as unknown as Course[]));
+      }
       setLoading(false);
     })();
   }, []);
@@ -63,6 +90,8 @@ export default function InstructorCoursesPage() {
   const refreshCourses = (courseRows: Course[]) => setCourses(courseRows);
 
   const handleDuplicate = async (course: Course) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
     const { data: original, error } = await supabase.from('courses').select('*').eq('id', course.id).single();
     if (error || !original) { alert(error?.message || 'Could not load course'); return; }
 
@@ -73,6 +102,7 @@ export default function InstructorCoursesPage() {
       title_en: copyTitle,
       title_lv: original.title_lv ? `${original.title_lv} (Copy)` : null,
       slug: `${toSlug(copyTitle)}-${Date.now().toString(36)}`,
+      instructor_id: user.id,
       status: 'draft',
       published_at: null,
       enrollment_count: 0,
@@ -104,8 +134,13 @@ export default function InstructorCoursesPage() {
     }
 
     const { data: instructors } = await supabase.from('course_instructors').select('*').eq('course_id', course.id).order('sort_order');
-    if (instructors?.length) {
-      await supabase.from('course_instructors').insert((instructors as any[]).map(instructor => ({
+    const copiedInstructors = (instructors as any[] | null) ?? [];
+    const copiedInstructorIds = new Set(copiedInstructors.map(instructor => instructor.instructor_id));
+    const nextInstructors = copiedInstructorIds.has(user.id)
+      ? copiedInstructors.map(instructor => instructor.instructor_id === user.id ? { ...instructor, role: 'lead', sort_order: 0 } : instructor)
+      : [{ instructor_id: user.id, role: 'lead', sort_order: 0 }, ...copiedInstructors.map(instructor => ({ ...instructor, sort_order: instructor.sort_order + 1 }))];
+    if (nextInstructors.length) {
+      await supabase.from('course_instructors').insert(nextInstructors.map(instructor => ({
         course_id: newCourse.id,
         instructor_id: instructor.instructor_id,
         role: instructor.role,
@@ -114,6 +149,16 @@ export default function InstructorCoursesPage() {
     }
 
     refreshCourses([{ ...(newCourse as unknown as Course), category: (newCourse as any).category ?? null }, ...courses]);
+  };
+
+  const handleStatusChange = async (course: Course, status: CourseStatus) => {
+    const { error } = await supabase.from('courses').update({
+      status,
+      published_at: status === 'published' ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', course.id);
+    if (error) { alert(error.message); return; }
+    setCourses(rows => rows.map(row => row.id === course.id ? { ...row, status } : row));
   };
 
   const handleDelete = async (course: Course) => {
@@ -196,7 +241,13 @@ export default function InstructorCoursesPage() {
                     {c.category && <p className="text-zinc-600 text-xs mt-0.5">{c.category.name_en}</p>}
                   </td>
                   <td className="px-4 py-3 hidden sm:table-cell">
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-medium capitalize border ${STATUS_COLORS[c.status] ?? STATUS_COLORS.draft}`}>{c.status}</span>
+                    <select
+                      value={c.status}
+                      onChange={event => handleStatusChange(c, event.target.value as CourseStatus)}
+                      className={`rounded-lg border px-2.5 py-1 text-xs font-medium capitalize outline-none transition-colors ${STATUS_COLORS[c.status] ?? STATUS_COLORS.draft}`}
+                    >
+                      {STATUS_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
                   </td>
                   <td className="px-4 py-3 text-zinc-400 text-sm hidden md:table-cell">
                     {c.is_free ? <span className="text-green-400">Free</span> : `€${c.price}`}
