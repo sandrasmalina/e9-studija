@@ -75,7 +75,9 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
     ],
     content: value || '',
     onUpdate({ editor }) {
-      onChange(editor.isEmpty ? '' : editor.getHTML());
+      const nextValue = editor.isEmpty ? '' : editor.getHTML();
+      lastExternalValue.current = nextValue;
+      onChange(nextValue);
     },
     editorProps: {
       transformPastedHTML(html) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useLearner } from '@/contexts/LearnerContext';
 import { CheckCircle2, ChevronLeft, ChevronRight, Download, FileText, Play, BookOpen } from 'lucide-react';
@@ -44,8 +44,10 @@ function fmtBytes(bytes: number) {
 
 export default function LecturePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const params = useParams() as { courseSlug: string; lectureId: string };
   const { lectureId, courseSlug } = params;
+  const isPreview = searchParams.get('preview') === '1';
 
   const { allLectures, completedIds, markComplete, courseTitle } = useLearner();
 
@@ -84,6 +86,7 @@ export default function LecturePage() {
   }, [lectureId]);
 
   const handleMarkComplete = async () => {
+    if (isPreview) return;
     if (isCompleted || marking) return;
     setMarking(true);
     await markComplete(lectureId);
@@ -198,14 +201,16 @@ export default function LecturePage() {
         {/* Mark complete button */}
         <button
           onClick={handleMarkComplete}
-          disabled={isCompleted || marking}
+          disabled={isPreview || isCompleted || marking}
           className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-            isCompleted
+            isPreview
+              ? 'bg-amber-500/10 text-amber-200 border border-amber-400/25 cursor-default'
+              : isCompleted
               ? 'bg-green-900/30 text-green-400 border border-green-500/25 cursor-default'
               : 'bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-60'
           }`}>
           <CheckCircle2 size={15} />
-          {isCompleted ? 'Completed' : marking ? 'Saving…' : 'Mark Complete'}
+          {isPreview ? 'Preview mode' : isCompleted ? 'Completed' : marking ? 'Saving…' : 'Mark Complete'}
         </button>
       </div>
 
@@ -233,7 +238,7 @@ export default function LecturePage() {
       {/* Prev / Next navigation */}
       <div className="flex items-center justify-between gap-4 pt-6 border-t border-white/[0.06]">
         {prevLecture ? (
-          <button onClick={() => router.push(`/learn/${courseSlug}/${prevLecture.id}`)}
+          <button onClick={() => router.push(`/learn/${courseSlug}/${prevLecture.id}${isPreview ? '?preview=1' : ''}`)}
             className="flex items-center gap-2 text-zinc-500 hover:text-white text-sm transition-colors group max-w-[45%]">
             <ChevronLeft size={16} className="shrink-0" />
             <span className="truncate">{prevLecture.title_en}</span>
@@ -241,7 +246,7 @@ export default function LecturePage() {
         ) : <div />}
 
         {nextLecture ? (
-          <button onClick={() => router.push(`/learn/${courseSlug}/${nextLecture.id}`)}
+          <button onClick={() => router.push(`/learn/${courseSlug}/${nextLecture.id}${isPreview ? '?preview=1' : ''}`)}
             className="flex items-center gap-2 text-zinc-500 hover:text-white text-sm transition-colors group max-w-[45%] text-right ml-auto">
             <span className="truncate">{nextLecture.title_en}</span>
             <ChevronRight size={16} className="shrink-0" />

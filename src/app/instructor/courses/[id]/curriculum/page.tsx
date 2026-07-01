@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Play, FileText, Save, X, Upload, FileDown, Paperclip } from 'lucide-react';
+import { Eye, Play, FileText, Save, X, Upload, FileDown, Paperclip } from 'lucide-react';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
@@ -48,6 +48,7 @@ export default function CurriculumPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sections, setSections] = useState<Section[]>([]);
+  const [courseSlug, setCourseSlug] = useState('');
   const [loading, setLoading] = useState(true);
 
   const [lectureModal, setLectureModal] = useState<{ sectionId: string; lectureId?: string } | null>(null);
@@ -61,11 +62,15 @@ export default function CurriculumPage() {
   const notify = () => window.dispatchEvent(new CustomEvent('curriculum-changed'));
 
   const load = async () => {
-    const { data: secs } = await supabase
-      .from('sections')
-      .select('id, title_en, sort_order, lectures(id, title_en, content_type, video_type, video_url, video_duration_seconds, is_preview, description_en, text_content, material_url, material_filename, sort_order)')
-      .eq('course_id', courseId)
-      .order('sort_order');
+    const [{ data: secs }, { data: course }] = await Promise.all([
+      supabase
+        .from('sections')
+        .select('id, title_en, sort_order, lectures(id, title_en, content_type, video_type, video_url, video_duration_seconds, is_preview, description_en, text_content, material_url, material_filename, sort_order)')
+        .eq('course_id', courseId)
+        .order('sort_order'),
+      supabase.from('courses').select('slug').eq('id', courseId).single(),
+    ]);
+    setCourseSlug(course?.slug ?? '');
     setSections(
       (secs ?? []).map((s: Section) => ({
         ...s,
@@ -131,6 +136,11 @@ export default function CurriculumPage() {
     setLectureModal({ sectionId, lectureId: lecture.id });
   };
 
+  const openLecturePreview = (lectureId: string) => {
+    if (!courseSlug) return;
+    window.open(`/learn/${courseSlug}/${lectureId}?preview=1`, '_blank', 'noopener,noreferrer');
+  };
+
   const uploadFile = async (file: File) => {
     setUploading(true);
     const ext = file.name.split('.').pop();
@@ -163,19 +173,33 @@ export default function CurriculumPage() {
     };
 
     if (lectureModal.lectureId) {
-      await supabase.from('lectures').update(payload).eq('id', lectureModal.lectureId);
+      const { data, error } = await supabase.from('lectures')
+        .update(payload)
+        .eq('id', lectureModal.lectureId)
+        .select('id, title_en, content_type, video_type, video_url, video_duration_seconds, is_preview, description_en, text_content, material_url, material_filename, sort_order')
+        .single();
+      if (error || !data) {
+        setLectureSaving(false);
+        setLectureErr(error?.message || 'Lecture was not saved. Please try again.');
+        return;
+      }
       setSections(prev => prev.map(s => s.id === lectureModal.sectionId ? {
         ...s,
-        lectures: s.lectures.map(l => l.id === lectureModal.lectureId ? { ...l, ...payload } : l),
+        lectures: s.lectures.map(l => l.id === lectureModal.lectureId ? data as Lecture : l),
       } : s));
     } else {
       const sort_order = section?.lectures.length ?? 0;
-      const { data } = await supabase.from('lectures')
+      const { data, error } = await supabase.from('lectures')
         .insert({ ...payload, section_id: lectureModal.sectionId, course_id: courseId, sort_order })
-        .select('id, sort_order').single();
+        .select('id, title_en, content_type, video_type, video_url, video_duration_seconds, is_preview, description_en, text_content, material_url, material_filename, sort_order').single();
+      if (error || !data) {
+        setLectureSaving(false);
+        setLectureErr(error?.message || 'Lecture was not created. Please try again.');
+        return;
+      }
       if (data) {
         setSections(prev => prev.map(s => s.id === lectureModal.sectionId ? {
-          ...s, lectures: [...s.lectures, { ...payload, id: data.id, sort_order: data.sort_order } as Lecture],
+          ...s, lectures: [...s.lectures, data as Lecture],
         } : s));
       }
     }
@@ -212,11 +236,21 @@ export default function CurriculumPage() {
             <h2 className="text-white text-lg font-semibold">
               {lectureModal.lectureId ? 'Edit Lecture' : 'Add Lecture'}
             </h2>
-            <button
-              onClick={() => { setLectureModal(null); router.replace(`/instructor/courses/${courseId}/curriculum`); }}
-              className="p-2 rounded-xl text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all">
-              <X size={15} />
-            </button>
+            <div className="flex items-center gap-2">
+              {lectureModal.lectureId && courseSlug && (
+                <button
+                  type="button"
+                  onClick={() => openLecturePreview(lectureModal.lectureId!)}
+                  className="flex items-center gap-2 rounded-xl border border-purple-500/30 px-3 py-2 text-xs font-medium text-purple-300 transition-colors hover:bg-purple-500/10">
+                  <Eye size={14} /> Preview as student
+                </button>
+              )}
+              <button
+                onClick={() => { setLectureModal(null); router.replace(`/instructor/courses/${courseId}/curriculum`); }}
+                className="p-2 rounded-xl text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all">
+                <X size={15} />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-5">
@@ -327,6 +361,12 @@ export default function CurriculumPage() {
                 <Save size={14} />
                 {lectureSaving ? 'Saving…' : lectureModal.lectureId ? 'Save Changes' : 'Add Lecture'}
               </button>
+              {lectureModal.lectureId && courseSlug && (
+                <button type="button" onClick={() => openLecturePreview(lectureModal.lectureId!)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-purple-500/30 text-purple-300 text-sm font-medium hover:bg-purple-500/10 transition-colors">
+                  <Eye size={14} /> Preview
+                </button>
+              )}
               <button
                 onClick={() => { setLectureModal(null); router.replace(`/instructor/courses/${courseId}/curriculum`); }}
                 className="px-4 py-2.5 rounded-xl border border-white/[0.08] text-zinc-500 hover:text-white transition-colors">

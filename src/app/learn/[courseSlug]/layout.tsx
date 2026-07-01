@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter, usePathname, useParams } from 'next/navigation';
+import { useRouter, usePathname, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { LearnerContext, LearnerCtxValue, SectionMeta, LectureMeta } from '@/contexts/LearnerContext';
@@ -23,13 +23,16 @@ interface CourseInfo {
   is_free: boolean;
   price: number;
   certificate_enabled: boolean;
+  instructor_id: string | null;
 }
 
 export default function LearnLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const params = useParams() as { courseSlug: string };
   const { courseSlug } = params;
+  const isPreview = searchParams.get('preview') === '1';
 
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<CourseInfo | null>(null);
@@ -57,7 +60,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       const { data: courseData, error: courseErr } = await supabase
         .from('courses')
         .select(`
-          id, title_en, slug, is_free, price, certificate_enabled,
+          id, title_en, slug, is_free, price, certificate_enabled, instructor_id,
           sections(
             id, title_en, sort_order,
             lectures(id, title_en, sort_order, video_duration_seconds, is_preview, content_type)
@@ -71,40 +74,57 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
         return;
       }
 
-      // 3. Enrollment check
-      const { data: enrollment } = await supabase
-        .from('enrollments')
-        .select('id, status')
-        .eq('user_id', user.id)
-        .eq('course_id', courseData.id)
-        .maybeSingle();
-
-      if (!enrollment) {
-        if (courseData.is_free || courseData.price === 0) {
-          // Auto-enroll for free courses
-          const { error: enrollErr } = await supabase
-            .from('enrollments')
-            .insert({ user_id: user.id, course_id: courseData.id, amount_paid: 0, currency: 'EUR', status: 'active' });
-          // Ignore unique constraint violation (already enrolled race)
-          if (enrollErr && enrollErr.code !== '23505') {
-            router.replace(`/courses/${courseSlug}`);
-            return;
-          }
-        } else {
-          router.replace(`/courses/${courseSlug}?enroll=required`);
+      let canPreview = false;
+      if (isPreview) {
+        const [{ data: profile }, { data: courseInstructor }] = await Promise.all([
+          supabase.from('profiles').select('role').eq('id', user.id).maybeSingle(),
+          supabase.from('course_instructors').select('instructor_id').eq('course_id', courseData.id).eq('instructor_id', user.id).maybeSingle(),
+        ]);
+        canPreview = profile?.role === 'admin' || courseData.instructor_id === user.id || Boolean(courseInstructor);
+        if (!canPreview) {
+          router.replace(`/courses/${courseSlug}`);
           return;
         }
       }
 
-      // 4. Lecture progress
-      const { data: progress } = await supabase
-        .from('lecture_progress')
-        .select('lecture_id')
-        .eq('user_id', user.id)
-        .eq('course_id', courseData.id)
-        .eq('completed', true);
+      // 3. Enrollment check
+      if (!canPreview) {
+        const { data: enrollment } = await supabase
+          .from('enrollments')
+          .select('id, status')
+          .eq('user_id', user.id)
+          .eq('course_id', courseData.id)
+          .maybeSingle();
 
-      const doneIds = new Set<string>((progress ?? []).map((p: { lecture_id: string }) => p.lecture_id));
+        if (!enrollment) {
+          if (courseData.is_free || courseData.price === 0) {
+            // Auto-enroll for free courses
+            const { error: enrollErr } = await supabase
+              .from('enrollments')
+              .insert({ user_id: user.id, course_id: courseData.id, amount_paid: 0, currency: 'EUR', status: 'active' });
+            // Ignore unique constraint violation (already enrolled race)
+            if (enrollErr && enrollErr.code !== '23505') {
+              router.replace(`/courses/${courseSlug}`);
+              return;
+            }
+          } else {
+            router.replace(`/courses/${courseSlug}?enroll=required`);
+            return;
+          }
+        }
+      }
+
+      // 4. Lecture progress
+      let doneIds = new Set<string>();
+      if (!canPreview) {
+        const { data: progress } = await supabase
+          .from('lecture_progress')
+          .select('lecture_id')
+          .eq('user_id', user.id)
+          .eq('course_id', courseData.id)
+          .eq('completed', true);
+        doneIds = new Set<string>((progress ?? []).map((p: { lecture_id: string }) => p.lecture_id));
+      }
       setCompletedIds(doneIds);
 
       // 5. Sort sections + lectures
@@ -115,7 +135,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           lectures: (s.lectures ?? []).sort((a: LectureMeta, b: LectureMeta) => a.sort_order - b.sort_order),
         }));
 
-      setCourse({ id: courseData.id, title_en: courseData.title_en, slug: courseData.slug, is_free: courseData.is_free, price: courseData.price, certificate_enabled: courseData.certificate_enabled ?? false });
+      setCourse({ id: courseData.id, title_en: courseData.title_en, slug: courseData.slug, is_free: courseData.is_free, price: courseData.price, certificate_enabled: courseData.certificate_enabled ?? false, instructor_id: courseData.instructor_id ?? null });
       setSections(sortedSections);
 
       // Expand section containing current lecture (or first section)
@@ -126,7 +146,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
 
       setLoading(false);
     })();
-  }, [courseSlug]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [courseSlug, isPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Expand section of new lecture when navigating
   useEffect(() => {
@@ -136,6 +156,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
   }, [currentLectureId, sections]);
 
   const markComplete = useCallback(async (lectureId: string) => {
+    if (isPreview) return;
     if (!course || !userId) return;
     await supabase.from('lecture_progress').upsert({
       user_id: userId,
@@ -166,7 +187,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       });
       return next;
     });
-  }, [course, userId, sections]);
+  }, [course, userId, sections, isPreview]);
 
   if (loading) {
     return (
@@ -191,6 +212,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
     allLectures,
     completedIds,
     totalLectures,
+    isPreview,
     markComplete,
   };
 
@@ -205,7 +227,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
     <div className="h-full flex flex-col bg-[#0f0c1e]">
       <div className="px-4 py-3 border-b border-white/[0.06] shrink-0">
         <p className="text-zinc-500 text-[11px] font-medium uppercase tracking-wider">Course Content</p>
-        <p className="text-zinc-600 text-xs mt-0.5">{completedCount}/{totalLectures} · {progressPct}% complete</p>
+        <p className="text-zinc-600 text-xs mt-0.5">{isPreview ? 'Student preview mode' : `${completedCount}/${totalLectures} · ${progressPct}% complete`}</p>
       </div>
       <div className="flex-1 overflow-y-auto py-1">
         {sections.map(section => {
@@ -230,7 +252,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
                     const isDone = completedIds.has(lecture.id);
                     return (
                       <Link key={lecture.id}
-                        href={`/learn/${courseSlug}/${lecture.id}`}
+                        href={`/learn/${courseSlug}/${lecture.id}${isPreview ? '?preview=1' : ''}`}
                         onClick={() => setSidebarOpen(false)}
                         className={`flex items-start gap-2.5 px-4 py-2.5 text-xs transition-all border-l-2 ${
                           isActive
@@ -265,8 +287,8 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       <div className="min-h-screen bg-[#0b0915] flex flex-col">
         {/* Top bar */}
         <header className="h-14 bg-[#0f0c1e] border-b border-white/[0.06] flex items-center px-4 gap-3 shrink-0 z-30 sticky top-0">
-          <Link href="/dashboard"
-            className="p-2 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all" title="Back to dashboard">
+          <Link href={isPreview ? `/instructor/courses/${course.id}/curriculum` : '/dashboard'}
+            className="p-2 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all" title={isPreview ? 'Back to curriculum' : 'Back to dashboard'}>
             <X size={16} />
           </Link>
           <div className="flex-1 min-w-0">
@@ -274,10 +296,16 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           </div>
           {/* Progress */}
           <div className="hidden sm:flex items-center gap-2.5 shrink-0">
-            <div className="w-28 h-1.5 rounded-full bg-white/10">
-              <div className="h-full rounded-full bg-purple-500 transition-all duration-300" style={{ width: `${progressPct}%` }} />
-            </div>
-            <span className="text-zinc-500 text-xs whitespace-nowrap">{completedCount}/{totalLectures}</span>
+            {isPreview ? (
+              <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-200">Preview</span>
+            ) : (
+              <>
+                <div className="w-28 h-1.5 rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-purple-500 transition-all duration-300" style={{ width: `${progressPct}%` }} />
+                </div>
+                <span className="text-zinc-500 text-xs whitespace-nowrap">{completedCount}/{totalLectures}</span>
+              </>
+            )}
           </div>
           {/* Mobile sidebar toggle */}
           <button className="md:hidden p-2 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all" onClick={() => setSidebarOpen(v => !v)}>

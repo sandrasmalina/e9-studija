@@ -26,6 +26,7 @@ export interface LearnerCtxValue {
   allLectures: LectureMeta[]; // flattened, sorted
   completedIds: Set<string>;
   totalLectures: number;
+  isPreview?: boolean;
   markComplete: (lectureId: string) => Promise<void>;
 }
 
