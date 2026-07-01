@@ -85,7 +85,9 @@ interface Course {
   rating_count: number;
   certificate_enabled: boolean;
   requirements: string[] | null;
+  requirements_lv: string[] | null;
   what_you_learn: string[] | null;
+  what_you_learn_lv: string[] | null;
   target_audience: string | null;
   target_audience_lv: string | null;
   published_at: string | null;
@@ -270,6 +272,8 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
   const desc = (language === 'lv' && course.description_lv) ? course.description_lv : course.description_en;
   const thumbnailUrl = (language === 'lv' && course.thumbnail_url_lv) ? course.thumbnail_url_lv : course.thumbnail_url;
+  const learningOutcomes = (language === 'lv' && course.what_you_learn_lv?.length) ? course.what_you_learn_lv : course.what_you_learn;
+  const requirements = (language === 'lv' && course.requirements_lv?.length) ? course.requirements_lv : course.requirements;
   const targetAudience = ((language === 'lv' && course.target_audience_lv) ? course.target_audience_lv : course.target_audience)
     ?.split('\n')
     .map(item => item.trim())
@@ -363,11 +367,11 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                 </div>
               )}
 
-              {course.what_you_learn && course.what_you_learn.length > 0 && (
+              {learningOutcomes && learningOutcomes.length > 0 && (
                 <div className="mt-6 rounded-2xl border border-white/8 bg-white/[0.03] p-5">
                   <h2 className="text-base font-bold text-white mb-4">{t('courses.section.learn')}</h2>
                   <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3">
-                    {course.what_you_learn.map((item, i) => (
+                    {learningOutcomes.map((item, i) => (
                       <div key={i} className="flex items-start gap-2 text-sm text-neutral-300">
                         <CheckCircle size={14} className="text-accent shrink-0 mt-0.5" />
                         {item}
@@ -470,16 +474,15 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
 
       {/* Body */}
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,404px)] gap-8 xl:gap-10">
-          <div className="space-y-10">
+        <div className="max-w-5xl space-y-10">
 
-            {((course.requirements && course.requirements.length > 0) || targetAudience.length > 0) && (
+            {((requirements && requirements.length > 0) || targetAudience.length > 0) && (
               <div className="grid gap-8 lg:grid-cols-2">
-                {course.requirements && course.requirements.length > 0 && (
+                {requirements && requirements.length > 0 && (
                   <section>
                     <h2 className="text-xl font-bold text-white mb-5">{t('courses.section.requirements')}</h2>
                     <ul className="space-y-2">
-                      {course.requirements.map((req, i) => (
+                      {requirements.map((req, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-neutral-400">
                           <span className="text-accent mt-1">•</span>
                           {req}
@@ -677,10 +680,6 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                 </div>
               )}
             </section>
-          </div>
-
-          {/* Spacer for sticky card alignment on desktop */}
-          <div />
         </div>
       </div>
 

@@ -53,6 +53,7 @@ export default function NewCoursePage() {
     }).select('id').single();
 
     if (error) { setErr(error.message); setSaving(false); return; }
+    await supabase.from('course_instructors').insert({ course_id: data.id, instructor_id: user.id, role: 'lead', sort_order: 0 });
     router.push(`/instructor/courses/${data.id}/edit`);
   };
 

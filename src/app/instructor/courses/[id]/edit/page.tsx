@@ -92,9 +92,16 @@ interface AvailabilityGroup {
   id?: string;
   name_en: string;
   name_lv: string;
+  language: string;
   starts_at: string;
   ends_at: string;
   capacity: string;
+}
+
+interface Teacher {
+  id: string;
+  full_name: string | null;
+  role: string | null;
 }
 
 const EMPTY: CourseForm = {
@@ -115,19 +122,27 @@ export default function CourseEditPage() {
   const [courseTitle, setCourseTitle] = useState('');
   const [courseSlug, setCourseSlug] = useState('');
   const [activeChapter, setActiveChapter] = useState<ChapterId | null>('basic');
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [availabilityGroups, setAvailabilityGroups] = useState<AvailabilityGroup[]>([]);
 
   useEffect(() => {
     Promise.all([
       supabase.from('courses')
-        .select('slug, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, starts_at, ends_at, certificate_enabled')
+        .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, starts_at, ends_at, certificate_enabled')
         .eq('id', id)
         .single(),
-      supabase.from('course_availability_groups').select('id,name_en,name_lv,starts_at,ends_at,capacity,sort_order').eq('course_id', id).order('sort_order'),
-    ]).then(([{ data }, { data: groupRows }]) => {
+      supabase.from('course_availability_groups').select('id,name_en,name_lv,language,starts_at,ends_at,capacity,sort_order').eq('course_id', id).order('sort_order'),
+      supabase.from('profiles').select('id, full_name, role').in('role', ['instructor', 'admin']).order('full_name'),
+      supabase.from('course_instructors').select('instructor_id, sort_order').eq('course_id', id).order('sort_order'),
+    ]).then(([{ data }, { data: groupRows }, { data: teacherRows }, { data: instructorRows }]) => {
         if (data) {
           setCourseTitle(data.title_en);
           setCourseSlug(data.slug ?? '');
+          setSelectedTeacherIds((instructorRows ?? []).length > 0
+            ? (instructorRows ?? []).map(row => row.instructor_id)
+            : (data.instructor_id ? [data.instructor_id] : [])
+          );
           setForm({
             title_en: data.title_en ?? '',
             title_lv: data.title_lv ?? '',
@@ -159,10 +174,12 @@ export default function CourseEditPage() {
             certificate_enabled: data.certificate_enabled ?? true,
           });
         }
+        setTeachers((teacherRows ?? []) as Teacher[]);
         setAvailabilityGroups(((groupRows ?? []) as any[]).map(group => ({
           id: group.id,
           name_en: group.name_en ?? '',
           name_lv: group.name_lv ?? '',
+          language: group.language ?? 'both',
           starts_at: group.starts_at ? group.starts_at.slice(0, 16) : '',
           ends_at: group.ends_at ? group.ends_at.slice(0, 16) : '',
           capacity: group.capacity != null ? String(group.capacity) : '',
@@ -180,8 +197,9 @@ export default function CourseEditPage() {
     });
   };
   const setAvailability = (index: number, key: keyof AvailabilityGroup, value: string) => setAvailabilityGroups(groups => groups.map((group, groupIndex) => groupIndex === index ? { ...group, [key]: value } : group));
-  const addAvailability = () => setAvailabilityGroups(groups => [...groups, { name_en: '', name_lv: '', starts_at: '', ends_at: '', capacity: '' }]);
+  const addAvailability = () => setAvailabilityGroups(groups => [...groups, { name_en: '', name_lv: '', language: 'both', starts_at: '', ends_at: '', capacity: '' }]);
   const removeAvailability = (index: number) => setAvailabilityGroups(groups => groups.filter((_, groupIndex) => groupIndex !== index));
+  const toggleTeacher = (teacherId: string) => setSelectedTeacherIds(ids => ids.includes(teacherId) ? ids.filter(id => id !== teacherId) : [...ids, teacherId]);
 
   const handleSave = async () => {
     if (!form.title_en.trim()) { setErr('Title is required'); return; }
@@ -207,6 +225,7 @@ export default function CourseEditPage() {
       target_audience: form.target_audience.trim() || null,
       target_audience_lv: form.target_audience_lv.trim() || null,
       delivery_mode: form.delivery_mode,
+      instructor_id: selectedTeacherIds[0] || null,
       price: form.is_free ? 0 : Number(form.price) || 0,
       is_free: form.is_free,
       discount_price: !form.is_free && form.discount_type !== 'none' && form.discount_price ? Number(form.discount_price) : null,
@@ -220,6 +239,17 @@ export default function CourseEditPage() {
 
     if (error) { setErr(error.message); return; }
 
+    await supabase.from('course_instructors').delete().eq('course_id', id);
+    if (selectedTeacherIds.length > 0) {
+      const { error: teacherError } = await supabase.from('course_instructors').insert(selectedTeacherIds.map((teacherId, index) => ({
+        course_id: id,
+        instructor_id: teacherId,
+        role: index === 0 ? 'lead' : 'teacher',
+        sort_order: index,
+      })));
+      if (teacherError) { setSaving(false); setErr(teacherError.message); return; }
+    }
+
     const normalizedGroups = availabilityGroups
       .map((group, index) => ({ ...group, sort_order: index, name_en: group.name_en.trim(), name_lv: group.name_lv.trim() }))
       .filter(group => group.name_en || group.name_lv || group.starts_at || group.ends_at);
@@ -229,6 +259,7 @@ export default function CourseEditPage() {
         course_id: id,
         name_en: group.name_en || 'Group',
         name_lv: group.name_lv || null,
+        language: group.language || 'both',
         starts_at: group.starts_at || null,
         ends_at: group.ends_at || null,
         capacity: group.capacity ? Number(group.capacity) : null,
@@ -329,14 +360,6 @@ export default function CourseEditPage() {
           <Field label="Full Description (LV)" hint="Optional Latvian version with the same rich content tools.">
             <RichTextEditor value={form.description_lv} onChange={v => set('description_lv', v)} placeholder="Detalizēts kursa apraksts latviešu valodā…" minHeight="220px" />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Target Audience (EN)" hint="One item per line">
-              <Textarea value={form.target_audience} onChange={v => set('target_audience', v)} placeholder={"Entrepreneurs with business ideas\nCoaches and consultants\nSmall business owners"} rows={5} />
-            </Field>
-            <Field label="Target Audience (LV)" hint="Optional Latvian version — one item per line">
-              <Textarea value={form.target_audience_lv} onChange={v => set('target_audience_lv', v)} placeholder={"Uzņēmēji ar biznesa idejām\nKouči un konsultanti\nMazo uzņēmumu īpašnieki"} rows={5} />
-            </Field>
-          </div>
         </Chapter>
 
         {/* Pricing */}
@@ -425,6 +448,14 @@ export default function CourseEditPage() {
               <Textarea value={form.requirements_lv} onChange={v => set('requirements_lv', v)} placeholder={"Pamatzināšanas JavaScript\nInstalēts Node.js"} rows={4} />
             </Field>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Who This Course Is For (EN)" hint="One item per line">
+              <Textarea value={form.target_audience} onChange={v => set('target_audience', v)} placeholder={"Entrepreneurs with business ideas\nCoaches and consultants\nSmall business owners"} rows={5} />
+            </Field>
+            <Field label="Kam šis kurss ir paredzēts (LV)" hint="One item per line">
+              <Textarea value={form.target_audience_lv} onChange={v => set('target_audience_lv', v)} placeholder={"Uzņēmējiem ar biznesa idejām\nKonsultantiem un koučiem\nMazo uzņēmumu īpašniekiem"} rows={5} />
+            </Field>
+          </div>
         </Chapter>
 
         {/* Availability */}
@@ -448,6 +479,13 @@ export default function CourseEditPage() {
                   <Field label="Group Name (EN)"><Input value={group.name_en} onChange={value => setAvailability(index, 'name_en', value)} placeholder="August group" /></Field>
                   <Field label="Group Name (LV)"><Input value={group.name_lv} onChange={value => setAvailability(index, 'name_lv', value)} placeholder="Augusta grupa" /></Field>
                 </div>
+                <Field label="Group Language">
+                  <select value={group.language} onChange={event => setAvailability(index, 'language', event.target.value)} className={inputCls}>
+                    <option value="both">English + Latvian</option>
+                    <option value="en">Only English</option>
+                    <option value="lv">Only Latvian</option>
+                  </select>
+                </Field>
                 <div className="grid grid-cols-3 gap-3">
                   <Field label="Opens"><input type="datetime-local" value={group.starts_at} onChange={event => setAvailability(index, 'starts_at', event.target.value)} className={`${inputCls} [color-scheme:dark]`} /></Field>
                   <Field label="Closes"><input type="datetime-local" value={group.ends_at} onChange={event => setAvailability(index, 'ends_at', event.target.value)} className={`${inputCls} [color-scheme:dark]`} /></Field>
@@ -464,6 +502,16 @@ export default function CourseEditPage() {
               <p className="text-zinc-600 text-xs">Students receive a certificate when they complete this course.</p>
             </div>
           </label>
+          <Field label="Lecturers / Teachers" hint="Select one or several teachers. The first selected teacher is the lead instructor.">
+            <div className="grid grid-cols-2 gap-2">
+              {teachers.map(teacher => (
+                <label key={teacher.id} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[#0b0915] px-3 py-2 text-sm text-zinc-300">
+                  <input type="checkbox" checked={selectedTeacherIds.includes(teacher.id)} onChange={() => toggleTeacher(teacher.id)} className="h-4 w-4 rounded accent-purple-500" />
+                  <span className="truncate">{teacher.full_name || teacher.id}</span>
+                </label>
+              ))}
+            </div>
+          </Field>
         </Chapter>
 
         {err && <p className="text-red-400 text-sm">{err}</p>}

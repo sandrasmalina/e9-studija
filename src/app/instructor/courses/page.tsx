@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { Plus, BookOpen, Search, Edit2, Eye } from 'lucide-react';
+import { Plus, BookOpen, Search, Edit2, Eye, Copy, Trash2 } from 'lucide-react';
 
 interface Course {
   id: string;
@@ -25,6 +25,10 @@ const STATUS_COLORS: Record<string, string> = {
   draft:       'bg-zinc-800/60 text-zinc-500 border-zinc-700',
   unpublished: 'bg-red-900/20 text-red-400 border-red-500/20',
 };
+
+function toSlug(title: string): string {
+  return title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'course';
+}
 
 export default function InstructorCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -55,6 +59,91 @@ export default function InstructorCoursesPage() {
   const filtered = courses.filter(c =>
     c.title_en.toLowerCase().includes(search.toLowerCase())
   );
+
+  const refreshCourses = (courseRows: Course[]) => setCourses(courseRows);
+
+  const handleDuplicate = async (course: Course) => {
+    const { data: original, error } = await supabase.from('courses').select('*').eq('id', course.id).single();
+    if (error || !original) { alert(error?.message || 'Could not load course'); return; }
+
+    const copyTitle = `${original.title_en} (Copy)`;
+    const { id: _id, created_at: _created, updated_at: _updated, published_at: _published, stripe_price_id: _stripePrice, stripe_product_id: _stripeProduct, ...courseCopy } = original as any;
+    const { data: newCourse, error: insertError } = await supabase.from('courses').insert({
+      ...courseCopy,
+      title_en: copyTitle,
+      title_lv: original.title_lv ? `${original.title_lv} (Copy)` : null,
+      slug: `${toSlug(copyTitle)}-${Date.now().toString(36)}`,
+      status: 'draft',
+      published_at: null,
+      enrollment_count: 0,
+      rating_avg: 0,
+      rating_count: 0,
+      stripe_price_id: null,
+      stripe_product_id: null,
+    }).select('id, title_en, slug, status, is_free, price, enrollment_count, rating_avg, total_lectures, created_at, category:categories!category_id(name_en)').single();
+    if (insertError || !newCourse) { alert(insertError?.message || 'Could not duplicate course'); return; }
+
+    const { data: sections } = await supabase.from('sections').select('*, lectures(*)').eq('course_id', course.id).order('sort_order');
+    for (const section of (sections ?? []) as any[]) {
+      const { id: _sectionId, created_at: _sectionCreated, lectures, ...sectionCopy } = section;
+      const { data: newSection } = await supabase.from('sections').insert({ ...sectionCopy, course_id: newCourse.id }).select('id').single();
+      if (newSection && lectures?.length) {
+        await supabase.from('lectures').insert(lectures.map((lecture: any) => {
+          const { id: _lectureId, created_at: _lectureCreated, section_id: _oldSectionId, course_id: _oldCourseId, ...lectureCopy } = lecture;
+          return { ...lectureCopy, section_id: newSection.id, course_id: newCourse.id };
+        }));
+      }
+    }
+
+    const { data: groups } = await supabase.from('course_availability_groups').select('*').eq('course_id', course.id).order('sort_order');
+    if (groups?.length) {
+      await supabase.from('course_availability_groups').insert((groups as any[]).map(group => {
+        const { id: _groupId, created_at: _groupCreated, updated_at: _groupUpdated, course_id: _oldCourseId, ...groupCopy } = group;
+        return { ...groupCopy, course_id: newCourse.id };
+      }));
+    }
+
+    const { data: instructors } = await supabase.from('course_instructors').select('*').eq('course_id', course.id).order('sort_order');
+    if (instructors?.length) {
+      await supabase.from('course_instructors').insert((instructors as any[]).map(instructor => ({
+        course_id: newCourse.id,
+        instructor_id: instructor.instructor_id,
+        role: instructor.role,
+        sort_order: instructor.sort_order,
+      })));
+    }
+
+    refreshCourses([{ ...(newCourse as unknown as Course), category: (newCourse as any).category ?? null }, ...courses]);
+  };
+
+  const handleDelete = async (course: Course) => {
+    if (!window.confirm(`Delete "${course.title_en}"? This cannot be undone.`)) return;
+    const typed = window.prompt('Type DELETE to confirm course deletion.');
+    if (typed !== 'DELETE') return;
+
+    if (course.enrollment_count > 0) {
+      const options = courses.filter(c => c.id !== course.id).map(c => `${c.id} — ${c.title_en}`).join('\n');
+      const targetCourseId = window.prompt(`This course has ${course.enrollment_count} students. Enter the target course ID to move enrollments before deletion:\n\n${options}`);
+      if (!targetCourseId) return;
+      const target = courses.find(c => c.id === targetCourseId.trim());
+      if (!target) { alert('Target course not found. Delete cancelled.'); return; }
+      const { data: sourceEnrollments, error: sourceError } = await supabase.from('enrollments').select('id, user_id').eq('course_id', course.id);
+      if (sourceError) { alert(sourceError.message); return; }
+      const { data: targetEnrollments, error: targetError } = await supabase.from('enrollments').select('user_id').eq('course_id', target.id);
+      if (targetError) { alert(targetError.message); return; }
+      const targetUserIds = new Set((targetEnrollments ?? []).map(enrollment => enrollment.user_id));
+      for (const enrollment of sourceEnrollments ?? []) {
+        const result = targetUserIds.has(enrollment.user_id)
+          ? await supabase.from('enrollments').delete().eq('id', enrollment.id)
+          : await supabase.from('enrollments').update({ course_id: target.id }).eq('id', enrollment.id);
+        if (result.error) { alert(result.error.message); return; }
+      }
+    }
+
+    const { error } = await supabase.from('courses').delete().eq('id', course.id);
+    if (error) { alert(error.message); return; }
+    setCourses(rows => rows.filter(row => row.id !== course.id));
+  };
 
   return (
     <div>
@@ -116,10 +205,14 @@ export default function InstructorCoursesPage() {
                   <td className="px-4 py-3 text-zinc-500 text-sm hidden lg:table-cell">{c.total_lectures}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
-                      <Link href={`/courses/${c.slug}`} target="_blank"
+                      <Link href={`/courses/${c.slug}?preview=1`} target="_blank"
                         className="p-1.5 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all" title="View public page">
                         <Eye size={14} />
                       </Link>
+                      <button type="button" onClick={() => handleDuplicate(c)}
+                        className="p-1.5 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all" title="Duplicate course">
+                        <Copy size={14} />
+                      </button>
                       <Link href={`/instructor/courses/${c.id}/curriculum`}
                         className="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] text-xs transition-all">
                         Curriculum
@@ -128,6 +221,10 @@ export default function InstructorCoursesPage() {
                         className="p-1.5 rounded-lg text-zinc-600 hover:text-purple-400 hover:bg-purple-900/20 transition-all" title="Edit">
                         <Edit2 size={14} />
                       </Link>
+                      <button type="button" onClick={() => handleDelete(c)}
+                        className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-900/20 transition-all" title="Delete course">
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </td>
                 </tr>
