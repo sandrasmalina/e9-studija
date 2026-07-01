@@ -49,6 +49,7 @@ interface CourseForm {
   description_en: string;
   description_lv: string;
   thumbnail_url: string;
+  thumbnail_url_lv: string;
   promo_video_url: string;
   promo_video_type: string;
   level: string;
@@ -82,7 +83,7 @@ interface AvailabilityGroup {
 
 const EMPTY: CourseForm = {
   title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
-  description_en: '', description_lv: '', thumbnail_url: '', promo_video_url: '', promo_video_type: 'youtube',
+  description_en: '', description_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', requirements_lv: '', what_you_learn: '', what_you_learn_lv: '', target_audience: '', target_audience_lv: '', delivery_mode: 'online',
   price: '0', discount_price: '', discount_starts_at: '', discount_ends_at: '', discount_type: 'none', is_free: false,
   starts_at: '', ends_at: '', certificate_enabled: true,
@@ -101,7 +102,7 @@ export default function CourseEditPage() {
   useEffect(() => {
     Promise.all([
       supabase.from('courses')
-        .select('title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, starts_at, ends_at, certificate_enabled')
+        .select('title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, starts_at, ends_at, certificate_enabled')
         .eq('id', id)
         .single(),
       supabase.from('course_availability_groups').select('id,name_en,name_lv,starts_at,ends_at,capacity,sort_order').eq('course_id', id).order('sort_order'),
@@ -116,6 +117,7 @@ export default function CourseEditPage() {
             description_en: data.description_en ?? '',
             description_lv: data.description_lv ?? '',
             thumbnail_url: data.thumbnail_url ?? '',
+            thumbnail_url_lv: data.thumbnail_url_lv ?? '',
             promo_video_url: data.promo_video_url ?? '',
             promo_video_type: data.promo_video_type ?? 'youtube',
             level: data.level ?? 'beginner',
@@ -167,6 +169,7 @@ export default function CourseEditPage() {
       description_en: form.description_en.trim() || null,
       description_lv: form.description_lv.trim() || null,
       thumbnail_url: form.thumbnail_url.trim() || null,
+      thumbnail_url_lv: form.thumbnail_url_lv.trim() || null,
       promo_video_url: form.promo_video_url.trim() || null,
       promo_video_type: form.promo_video_url.trim() ? form.promo_video_type : null,
       level: form.level,
@@ -293,11 +296,11 @@ export default function CourseEditPage() {
             <RichTextEditor value={form.description_lv} onChange={v => set('description_lv', v)} placeholder="Detalizēts kursa apraksts latviešu valodā…" minHeight="220px" />
           </Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Target Audience (EN)" hint="Who is this course for?">
-              <Input value={form.target_audience} onChange={v => set('target_audience', v)} placeholder="e.g. Developers who want to build SaaS products" />
+            <Field label="Target Audience (EN)" hint="One item per line">
+              <Textarea value={form.target_audience} onChange={v => set('target_audience', v)} placeholder={"Entrepreneurs with business ideas\nCoaches and consultants\nSmall business owners"} rows={5} />
             </Field>
-            <Field label="Target Audience (LV)" hint="Optional Latvian version">
-              <Input value={form.target_audience_lv} onChange={v => set('target_audience_lv', v)} placeholder="Kam šis kurss ir paredzēts?" />
+            <Field label="Target Audience (LV)" hint="Optional Latvian version — one item per line">
+              <Textarea value={form.target_audience_lv} onChange={v => set('target_audience_lv', v)} placeholder={"Uzņēmēji ar biznesa idejām\nKouči un konsultanti\nMazo uzņēmumu īpašnieki"} rows={5} />
             </Field>
           </div>
         </Chapter>
@@ -342,12 +345,22 @@ export default function CourseEditPage() {
 
         {/* Media */}
         <Chapter id="media" title="Media" subtitle="Course thumbnail and promo video.">
-          <Field label="Thumbnail URL" hint="Paste a direct image URL (e.g. from Supabase storage)">
-            <Input value={form.thumbnail_url} onChange={v => set('thumbnail_url', v)} placeholder="https://…/thumbnail.jpg" type="url" />
-          </Field>
-          {form.thumbnail_url && (
-            <img src={form.thumbnail_url} alt="Thumbnail preview" className="w-48 rounded-xl border border-white/[0.06] object-cover aspect-video" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-          )}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Thumbnail URL (EN / EU)" hint="Paste a direct image URL (e.g. from Supabase storage)">
+              <Input value={form.thumbnail_url} onChange={v => set('thumbnail_url', v)} placeholder="https://.../thumbnail.jpg" type="url" />
+            </Field>
+            <Field label="Thumbnail URL (LV)" hint="Optional Latvian thumbnail">
+              <Input value={form.thumbnail_url_lv} onChange={v => set('thumbnail_url_lv', v)} placeholder="https://.../thumbnail-lv.jpg" type="url" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {form.thumbnail_url && (
+              <img src={form.thumbnail_url} alt="English thumbnail preview" className="w-48 rounded-xl border border-white/[0.06] object-cover aspect-video" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            )}
+            {form.thumbnail_url_lv && (
+              <img src={form.thumbnail_url_lv} alt="Latvian thumbnail preview" className="w-48 rounded-xl border border-white/[0.06] object-cover aspect-video" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            )}
+          </div>
           <Field label="Promo Video URL" hint="YouTube or Vimeo video URL or ID">
             <div className="flex gap-2">
               <Input value={form.promo_video_url} onChange={v => set('promo_video_url', v)} placeholder="https://youtube.com/watch?v=… or video ID" type="url" />

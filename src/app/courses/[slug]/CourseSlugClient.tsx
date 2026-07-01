@@ -67,6 +67,7 @@ interface Course {
   short_description_en: string | null;
   short_description_lv: string | null;
   thumbnail_url: string | null;
+  thumbnail_url_lv: string | null;
   promo_video_url: string | null;
   promo_video_type: string | null;
   price: number;
@@ -86,6 +87,7 @@ interface Course {
   requirements: string[] | null;
   what_you_learn: string[] | null;
   target_audience: string | null;
+  target_audience_lv: string | null;
   published_at: string | null;
   starts_at?: string | null;
   ends_at?: string | null;
@@ -267,6 +269,11 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
 
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
   const desc = (language === 'lv' && course.description_lv) ? course.description_lv : course.description_en;
+  const thumbnailUrl = (language === 'lv' && course.thumbnail_url_lv) ? course.thumbnail_url_lv : course.thumbnail_url;
+  const targetAudience = ((language === 'lv' && course.target_audience_lv) ? course.target_audience_lv : course.target_audience)
+    ?.split('\n')
+    .map(item => item.trim())
+    .filter(Boolean) ?? [];
   const categoryName = course.category
     ? (language === 'lv' && course.category.name_lv ? course.category.name_lv : course.category.name_en)
     : null;
@@ -361,8 +368,8 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
               className="lg:sticky lg:top-28 rounded-2xl border border-white/10 bg-[#16122a] overflow-hidden">
               {/* Thumbnail / promo */}
               <div className="relative aspect-video bg-bg-secondary">
-                {course.thumbnail_url ? (
-                  <Image src={course.thumbnail_url} alt={title} fill className="object-cover" sizes="360px" />
+                {thumbnailUrl ? (
+                  <Image src={thumbnailUrl} alt={title} fill className="object-cover" sizes="360px" />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-accent/5">
                     <Play size={40} className="text-accent/40" />
@@ -475,6 +482,20 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                     <li key={i} className="flex items-start gap-2 text-sm text-neutral-400">
                       <span className="text-accent mt-1">•</span>
                       {req}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {targetAudience.length > 0 && (
+              <section>
+                <h2 className="text-xl font-bold text-white mb-5">{language === 'lv' ? 'Kam šis kurss ir paredzēts' : 'Who this course is for'}</h2>
+                <ul className="grid sm:grid-cols-2 gap-3">
+                  {targetAudience.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-neutral-400">
+                      <Users size={14} className="text-accent shrink-0 mt-0.5" />
+                      {item}
                     </li>
                   ))}
                 </ul>

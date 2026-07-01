@@ -17,6 +17,7 @@ interface CourseForm {
   description_en: string;
   description_lv: string;
   thumbnail_url: string;
+  thumbnail_url_lv: string;
   promo_video_url: string;
   promo_video_type: string;
   level: string;
@@ -24,6 +25,7 @@ interface CourseForm {
   requirements: string;
   what_you_learn: string;
   target_audience: string;
+  target_audience_lv: string;
   price: string;
   discount_price: string;
   discount_ends_at: string;
@@ -52,8 +54,8 @@ interface CourseForm {
 
 const EMPTY: CourseForm = {
   title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
-  description_en: '', description_lv: '', thumbnail_url: '', promo_video_url: '', promo_video_type: 'youtube',
-  level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '',
+  description_en: '', description_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
+  level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '', target_audience_lv: '',
   price: '0', discount_price: '', discount_ends_at: '', is_free: false, starts_at: '', ends_at: '',
   meta_title: '', meta_description: '', meta_keywords: '', og_title: '', og_description: '', og_image: '', canonical_url: '', no_index: false,
   ai_summary: '', key_takeaways: '', faq_items: '', tags_ai_topics: '', expertise_level: '', industry: '',
@@ -89,7 +91,7 @@ export default function AdminCourseEditPage() {
       const [{ data: cats }, { data: course }, { data: instructorList }] = await Promise.all([
         supabase.from('categories').select('id, name_en').order('name_en'),
         supabase.from('courses')
-          .select('title_en, title_lv, slug, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience, price, discount_price, discount_ends_at, is_free, starts_at, ends_at, meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url, no_index, ai_summary, key_takeaways, faq_items, tags_ai_topics, expertise_level, industry, certificate_enabled, status, category_id, instructor_id')
+          .select('title_en, title_lv, slug, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience, target_audience_lv, price, discount_price, discount_ends_at, is_free, starts_at, ends_at, meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url, no_index, ai_summary, key_takeaways, faq_items, tags_ai_topics, expertise_level, industry, certificate_enabled, status, category_id, instructor_id')
           .eq('id', id).single(),
         supabase.from('profiles').select('id, full_name').in('role', ['instructor', 'admin']).order('full_name'),
       ]);
@@ -108,6 +110,7 @@ export default function AdminCourseEditPage() {
           description_en: course.description_en ?? '',
           description_lv: course.description_lv ?? '',
           thumbnail_url: course.thumbnail_url ?? '',
+          thumbnail_url_lv: course.thumbnail_url_lv ?? '',
           promo_video_url: course.promo_video_url ?? '',
           promo_video_type: course.promo_video_type ?? 'youtube',
           level: course.level ?? 'beginner',
@@ -115,6 +118,7 @@ export default function AdminCourseEditPage() {
           requirements: (course.requirements ?? []).join('\n'),
           what_you_learn: (course.what_you_learn ?? []).join('\n'),
           target_audience: course.target_audience ?? '',
+          target_audience_lv: course.target_audience_lv ?? '',
           price: course.price != null ? String(course.price) : '0',
           discount_price: course.discount_price != null ? String(course.discount_price) : '',
           discount_ends_at: course.discount_ends_at ? course.discount_ends_at.slice(0, 16) : '',
@@ -148,7 +152,7 @@ export default function AdminCourseEditPage() {
 
   const set = (k: keyof CourseForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleThumbnailUpload = async (file: File) => {
+  const handleThumbnailUpload = async (file: File, field: 'thumbnail_url' | 'thumbnail_url_lv') => {
     setUploading(true); setErr('');
     try {
       const ext = file.name.split('.').pop();
@@ -156,7 +160,7 @@ export default function AdminCourseEditPage() {
       const { error } = await supabase.storage.from('images').upload(path, file, { upsert: true });
       if (error) throw error;
       const { data } = supabase.storage.from('images').getPublicUrl(path);
-      set('thumbnail_url', data.publicUrl);
+      set(field, data.publicUrl);
     } catch (e: unknown) { setErr(e instanceof Error ? e.message : 'Upload failed'); }
     finally { setUploading(false); }
   };
@@ -173,6 +177,7 @@ export default function AdminCourseEditPage() {
       description_en: form.description_en.trim() || null,
       description_lv: form.description_lv.trim() || null,
       thumbnail_url: form.thumbnail_url.trim() || null,
+      thumbnail_url_lv: form.thumbnail_url_lv.trim() || null,
       promo_video_url: form.promo_video_url.trim() || null,
       promo_video_type: form.promo_video_url.trim() ? form.promo_video_type : null,
       level: form.level,
@@ -180,6 +185,7 @@ export default function AdminCourseEditPage() {
       requirements: form.requirements.split('\n').map(s => s.trim()).filter(Boolean),
       what_you_learn: form.what_you_learn.split('\n').map(s => s.trim()).filter(Boolean),
       target_audience: form.target_audience.trim() || null,
+      target_audience_lv: form.target_audience_lv.trim() || null,
       price: form.is_free ? 0 : Number(form.price) || 0,
       discount_price: form.discount_price ? Number(form.discount_price) : null,
       discount_ends_at: form.discount_ends_at || null,
@@ -317,43 +323,52 @@ export default function AdminCourseEditPage() {
           <Field label="Full Description (LV)" hint="Optional — supports headings, images, tables, embeds, and code blocks">
             <RichTextEditor value={form.description_lv} onChange={v => set('description_lv', v)} placeholder="Detalizēts kursa apraksts latviešu valodā…" minHeight="240px" />
           </Field>
-          <Field label="Target Audience">
-            <input type="text" value={form.target_audience} onChange={e => set('target_audience', e.target.value)} placeholder="Who is this course for?" className={inputCls} />
-          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Target Audience (EN)" hint="One item per line">
+              <textarea value={form.target_audience} onChange={e => set('target_audience', e.target.value)} rows={5} placeholder={"Entrepreneurs with business ideas\nCoaches and consultants\nSmall business owners"} className={textareaCls} />
+            </Field>
+            <Field label="Target Audience (LV)" hint="Optional Latvian version — one item per line">
+              <textarea value={form.target_audience_lv} onChange={e => set('target_audience_lv', e.target.value)} rows={5} placeholder={"Uzņēmēji ar biznesa idejām\nKouči un konsultanti\nMazo uzņēmumu īpašnieki"} className={textareaCls} />
+            </Field>
+          </div>
         </div>
 
         {/* Media */}
         <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/50 p-6 space-y-4">
           <h2 className="text-white font-semibold">Media</h2>
-          <Field label="Thumbnail">
-            <div className="space-y-3">
-              {/* Upload area */}
-              <label className={`flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
-                uploading ? 'border-zinc-700 opacity-50 pointer-events-none' : 'border-zinc-700 hover:border-zinc-500'
-              }`}>
-                <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={e => { const f = e.target.files?.[0]; if (f) handleThumbnailUpload(f); }} />
-                {uploading ? (
-                  <><div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" /><span className="text-zinc-500 text-xs">Uploading…</span></>
-                ) : (
-                  <><Upload size={20} className="text-zinc-600" /><span className="text-zinc-500 text-xs">Click to upload image</span></>
-                )}
-              </label>
-              {/* Preview */}
-              {form.thumbnail_url && (
-                <div className="relative w-40">
-                  <img src={form.thumbnail_url} alt="Thumbnail" className="w-40 rounded-xl border border-zinc-700/50 object-cover aspect-video" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                  <button type="button" onClick={() => set('thumbnail_url', '')} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-400 hover:text-white">
-                    <X size={10} />
-                  </button>
+          <div className="grid grid-cols-2 gap-4">
+            {([
+              { field: 'thumbnail_url' as const, label: 'Thumbnail (EN / EU)', alt: 'English thumbnail' },
+              { field: 'thumbnail_url_lv' as const, label: 'Thumbnail (LV)', alt: 'Latvian thumbnail' },
+            ]).map(item => (
+              <Field key={item.field} label={item.label}>
+                <div className="space-y-3">
+                  <label className={`flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
+                    uploading ? 'border-zinc-700 opacity-50 pointer-events-none' : 'border-zinc-700 hover:border-zinc-500'
+                  }`}>
+                    <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={e => { const f = e.target.files?.[0]; if (f) handleThumbnailUpload(f, item.field); }} />
+                    {uploading ? (
+                      <><div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" /><span className="text-zinc-500 text-xs">Uploading…</span></>
+                    ) : (
+                      <><Upload size={20} className="text-zinc-600" /><span className="text-zinc-500 text-xs">Click to upload image</span></>
+                    )}
+                  </label>
+                  {form[item.field] && (
+                    <div className="relative w-40">
+                      <img src={form[item.field]} alt={item.alt} className="w-40 rounded-xl border border-zinc-700/50 object-cover aspect-video" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      <button type="button" onClick={() => set(item.field, '')} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-400 hover:text-white">
+                        <X size={10} />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <ImageIcon size={14} className="text-zinc-600 shrink-0" />
+                    <input type="url" value={form[item.field]} onChange={e => set(item.field, e.target.value)} placeholder="Or paste image URL…" className={inputCls} />
+                  </div>
                 </div>
-              )}
-              {/* Manual URL fallback */}
-              <div className="flex items-center gap-2">
-                <ImageIcon size={14} className="text-zinc-600 shrink-0" />
-                <input type="url" value={form.thumbnail_url} onChange={e => set('thumbnail_url', e.target.value)} placeholder="Or paste image URL…" className={inputCls} />
-              </div>
-            </div>
-          </Field>
+              </Field>
+            ))}
+          </div>
           <Field label="Promo Video URL">
             <div className="flex gap-2">
               <input type="url" value={form.promo_video_url} onChange={e => set('promo_video_url', e.target.value)} placeholder="YouTube / Vimeo URL" className={inputCls} />
