@@ -93,7 +93,7 @@ interface Course {
   published_at: string | null;
   starts_at?: string | null;
   ends_at?: string | null;
-  instructor: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; website: string | null } | null;
+  instructor: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; bio_lv: string | null; website: string | null } | null;
   category: { name_en: string; name_lv: string | null; slug: string; icon: string | null } | null;
   sections: Section[];
   reviews: Review[];
@@ -274,6 +274,9 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   const thumbnailUrl = (language === 'lv' && course.thumbnail_url_lv) ? course.thumbnail_url_lv : course.thumbnail_url;
   const learningOutcomes = (language === 'lv' && course.what_you_learn_lv?.length) ? course.what_you_learn_lv : course.what_you_learn;
   const requirements = (language === 'lv' && course.requirements_lv?.length) ? course.requirements_lv : course.requirements;
+  const instructorBio = course.instructor
+    ? ((language === 'lv' && course.instructor.bio_lv) ? course.instructor.bio_lv : course.instructor.bio)
+    : null;
   const targetAudience = ((language === 'lv' && course.target_audience_lv) ? course.target_audience_lv : course.target_audience)
     ?.split('\n')
     .map(item => item.trim())
@@ -358,8 +361,8 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
               {course.instructor?.full_name && (
                 <div className="flex items-center gap-3 mb-6">
                   {course.instructor.avatar_url && (
-                    <Image src={course.instructor.avatar_url} alt={course.instructor.full_name} width={32} height={32}
-                      className="rounded-full object-cover" />
+                    <img src={course.instructor.avatar_url} alt={course.instructor.full_name}
+                      className="h-8 w-8 rounded-full object-cover" />
                   )}
                   <span className="text-neutral-400 text-sm">
                     {t('courses.by')} <span className="text-accent">{course.instructor.full_name}</span>
@@ -588,8 +591,8 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                 <h2 className="text-xl font-bold text-white mb-5">{t('courses.section.instructor')}</h2>
                 <div className="flex items-start gap-4">
                   {course.instructor.avatar_url ? (
-                    <Image src={course.instructor.avatar_url} alt={course.instructor.full_name ?? ''} width={64} height={64}
-                      className="rounded-full object-cover shrink-0" />
+                    <img src={course.instructor.avatar_url} alt={course.instructor.full_name ?? ''}
+                      className="h-16 w-16 rounded-full object-cover shrink-0" />
                   ) : (
                     <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
                       <span className="text-accent text-xl font-bold">{course.instructor.full_name?.[0]}</span>
@@ -597,8 +600,8 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                   )}
                   <div>
                     <h3 className="text-white font-semibold">{course.instructor.full_name}</h3>
-                    {course.instructor.bio && (
-                      <p className="text-neutral-400 text-sm mt-2 leading-relaxed">{course.instructor.bio}</p>
+                    {instructorBio && (
+                      <p className="text-neutral-400 text-sm mt-2 leading-relaxed">{instructorBio}</p>
                     )}
                   </div>
                 </div>
