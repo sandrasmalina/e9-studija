@@ -30,6 +30,15 @@ interface Section {
   lectures: Lecture[];
 }
 
+interface LectureResource {
+  id?: string;
+  title: string;
+  file_url: string;
+  file_type: string | null;
+  file_size_bytes: number | null;
+  sort_order: number;
+}
+
 const EMPTY_FORM = {
   title_en: '',
   content_type: 'video',
@@ -56,7 +65,9 @@ export default function CurriculumPage() {
   const [lectureSaving, setLectureSaving] = useState(false);
   const [lectureErr, setLectureErr] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [resources, setResources] = useState<LectureResource[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const resourceFileRef = useRef<HTMLInputElement>(null);
 
   const setLF = (k: string, v: string | boolean) => setLectureForm(f => ({ ...f, [k]: v }));
   const notify = () => window.dispatchEvent(new CustomEvent('curriculum-changed'));
@@ -108,14 +119,25 @@ export default function CurriculumPage() {
           material_filename: lecture.material_filename ?? '',
         });
         setLectureErr('');
+        loadResources(lecture.id);
         setLectureModal({ sectionId, lectureId });
       }
     }
   }, [searchParams, sections]); // eslint-disable-line
 
   // ── Lecture modal ──────────────────────────────────────────────────────
+  const loadResources = async (lectureId: string) => {
+    const { data } = await supabase
+      .from('lecture_resources')
+      .select('id, title, file_url, file_type, file_size_bytes, sort_order')
+      .eq('lecture_id', lectureId)
+      .order('sort_order');
+    setResources((data ?? []) as LectureResource[]);
+  };
+
   const openNew = (sectionId: string) => {
     setLectureForm({ ...EMPTY_FORM }); setLectureErr('');
+    setResources([]);
     setLectureModal({ sectionId });
   };
 
@@ -133,6 +155,7 @@ export default function CurriculumPage() {
       material_filename: lecture.material_filename ?? '',
     });
     setLectureErr('');
+    loadResources(lecture.id);
     setLectureModal({ sectionId, lectureId: lecture.id });
   };
 
@@ -151,6 +174,57 @@ export default function CurriculumPage() {
     setLF('material_url', publicUrl);
     setLF('material_filename', file.name);
     setUploading(false);
+  };
+
+  const uploadResourceFiles = async (files: FileList | File[]) => {
+    const selectedFiles = Array.from(files);
+    if (selectedFiles.length === 0) return;
+    setUploading(true);
+    setLectureErr('');
+    try {
+      let nextSortOrder = resources.length;
+      for (const file of selectedFiles) {
+        const ext = file.name.split('.').pop() || 'file';
+        const path = `${courseId}/resources/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error } = await supabase.storage.from('lecture-materials').upload(path, file, { contentType: file.type || undefined });
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage.from('lecture-materials').getPublicUrl(path);
+        const nextResource: LectureResource = {
+          title: file.name,
+          file_url: publicUrl,
+          file_type: ext.toLowerCase(),
+          file_size_bytes: file.size,
+          sort_order: nextSortOrder,
+        };
+        nextSortOrder += 1;
+        if (lectureModal?.lectureId) {
+          const { data, error: insertError } = await supabase
+            .from('lecture_resources')
+            .insert({ ...nextResource, lecture_id: lectureModal.lectureId })
+            .select('id, title, file_url, file_type, file_size_bytes, sort_order')
+            .single();
+          if (insertError) throw insertError;
+          setResources(current => [...current, data as LectureResource]);
+        } else {
+          setResources(current => [...current, { ...nextResource, sort_order: current.length }]);
+        }
+      }
+    } catch (error) {
+      setLectureErr(error instanceof Error ? error.message : 'File upload failed.');
+    } finally {
+      setUploading(false);
+      if (resourceFileRef.current) resourceFileRef.current.value = '';
+    }
+  };
+
+  const removeResource = async (resource: LectureResource) => {
+    if (resource.id) {
+      const { error } = await supabase.from('lecture_resources').delete().eq('id', resource.id);
+      if (error) { setLectureErr(error.message); return; }
+      setResources(current => current.filter(item => item.id !== resource.id));
+      return;
+    }
+    setResources(current => current.filter(item => item !== resource));
   };
 
   const saveLecture = async () => {
@@ -198,6 +272,16 @@ export default function CurriculumPage() {
         return;
       }
       if (data) {
+        if (resources.length > 0) {
+          await supabase.from('lecture_resources').insert(resources.map((resource, index) => ({
+            lecture_id: data.id,
+            title: resource.title,
+            file_url: resource.file_url,
+            file_type: resource.file_type,
+            file_size_bytes: resource.file_size_bytes,
+            sort_order: index,
+          })));
+        }
         setSections(prev => prev.map(s => s.id === lectureModal.sectionId ? {
           ...s, lectures: [...s.lectures, data as Lecture],
         } : s));
@@ -306,7 +390,7 @@ export default function CurriculumPage() {
 
             {lectureForm.content_type === 'material' && (
               <div>
-                <label className="block text-white text-sm font-medium mb-1.5">File</label>
+                <label className="block text-white text-sm font-medium mb-1.5">Main File</label>
                 <input ref={fileRef} type="file" className="hidden"
                   accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip"
                   onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f); }} />
@@ -325,6 +409,36 @@ export default function CurriculumPage() {
                 )}
               </div>
             )}
+
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-1.5">
+                <label className="block text-white text-sm font-medium">Lecture Materials</label>
+                <button type="button" onClick={() => resourceFileRef.current?.click()} disabled={uploading}
+                  className="flex items-center gap-2 rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:text-white disabled:opacity-50">
+                  <Upload size={13} /> {uploading ? 'Uploading...' : 'Upload files'}
+                </button>
+              </div>
+              <p className="mb-2 text-xs text-zinc-600">Attach one or several PDFs, images, documents, slides, spreadsheets, or zip files.</p>
+              <input ref={resourceFileRef} type="file" multiple className="hidden"
+                accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip"
+                onChange={e => { if (e.target.files) uploadResourceFiles(e.target.files); }} />
+              {resources.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/[0.10] bg-zinc-900 px-4 py-5 text-center text-sm text-zinc-600">
+                  No extra lecture materials uploaded yet.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {resources.map(resource => (
+                    <div key={resource.id ?? resource.file_url} className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-zinc-900 px-4 py-3">
+                      <FileDown size={15} className="shrink-0 text-purple-400" />
+                      <a href={resource.file_url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm text-white hover:text-purple-300">{resource.title}</a>
+                      {resource.file_size_bytes && <span className="shrink-0 text-xs text-zinc-600">{Math.round(resource.file_size_bytes / 1024)} KB</span>}
+                      <button type="button" onClick={() => removeResource(resource)} className="shrink-0 text-xs text-zinc-500 hover:text-red-300">Remove</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {lectureForm.content_type === 'text' && (
               <div>

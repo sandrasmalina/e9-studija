@@ -16,7 +16,8 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import Image from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
-import { Bold, Code2, Heading4, Highlighter, ImageIcon, Italic, Link2, List, ListChecks, ListOrdered, Minus, Palette, Quote, Redo2, Strikethrough, Table2, Underline as UnderlineIcon, Undo2, Video } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { Bold, Code2, Heading4, Highlighter, ImageIcon, Italic, Link2, List, ListChecks, ListOrdered, Minus, Palette, Quote, Redo2, Strikethrough, Table2, Underline as UnderlineIcon, Undo2, Upload, Video } from 'lucide-react';
 
 interface Props {
   value: string;
@@ -49,6 +50,9 @@ function stripPastedColorStyles(html: string) {
 
 export default function RichTextEditor({ value, onChange, placeholder, minHeight = '160px' }: Props) {
   const [mounted, setMounted] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const imageUploadRef = useRef<HTMLInputElement>(null);
   const lastExternalValue = useRef(value);
 
   useEffect(() => setMounted(true), []);
@@ -112,6 +116,28 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
     editor?.chain().focus().setImage({ src: url, alt }).run();
   };
 
+  const uploadImage = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please choose an image file.');
+      return;
+    }
+    setUploadingImage(true);
+    setUploadError('');
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `rich-text/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from('images').upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw error;
+      const { data } = supabase.storage.from('images').getPublicUrl(path);
+      editor?.chain().focus().setImage({ src: data.publicUrl, alt: file.name }).run();
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Image upload failed.');
+    } finally {
+      setUploadingImage(false);
+      if (imageUploadRef.current) imageUploadRef.current.value = '';
+    }
+  };
+
   const addYoutube = () => {
     const url = window.prompt('YouTube URL:');
     if (!url) return;
@@ -154,6 +180,16 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
 
   return (
     <div className="rounded-xl border border-zinc-700/50 bg-zinc-900 overflow-hidden focus-within:border-purple-500/50 transition-colors">
+      <input
+        ref={imageUploadRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={event => {
+          const file = event.target.files?.[0];
+          if (file) uploadImage(file);
+        }}
+      />
       {/* Toolbar */}
       <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-zinc-700/50 flex-wrap bg-zinc-900/80">
         {btn(() => editor.chain().focus().toggleHeading({ level: 2 }).run(), editor.isActive('heading', { level: 2 }), 'Heading 2', <span>H2</span>)}
@@ -197,6 +233,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         {btn(addLink, editor.isActive('link'), 'Insert / edit link', <Link2 size={13} />)}
         {btn(() => editor.chain().focus().unsetLink().run(), false, 'Remove link', <span className="text-[10px]">×</span>)}
         {btn(addImage, false, 'Insert image URL', <ImageIcon size={13} />)}
+        {btn(() => imageUploadRef.current?.click(), false, uploadingImage ? 'Uploading image...' : 'Upload image', <Upload size={13} />)}
         {btn(addYoutube, false, 'Embed YouTube', <Video size={13} />)}
         {divider('d4')}
         {btn(() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), false, 'Insert table', <Table2 size={13} />)}
@@ -216,6 +253,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
           </p>
         )}
       </div>
+      {uploadError && <p className="border-t border-red-900/30 bg-red-950/20 px-4 py-2 text-xs text-red-300">{uploadError}</p>}
     </div>
   );
 }
