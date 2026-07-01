@@ -97,6 +97,7 @@ interface Course {
   total_duration_minutes: number;
   total_lectures: number;
   enrollment_count: number;
+  fake_enrollment_count: number | null;
   rating_avg: number;
   rating_count: number;
   certificate_enabled: boolean;
@@ -124,6 +125,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   const autoEnrollRef = useRef(false);
   const [contentTheme, setContentTheme] = useState<'dark' | 'light'>('dark');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set([course.sections[0]?.id]));
+  const [groupsOpen, setGroupsOpen] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem('e9-content-theme');
@@ -306,6 +308,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   const availabilityGroups = (course.course_availability_groups ?? [])
     .slice()
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const displayStudentCount = (course.enrollment_count || 0) + (course.fake_enrollment_count || 0);
   const categoryName = course.category
     ? (language === 'lv' && course.category.name_lv ? course.category.name_lv : course.category.name_en)
     : null;
@@ -369,7 +372,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                     <StarRating rating={Number(course.rating_avg)} count={course.rating_count} />
                   </div>
                 )}
-                <span className="flex items-center gap-1.5"><Users size={14} />{course.enrollment_count.toLocaleString()} students</span>
+                <span className="flex items-center gap-1.5"><Users size={14} />{displayStudentCount.toLocaleString()} students</span>
                 {course.total_duration_minutes > 0 && (
                   <span className="flex items-center gap-1.5"><Clock size={14} />{formatMinutes(course.total_duration_minutes)}</span>
                 )}
@@ -497,8 +500,14 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
 
                 {availabilityGroups.length > 0 && (
                   <div className="mt-5 border-t border-white/10 pt-4">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-500">{language === 'lv' ? 'Grupas un vietas' : 'Groups and spots'}</p>
-                    <div className="space-y-2">
+                    <button type="button" onClick={() => setGroupsOpen(open => !open)} className="flex w-full items-center justify-between gap-3 text-left">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">{language === 'lv' ? 'Grupas un vietas' : 'Groups and spots'}</span>
+                      <span className="flex items-center gap-1 text-xs text-neutral-500">
+                        {availabilityGroups.length} {language === 'lv' ? 'grupas' : 'groups'}
+                        {groupsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </span>
+                    </button>
+                    {groupsOpen && <div className="mt-3 space-y-2">
                       {availabilityGroups.map(group => {
                         const groupName = (language === 'lv' && group.name_lv) ? group.name_lv : group.name_en || group.name_lv || (language === 'lv' ? 'Grupa' : 'Group');
                         const spots = group.capacity && group.capacity > 0
@@ -518,7 +527,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                           </div>
                         );
                       })}
-                    </div>
+                    </div>}
                   </div>
                 )}
               </div>

@@ -23,6 +23,7 @@ export interface CourseCardData {
   total_duration_minutes: number;
   total_lectures: number;
   enrollment_count: number;
+  fake_enrollment_count?: number | null;
   rating_avg: number;
   rating_count: number;
   instructor?: {
@@ -59,6 +60,7 @@ export default function CourseCard({ course }: CourseCardProps) {
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
   const desc = (language === 'lv' && course.short_description_lv) ? course.short_description_lv : course.short_description_en;
   const levelClass = course.level ? (levelColors[course.level] ?? levelColors.all) : null;
+  const displayStudentCount = (course.enrollment_count || 0) + (course.fake_enrollment_count || 0);
 
   return (
     <Link
@@ -139,10 +141,10 @@ export default function CourseCard({ course }: CourseCardProps) {
               {course.total_lectures} lectures
             </span>
           )}
-          {course.enrollment_count > 0 && (
+          {displayStudentCount > 0 && (
             <span className="flex items-center gap-1">
               <Users size={11} />
-              {course.enrollment_count.toLocaleString()}
+              {displayStudentCount.toLocaleString()}
             </span>
           )}
         </div>

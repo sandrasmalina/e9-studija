@@ -36,7 +36,7 @@ export default async function CategoryPage({ params }: Props) {
       short_description_en, short_description_lv,
       thumbnail_url, price, discount_price, currency,
       is_free, level, total_duration_minutes,
-      total_lectures, enrollment_count, rating_avg, rating_count,
+      total_lectures, enrollment_count, fake_enrollment_count, rating_avg, rating_count,
       instructor:profiles!instructor_id(full_name, avatar_url),
       category:categories!category_id(name_en, name_lv, slug)
     `)
