@@ -80,15 +80,24 @@ export default function DashboardSettingsPage() {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
-    setUploading(true);
-    const ext = file.name.split('.').pop();
-    const path = `${userId}/avatar.${ext}`;
-    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    setUploading(true); setErrMsg(''); setSavedMsg('');
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const path = `${userId}/avatar-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { contentType: file.type });
     if (upErr) { setErrMsg(upErr.message); setUploading(false); return; }
     const { data } = supabase.storage.from('avatars').getPublicUrl(path);
     const avatarUrl = data.publicUrl;
-    await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', userId);
-    setProfile(p => ({ ...p, avatar_url: avatarUrl }));
+    const { data: updatedProfile, error: profileErr } = await supabase
+      .from('profiles')
+      .update({ avatar_url: avatarUrl })
+      .eq('id', userId)
+      .select('avatar_url')
+      .single();
+    if (profileErr) { setErrMsg(profileErr.message); setUploading(false); return; }
+    setProfile(p => ({ ...p, avatar_url: updatedProfile?.avatar_url ?? avatarUrl }));
+    setSavedMsg('Photo uploaded!');
+    setTimeout(() => setSavedMsg(''), 3000);
+    if (fileRef.current) fileRef.current.value = '';
     setUploading(false);
   };
 
