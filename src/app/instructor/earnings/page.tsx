@@ -32,6 +32,7 @@ export default function EarningsPage() {
   const [stripeAccountId, setStripeAccountId] = useState('');
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
   const [connectingStripe, setConnectingStripe] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -40,12 +41,23 @@ export default function EarningsPage() {
 
       // Get profile for revenue share %
       const { data: profile } = await supabase.from('profiles')
-        .select('revenue_share_pct,stripe_account_id').eq('id', user.id).single();
-      if (profile?.revenue_share_pct) setRevenueShare(profile.revenue_share_pct);
+        .select('role,revenue_share_pct,stripe_account_id').eq('id', user.id).single();
+      const adminAccount = profile?.role === 'admin';
+      setIsAdmin(adminAccount);
+      if (adminAccount) {
+        setRevenueShare(100);
+        setStripeStatus({
+          connected: true,
+          hasAccount: false,
+          message: 'Admin revenue is paid to the platform Stripe account.',
+        });
+      } else if (profile?.revenue_share_pct) {
+        setRevenueShare(profile.revenue_share_pct);
+      }
       if (profile?.stripe_account_id) setStripeAccountId(profile.stripe_account_id);
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
+      if (!adminAccount && session?.access_token) {
         fetch('/api/stripe/connect/status', { headers: { Authorization: `Bearer ${session.access_token}` } })
           .then(res => res.ok ? res.json() : null)
           .then(data => { if (data) setStripeStatus(data); })
@@ -94,7 +106,7 @@ export default function EarningsPage() {
 
   const statCards = [
     { icon: DollarSign, label: 'Total Revenue', value: `€${totalRevenue.toFixed(2)}`, sub: 'Gross sales' },
-    { icon: TrendingUp, label: 'Your Earnings', value: `€${myEarnings.toFixed(2)}`, sub: `${revenueShare}% share` },
+    { icon: TrendingUp, label: isAdmin ? 'Platform Income' : 'Your Earnings', value: `€${myEarnings.toFixed(2)}`, sub: isAdmin ? 'Admin receives 100%' : `${revenueShare}% share` },
     { icon: Users, label: 'Total Enrollments', value: enrollments.length.toString(), sub: 'Paid enrollments' },
     { icon: BookOpen, label: 'Avg per Sale', value: enrollments.length > 0 ? `€${(totalRevenue / enrollments.length).toFixed(2)}` : '—', sub: 'Average order value' },
   ];
@@ -104,13 +116,15 @@ export default function EarningsPage() {
       <div className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Earnings</h1>
-          <p className="text-zinc-500 text-sm mt-1">Connect Stripe to receive automatic payouts from course sales.</p>
+          <p className="text-zinc-500 text-sm mt-1">{isAdmin ? 'Admin course revenue stays in the platform Stripe account.' : 'Connect Stripe to receive automatic payouts from course sales.'}</p>
         </div>
-        <button onClick={connectStripe} disabled={connectingStripe}
-          className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium disabled:opacity-50 ${isStripeConnected ? 'border-green-500/30 bg-green-500/10 text-green-300 hover:bg-green-500/15' : 'border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15'}`}>
-          {stripeAccountId ? <ExternalLink size={15} /> : <CreditCard size={15} />}
-          {connectingStripe ? 'Opening Stripe…' : isStripeConnected ? 'Manage Stripe Connect' : stripeAccountId ? 'Finish Stripe Setup' : 'Connect Stripe'}
-        </button>
+        {!isAdmin && (
+          <button onClick={connectStripe} disabled={connectingStripe}
+            className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium disabled:opacity-50 ${isStripeConnected ? 'border-green-500/30 bg-green-500/10 text-green-300 hover:bg-green-500/15' : 'border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15'}`}>
+            {stripeAccountId ? <ExternalLink size={15} /> : <CreditCard size={15} />}
+            {connectingStripe ? 'Opening Stripe…' : isStripeConnected ? 'Manage Stripe Connect' : stripeAccountId ? 'Finish Stripe Setup' : 'Connect Stripe'}
+          </button>
+        )}
       </div>
 
       <div className={`mb-8 rounded-2xl border p-5 ${isStripeConnected ? 'border-green-500/25 bg-green-500/10' : 'border-red-500/25 bg-red-500/10'}`}>
@@ -119,20 +133,22 @@ export default function EarningsPage() {
             {isStripeConnected ? <CheckCircle2 size={22} className="mt-0.5 shrink-0 text-green-400" /> : <AlertCircle size={22} className="mt-0.5 shrink-0 text-red-400" />}
             <div>
               <p className={`text-sm font-semibold ${isStripeConnected ? 'text-green-300' : 'text-red-300'}`}>
-                {isStripeConnected ? 'Stripe Connect is connected' : stripeStatus?.hasAccount ? 'Stripe Connect setup is incomplete' : 'Stripe Connect is not connected'}
+                {isAdmin ? 'Platform Stripe account receives admin revenue' : isStripeConnected ? 'Stripe Connect is connected' : stripeStatus?.hasAccount ? 'Stripe Connect setup is incomplete' : 'Stripe Connect is not connected'}
               </p>
               <p className="mt-1 text-sm text-zinc-400">
-                {isStripeConnected
+                {isAdmin
+                  ? 'No Stripe Connect setup is needed for admins. Course sales are paid directly to the platform account.'
+                  : isStripeConnected
                   ? 'Automatic instructor payouts are enabled for eligible course sales.'
                   : 'Finish onboarding before payouts can go directly to this instructor.'}
                 {stripeStatus?.mode === 'test' ? ' You are currently using Stripe test mode.' : ''}
               </p>
             </div>
           </div>
-          <button onClick={connectStripe} disabled={connectingStripe}
+          {!isAdmin && <button onClick={connectStripe} disabled={connectingStripe}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50">
             <ExternalLink size={15} /> {connectingStripe ? 'Opening…' : stripeStatus?.hasAccount ? 'Open Stripe Onboarding' : 'Start Stripe Connect'}
-          </button>
+          </button>}
         </div>
         {stripeStatus?.hasAccount && !isStripeConnected && (
           <div className="mt-4 grid gap-2 text-xs text-zinc-400 sm:grid-cols-3">
@@ -179,7 +195,7 @@ export default function EarningsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/[0.04]">
-                  {['Date', 'Course', 'Amount', 'Your Cut'].map(h => (
+                  {['Date', 'Course', 'Amount', isAdmin ? 'Platform Income' : 'Your Cut'].map(h => (
                     <th key={h} className="px-5 py-3 text-left text-zinc-600 text-xs font-medium uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>

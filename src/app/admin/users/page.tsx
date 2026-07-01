@@ -87,7 +87,7 @@ export default function AdminUsers() {
     setPayoutDrafts(drafts);
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.access_token) {
-      const instructors = mappedUsers.filter(user => user.roles.includes('instructor'));
+      const instructors = mappedUsers.filter(user => user.roles.includes('instructor') && !user.roles.includes('admin'));
       const statuses = await Promise.all(instructors.map(async user => {
         if (!user.stripe_account_id) return [user.id, { connected: false, hasAccount: false }] as const;
         try {
@@ -277,7 +277,11 @@ export default function AdminUsers() {
                           <p className="text-white text-sm font-medium">{u.full_name || 'Unnamed User'}</p>
                           <p className="text-zinc-600 text-xs font-mono">{u.id.slice(0, 8)}…</p>
                           <Link href={`/admin/users/${u.id}`} className="mt-1 inline-flex text-[11px] text-purple-400 hover:text-purple-300">Open profile</Link>
-                          {u.roles.includes('instructor') && (
+                          {u.roles.includes('admin') ? (
+                            <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-emerald-400">
+                              <CreditCard size={11} /> Platform payments · 100%
+                            </p>
+                          ) : u.roles.includes('instructor') && (
                             <p className={`mt-1 inline-flex items-center gap-1 text-[11px] ${stripeStatuses[u.id]?.connected ? 'text-emerald-400' : 'text-red-400'}`}>
                               <CreditCard size={11} /> {stripeStatuses[u.id]?.connected ? 'Stripe connected' : stripeStatuses[u.id]?.hasAccount ? 'Stripe incomplete' : 'Stripe not connected'}{stripeStatuses[u.id]?.mode === 'test' ? ' · test' : ''}
                             </p>
@@ -317,7 +321,7 @@ export default function AdminUsers() {
                           );
                         })}
                       </div>
-                      {u.roles.includes('instructor') && (
+                      {u.roles.includes('instructor') && !u.roles.includes('admin') && (
                         <div className="mt-2 flex justify-end gap-1.5">
                           <div className="relative w-24">
                             <Percent size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-600" />

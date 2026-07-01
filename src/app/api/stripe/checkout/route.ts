@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     // 2. Fetch course
     const { data: course, error: courseErr } = await supabase
       .from('courses')
-      .select('id, title_en, slug, price, discount_price, discount_starts_at, discount_ends_at, currency, thumbnail_url, is_free, instructor_id, profiles!courses_instructor_id_fkey(stripe_account_id,revenue_share_pct)')
+      .select('id, title_en, slug, price, discount_price, discount_starts_at, discount_ends_at, currency, thumbnail_url, is_free, instructor_id, profiles!courses_instructor_id_fkey(role,stripe_account_id,revenue_share_pct)')
       .eq('slug', courseSlug)
       .single();
 
@@ -56,8 +56,9 @@ export async function POST(req: NextRequest) {
     const unitAmount = Math.round((discountActive ? course.discount_price : course.price) * 100);
     const origin = req.headers.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
     const instructorProfile = Array.isArray(course.profiles) ? course.profiles[0] : course.profiles;
-    const stripeAccountId = instructorProfile?.stripe_account_id;
-    const platformFeePct = Math.max(0, Math.min(100, 100 - (instructorProfile?.revenue_share_pct ?? 70)));
+    const isAdminCourse = instructorProfile?.role === 'admin';
+    const stripeAccountId = isAdminCourse ? null : instructorProfile?.stripe_account_id;
+    const platformFeePct = isAdminCourse ? 100 : Math.max(0, Math.min(100, 100 - (instructorProfile?.revenue_share_pct ?? 70)));
     let paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData | undefined;
 
     if (stripeAccountId) {
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
         instructor_id: course.instructor_id ?? '',
         platform_fee_pct: String(platformFeePct),
         connect_account_id: stripeAccountId ?? '',
-        transfer_status: paymentIntentData ? 'automatic' : 'platform_hold',
+        transfer_status: isAdminCourse ? 'platform_income' : paymentIntentData ? 'automatic' : 'platform_hold',
         ...(user
           ? { user_id: user.id }
           : { guest_email: guestEmail, guest_name: guestName ?? '' }),

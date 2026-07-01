@@ -22,7 +22,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    if (profile.role !== 'instructor' && profile.role !== 'admin') {
+    if (profile.role === 'admin') {
+      return NextResponse.json({ error: 'Admins receive payments through the platform Stripe account and do not need Stripe Connect.' }, { status: 403 });
+    }
+
+    if (profile.role !== 'instructor') {
       return NextResponse.json({ error: 'Teacher account required' }, { status: 403 });
     }
 

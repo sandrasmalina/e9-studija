@@ -101,8 +101,16 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         email: authUser.email ?? '',
         isAdmin: roleNames.has('admin'),
       });
+      const isAdmin = roleNames.has('admin');
+      if (isAdmin) {
+        setStripeStatus({
+          connected: true,
+          hasAccount: false,
+          message: 'Admin payments go to the platform Stripe account.',
+        });
+      }
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
+      if (!isAdmin && session?.access_token) {
         fetch('/api/stripe/connect/status', { headers: { Authorization: `Bearer ${session.access_token}` } })
           .then(res => res.ok ? res.json() : null)
           .then(data => { if (data) setStripeStatus(data); })
@@ -231,9 +239,9 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         className={`mb-2 flex items-start gap-3 rounded-xl border px-3 py-3 transition-all ${stripeStatus?.connected ? 'border-green-500/25 bg-green-500/10 text-green-300 hover:bg-green-500/15' : 'border-red-500/25 bg-red-500/10 text-red-300 hover:bg-red-500/15'}`}>
         <CreditCard size={16} className="mt-0.5 shrink-0" />
         <span className="min-w-0">
-          <span className="block text-sm font-semibold">Stripe Connect</span>
+          <span className="block text-sm font-semibold">{user?.isAdmin ? 'Platform Payments' : 'Stripe Connect'}</span>
           <span className="block text-xs opacity-80">
-            {stripeStatus?.connected ? 'Connected' : stripeStatus?.hasAccount ? 'Setup incomplete' : 'Not connected'}{stripeStatus?.mode === 'test' ? ' · Test mode' : ''}
+            {user?.isAdmin ? 'Admin receives 100%' : stripeStatus?.connected ? 'Connected' : stripeStatus?.hasAccount ? 'Setup incomplete' : 'Not connected'}{stripeStatus?.mode === 'test' ? ' · Test mode' : ''}
           </span>
         </span>
       </Link>

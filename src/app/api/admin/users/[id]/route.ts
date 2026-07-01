@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: Props) {
 
   const [authUserRes, profileRes, rolesRes, createdCoursesRes, assignedCoursesRes, enrollmentsRes] = await Promise.all([
     supabaseAdmin.auth.admin.getUserById(params.id),
-    supabaseAdmin.from('profiles').select('id, full_name, first_name, last_name, avatar_url, role, stripe_account_id, revenue_share_pct, created_at').eq('id', params.id).single(),
+    supabaseAdmin.from('profiles').select('id, full_name, first_name, last_name, avatar_url, role, bio, bio_lv, role_title, website, linkedin_url, stripe_account_id, revenue_share_pct, created_at').eq('id', params.id).single(),
     supabaseAdmin.from('user_roles').select('roles(name, display_name)').eq('user_id', params.id),
     supabaseAdmin.from('courses').select('id, title_en, slug, status, price, is_free, enrollment_count, created_at').eq('instructor_id', params.id).order('created_at', { ascending: false }),
     supabaseAdmin.from('course_instructors').select('role, sort_order, course:courses(id, title_en, slug, status, price, is_free, enrollment_count, created_at)').eq('instructor_id', params.id).order('sort_order'),
@@ -43,6 +43,7 @@ export async function GET(req: NextRequest, { params }: Props) {
     profile: {
       ...profileRes.data,
       email: authUserRes.data.user?.email ?? null,
+      phone: authUserRes.data.user?.phone || authUserRes.data.user?.user_metadata?.phone || authUserRes.data.user?.user_metadata?.phone_number || null,
       roles: Array.from(roleNames),
     },
     createdCourses: createdCoursesRes.data ?? [],

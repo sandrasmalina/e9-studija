@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, BookOpen, GraduationCap, Mail, ShieldCheck, User, Users, WalletCards } from 'lucide-react';
+import { ArrowLeft, BookOpen, ExternalLink, GraduationCap, Mail, Phone, ShieldCheck, User, Users, WalletCards } from 'lucide-react';
 
 interface CourseRow {
   id: string;
@@ -40,6 +40,12 @@ interface UserDetail {
     role: string | null;
     roles: string[];
     email: string | null;
+    phone: string | null;
+    bio: string | null;
+    bio_lv: string | null;
+    role_title: string | null;
+    website: string | null;
+    linkedin_url: string | null;
     stripe_account_id: string | null;
     revenue_share_pct: number | null;
     created_at: string;
@@ -64,6 +70,16 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`rounded-lg border px-2 py-1 text-xs capitalize ${cls}`}>{status}</span>;
 }
 
+function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: string | number; color: string }) {
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
+      <Icon size={18} className={color} />
+      <p className="mt-3 text-2xl font-bold text-white">{value}</p>
+      <p className="text-xs text-zinc-500">{label}</p>
+    </div>
+  );
+}
+
 export default function AdminUserDetailPage() {
   const { id } = useParams() as { id: string };
   const [detail, setDetail] = useState<UserDetail | null>(null);
@@ -86,6 +102,10 @@ export default function AdminUserDetailPage() {
   if (err || !detail) return <p className="text-red-400 text-sm">{err || 'User not found'}</p>;
 
   const { profile, createdCourses, assignedCourses, enrollments } = detail;
+  const createdDraft = createdCourses.filter(course => course.status === 'draft').length;
+  const createdPublished = createdCourses.filter(course => course.status === 'published').length;
+  const createdReview = createdCourses.filter(course => course.status === 'review').length;
+  const boughtActive = enrollments.filter(enrollment => enrollment.status === 'active' && (!enrollment.expires_at || new Date(enrollment.expires_at).getTime() > Date.now())).length;
 
   return (
     <div className="space-y-6">
@@ -114,26 +134,58 @@ export default function AdminUserDetailPage() {
             {profile.roles.map(role => <span key={role} className="rounded-lg bg-purple-500/10 px-2.5 py-1 text-xs capitalize text-purple-300">{role}</span>)}
           </div>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
-          <GraduationCap size={18} className="text-blue-400" />
-          <p className="mt-3 text-2xl font-bold text-white">{createdCourses.length}</p>
-          <p className="text-xs text-zinc-500">Courses created</p>
-        </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
-          <BookOpen size={18} className="text-green-400" />
-          <p className="mt-3 text-2xl font-bold text-white">{enrollments.length}</p>
-          <p className="text-xs text-zinc-500">Courses bought/enrolled</p>
-        </div>
+        <StatCard icon={GraduationCap} label="Created courses" value={createdCourses.length} color="text-blue-400" />
+        <StatCard icon={BookOpen} label="Bought/enrolled" value={enrollments.length} color="text-green-400" />
+        <StatCard icon={GraduationCap} label="Draft created" value={createdDraft} color="text-zinc-400" />
+        <StatCard icon={GraduationCap} label="Published created" value={createdPublished} color="text-green-400" />
+        <StatCard icon={GraduationCap} label="In review" value={createdReview} color="text-yellow-400" />
+        <StatCard icon={WalletCards} label="Active bought access" value={boughtActive} color="text-purple-400" />
       </div>
 
+      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
+        <h2 className="font-semibold text-white">Client Contact Details</h2>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <p className="text-xs uppercase tracking-wider text-zinc-600">Email</p>
+            <p className="mt-1 flex items-center gap-2 text-sm text-white"><Mail size={14} className="text-zinc-500" /> {profile.email ?? 'No email found'}</p>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <p className="text-xs uppercase tracking-wider text-zinc-600">Phone</p>
+            <p className="mt-1 flex items-center gap-2 text-sm text-white"><Phone size={14} className="text-zinc-500" /> {profile.phone ?? 'No phone saved'}</p>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <p className="text-xs uppercase tracking-wider text-zinc-600">Name</p>
+            <p className="mt-1 text-sm text-white">{[profile.first_name, profile.last_name].filter(Boolean).join(' ') || profile.full_name || 'No name saved'}</p>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <p className="text-xs uppercase tracking-wider text-zinc-600">Role title</p>
+            <p className="mt-1 text-sm text-white">{profile.role_title || 'No role title saved'}</p>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <p className="text-xs uppercase tracking-wider text-zinc-600">Website</p>
+            {profile.website ? <a href={profile.website} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300">{profile.website}<ExternalLink size={12} /></a> : <p className="mt-1 text-sm text-zinc-500">No website saved</p>}
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <p className="text-xs uppercase tracking-wider text-zinc-600">LinkedIn</p>
+            {profile.linkedin_url ? <a href={profile.linkedin_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300">{profile.linkedin_url}<ExternalLink size={12} /></a> : <p className="mt-1 text-sm text-zinc-500">No LinkedIn saved</p>}
+          </div>
+        </div>
+        {(profile.bio || profile.bio_lv) && (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {profile.bio && <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"><p className="text-xs uppercase tracking-wider text-zinc-600">Bio</p><p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">{profile.bio}</p></div>}
+            {profile.bio_lv && <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"><p className="text-xs uppercase tracking-wider text-zinc-600">Bio LV</p><p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">{profile.bio_lv}</p></div>}
+          </div>
+        )}
+      </section>
+
       <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-        <div className="border-b border-zinc-800 p-4"><h2 className="font-semibold text-white flex items-center gap-2"><GraduationCap size={16} /> Teacher courses created</h2></div>
+        <div className="border-b border-zinc-800 p-4"><h2 className="font-semibold text-white flex items-center gap-2"><GraduationCap size={16} /> Teacher courses created · draft, review, published</h2></div>
         {createdCourses.length === 0 ? <p className="p-5 text-sm text-zinc-600">No created courses.</p> : (
           <div className="divide-y divide-zinc-800/70">
             {createdCourses.map(course => (
               <div key={course.id} className="flex items-center justify-between gap-4 p-4">
-                <div><p className="text-sm font-medium text-white">{course.title_en}</p><p className="text-xs text-zinc-600">{course.enrollment_count ?? 0} students</p></div>
-                <div className="flex items-center gap-2"><StatusBadge status={course.status} /><Link href={`/admin/courses/${course.id}/edit`} className="text-xs text-purple-400 hover:text-purple-300">Open</Link></div>
+                <div><p className="text-sm font-medium text-white">{course.title_en}</p><p className="text-xs text-zinc-600">{course.enrollment_count ?? 0} students · {course.is_free ? 'Free' : `EUR ${course.price ?? 0}`}</p></div>
+                <div className="flex items-center gap-2"><StatusBadge status={course.status} /><Link href={`/courses/${course.slug}?preview=1`} target="_blank" className="text-xs text-zinc-400 hover:text-white">Preview</Link><Link href={`/admin/courses/${course.id}/edit`} className="text-xs text-purple-400 hover:text-purple-300">Open</Link></div>
               </div>
             ))}
           </div>

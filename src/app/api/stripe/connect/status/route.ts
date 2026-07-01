@@ -36,6 +36,16 @@ export async function GET(req: NextRequest) {
     const accountId = profile.stripe_account_id as string | null;
     const mode = process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_') ? 'test' : 'live';
 
+    if (profile.role === 'admin') {
+      return NextResponse.json({
+        connected: true,
+        hasAccount: false,
+        mode,
+        message: 'Admin revenue is paid to the platform Stripe account. Stripe Connect is not required.',
+        isPlatformAccount: true,
+      });
+    }
+
     if (!accountId) {
       return NextResponse.json({
         connected: false,
