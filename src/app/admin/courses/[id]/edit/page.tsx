@@ -30,6 +30,7 @@ interface CourseForm {
   discount_price: string;
   discount_ends_at: string;
   is_free: boolean;
+  access_duration_months: string;
   starts_at: string;
   ends_at: string;
   meta_title: string;
@@ -56,7 +57,7 @@ const EMPTY: CourseForm = {
   title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
   description_en: '', description_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '', target_audience_lv: '',
-  price: '0', discount_price: '', discount_ends_at: '', is_free: false, starts_at: '', ends_at: '',
+  price: '0', discount_price: '', discount_ends_at: '', is_free: false, access_duration_months: '', starts_at: '', ends_at: '',
   meta_title: '', meta_description: '', meta_keywords: '', og_title: '', og_description: '', og_image: '', canonical_url: '', no_index: false,
   ai_summary: '', key_takeaways: '', faq_items: '', tags_ai_topics: '', expertise_level: '', industry: '',
   certificate_enabled: true, status: 'draft',
@@ -91,7 +92,7 @@ export default function AdminCourseEditPage() {
       const [{ data: cats }, { data: course }, { data: instructorList }] = await Promise.all([
         supabase.from('categories').select('id, name_en').order('name_en'),
         supabase.from('courses')
-          .select('title_en, title_lv, slug, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience, target_audience_lv, price, discount_price, discount_ends_at, is_free, starts_at, ends_at, meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url, no_index, ai_summary, key_takeaways, faq_items, tags_ai_topics, expertise_level, industry, certificate_enabled, status, category_id, instructor_id')
+          .select('title_en, title_lv, slug, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience, target_audience_lv, price, discount_price, discount_ends_at, is_free, access_duration_months, starts_at, ends_at, meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url, no_index, ai_summary, key_takeaways, faq_items, tags_ai_topics, expertise_level, industry, certificate_enabled, status, category_id, instructor_id')
           .eq('id', id).single(),
         supabase.from('profiles').select('id, full_name').in('role', ['instructor', 'admin']).order('full_name'),
       ]);
@@ -123,6 +124,7 @@ export default function AdminCourseEditPage() {
           discount_price: course.discount_price != null ? String(course.discount_price) : '',
           discount_ends_at: course.discount_ends_at ? course.discount_ends_at.slice(0, 16) : '',
           is_free: course.is_free ?? false,
+          access_duration_months: course.access_duration_months != null ? String(course.access_duration_months) : '',
           starts_at: course.starts_at ? course.starts_at.slice(0, 16) : '',
           ends_at: course.ends_at ? course.ends_at.slice(0, 16) : '',
           meta_title: course.meta_title ?? '',
@@ -190,6 +192,7 @@ export default function AdminCourseEditPage() {
       discount_price: form.discount_price ? Number(form.discount_price) : null,
       discount_ends_at: form.discount_ends_at || null,
       is_free: form.is_free,
+      access_duration_months: form.access_duration_months ? Math.max(1, Number(form.access_duration_months) || 1) : null,
       starts_at: form.starts_at || null,
       ends_at: form.ends_at || null,
       meta_title: form.meta_title.trim() || form.title_en.trim(),
@@ -412,6 +415,9 @@ export default function AdminCourseEditPage() {
             </Field>
             <Field label="Course Finishes">
               <input type="datetime-local" value={form.ends_at} onChange={e => set('ends_at', e.target.value)} className={inputCls} />
+            </Field>
+            <Field label="Student Access Duration" hint="Leave empty for lifetime access. Enter months to expire enrollments after purchase/enrollment.">
+              <input type="number" min="1" value={form.access_duration_months} onChange={e => set('access_duration_months', e.target.value)} placeholder="Lifetime" className={inputCls} />
             </Field>
           </div>
         </div>

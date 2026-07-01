@@ -91,6 +91,7 @@ interface Course {
   discount_ends_at: string | null;
   currency: string;
   is_free: boolean;
+  access_duration_months: number | null;
   level: string | null;
   language: string;
   delivery_mode: string | null;
@@ -169,12 +170,13 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
 
       const { data: enrollment } = await supabase
         .from('enrollments')
-        .select('id')
+        .select('id, status, expires_at')
         .eq('user_id', user.id)
         .eq('course_id', course.id)
         .maybeSingle();
 
-      if (enrollment) {
+      const isExpired = enrollment?.expires_at ? new Date(enrollment.expires_at).getTime() <= Date.now() : false;
+      if (enrollment?.status === 'active' && !isExpired) {
         setEnrollState('enrolled');
         // Check if user already left a review
         const { data: rev } = await supabase
@@ -196,13 +198,19 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   const handleEnrollFree = async () => {
     if (!enrollUserId) return;
     setEnrolling(true);
-    const { error } = await supabase.from('enrollments').insert({
+    const expiresAt = course.access_duration_months ? (() => {
+      const next = new Date();
+      next.setMonth(next.getMonth() + course.access_duration_months);
+      return next.toISOString();
+    })() : null;
+    const { error } = await supabase.from('enrollments').upsert({
       user_id: enrollUserId,
       course_id: course.id,
       amount_paid: 0,
       currency: course.currency,
       status: 'active',
-    });
+      expires_at: expiresAt,
+    }, { onConflict: 'user_id,course_id' });
     if (!error || error.code === '23505') {
       router.push(`/learn/${course.slug}`);
     } else {

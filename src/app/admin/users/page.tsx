@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Search, RefreshCw, ShieldCheck, User, Users as UsersIcon, GraduationCap, PenLine, Plus, Send, X, Copy, Check, CreditCard, Percent } from 'lucide-react';
 
@@ -18,6 +19,12 @@ interface UserProfile {
 }
 
 interface RoleRecord { id: string; name: string; display_name: string; sort_order: number; }
+
+interface StripeConnectStatus {
+  connected: boolean;
+  hasAccount: boolean;
+  mode?: 'test' | 'live';
+}
 
 const ROLE_COLORS: Record<string, string> = {
   admin:      'bg-purple-900/50 text-purple-400',
@@ -51,6 +58,7 @@ export default function AdminUsers() {
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [payoutDrafts, setPayoutDrafts] = useState<Record<string, string>>({});
+  const [stripeStatuses, setStripeStatuses] = useState<Record<string, StripeConnectStatus>>({});
 
   const load = async () => {
     setLoading(true);
@@ -67,15 +75,31 @@ export default function AdminUsers() {
       roleMap.set(row.user_id, [...(roleMap.get(row.user_id) ?? []), roleName]);
     });
     setRoles(nextRoles);
-    setUsers((profileData ?? []).map((profile: any) => {
+    const mappedUsers = (profileData ?? []).map((profile: any) => {
       const assigned = new Set<string>(roleMap.get(profile.id) ?? []);
       if (profile.role) assigned.add(profile.role);
       const platformFee = 100 - (profile.revenue_share_pct ?? 70);
       return { ...profile, platform_fee_pct: platformFee, roles: [...assigned] };
-    }) as UserProfile[]);
+    }) as UserProfile[];
+    setUsers(mappedUsers);
     const drafts: Record<string, string> = {};
     (profileData ?? []).forEach((profile: any) => { drafts[profile.id] = String(100 - (profile.revenue_share_pct ?? 70)); });
     setPayoutDrafts(drafts);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      const instructors = mappedUsers.filter(user => user.roles.includes('instructor'));
+      const statuses = await Promise.all(instructors.map(async user => {
+        if (!user.stripe_account_id) return [user.id, { connected: false, hasAccount: false }] as const;
+        try {
+          const response = await fetch(`/api/stripe/connect/status?userId=${user.id}`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+          if (!response.ok) return [user.id, { connected: false, hasAccount: true }] as const;
+          return [user.id, await response.json()] as const;
+        } catch {
+          return [user.id, { connected: false, hasAccount: true }] as const;
+        }
+      }));
+      setStripeStatuses(Object.fromEntries(statuses));
+    }
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -252,9 +276,10 @@ export default function AdminUsers() {
                         <div>
                           <p className="text-white text-sm font-medium">{u.full_name || 'Unnamed User'}</p>
                           <p className="text-zinc-600 text-xs font-mono">{u.id.slice(0, 8)}…</p>
+                          <Link href={`/admin/users/${u.id}`} className="mt-1 inline-flex text-[11px] text-purple-400 hover:text-purple-300">Open profile</Link>
                           {u.roles.includes('instructor') && (
-                            <p className={`mt-1 inline-flex items-center gap-1 text-[11px] ${u.stripe_account_id ? 'text-emerald-400' : 'text-zinc-600'}`}>
-                              <CreditCard size={11} /> {u.stripe_account_id ? 'Stripe connected' : 'Stripe not connected'}
+                            <p className={`mt-1 inline-flex items-center gap-1 text-[11px] ${stripeStatuses[u.id]?.connected ? 'text-emerald-400' : 'text-red-400'}`}>
+                              <CreditCard size={11} /> {stripeStatuses[u.id]?.connected ? 'Stripe connected' : stripeStatuses[u.id]?.hasAccount ? 'Stripe incomplete' : 'Stripe not connected'}{stripeStatuses[u.id]?.mode === 'test' ? ' · test' : ''}
                             </p>
                           )}
                         </div>

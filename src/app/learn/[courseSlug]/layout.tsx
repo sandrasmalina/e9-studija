@@ -22,8 +22,15 @@ interface CourseInfo {
   slug: string;
   is_free: boolean;
   price: number;
+  access_duration_months: number | null;
   certificate_enabled: boolean;
   instructor_id: string | null;
+}
+
+function addMonths(date: Date, months: number) {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
 }
 
 export default function LearnLayout({ children }: { children: React.ReactNode }) {
@@ -74,7 +81,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       const { data: courseData, error: courseErr } = await supabase
         .from('courses')
         .select(`
-          id, title_en, slug, is_free, price, certificate_enabled, instructor_id,
+          id, title_en, slug, is_free, price, access_duration_months, certificate_enabled, instructor_id,
           sections(
             id, title_en, sort_order,
             lectures(id, title_en, sort_order, video_duration_seconds, is_preview, content_type)
@@ -105,17 +112,21 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       if (!canPreview) {
         const { data: enrollment } = await supabase
           .from('enrollments')
-          .select('id, status')
+          .select('id, status, expires_at')
           .eq('user_id', user.id)
           .eq('course_id', courseData.id)
           .maybeSingle();
 
-        if (!enrollment) {
+        const isExpired = enrollment?.expires_at ? new Date(enrollment.expires_at).getTime() <= Date.now() : false;
+
+        if (!enrollment || enrollment.status !== 'active' || isExpired) {
+          if (enrollment && isExpired) await supabase.from('enrollments').update({ status: 'expired' }).eq('id', enrollment.id);
           if (courseData.is_free || courseData.price === 0) {
             // Auto-enroll for free courses
+            const expiresAt = courseData.access_duration_months ? addMonths(new Date(), courseData.access_duration_months).toISOString() : null;
             const { error: enrollErr } = await supabase
               .from('enrollments')
-              .insert({ user_id: user.id, course_id: courseData.id, amount_paid: 0, currency: 'EUR', status: 'active' });
+              .upsert({ user_id: user.id, course_id: courseData.id, amount_paid: 0, currency: 'EUR', status: 'active', expires_at: expiresAt }, { onConflict: 'user_id,course_id' });
             // Ignore unique constraint violation (already enrolled race)
             if (enrollErr && enrollErr.code !== '23505') {
               router.replace(`/courses/${courseSlug}`);
@@ -149,7 +160,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           lectures: (s.lectures ?? []).sort((a: LectureMeta, b: LectureMeta) => a.sort_order - b.sort_order),
         }));
 
-      setCourse({ id: courseData.id, title_en: courseData.title_en, slug: courseData.slug, is_free: courseData.is_free, price: courseData.price, certificate_enabled: courseData.certificate_enabled ?? false, instructor_id: courseData.instructor_id ?? null });
+      setCourse({ id: courseData.id, title_en: courseData.title_en, slug: courseData.slug, is_free: courseData.is_free, price: courseData.price, access_duration_months: courseData.access_duration_months ?? null, certificate_enabled: courseData.certificate_enabled ?? false, instructor_id: courseData.instructor_id ?? null });
       setSections(sortedSections);
 
       // Expand section containing current lecture (or first section)

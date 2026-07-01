@@ -10,7 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, BookOpen, TrendingUp, Settings, Users,
   ChevronRight, ChevronDown, ArrowLeft, Play, FileText, Paperclip,
-  LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus, Moon, Sun,
+  LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus, Moon, Sun, CreditCard,
 } from 'lucide-react';
 
 const NAV = [
@@ -29,6 +29,13 @@ interface Section {
   lectures: { id: string; title_en: string; content_type: string; sort_order: number }[];
 }
 
+interface StripeConnectStatus {
+  connected: boolean;
+  hasAccount: boolean;
+  mode?: 'test' | 'live';
+  message?: string;
+}
+
 export default function InstructorLayout({ children }: { children: React.ReactNode }) {
   const router    = useRouter();
   const pathname  = usePathname();
@@ -43,6 +50,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   const [editingSectionId, setEditingSectionId]   = useState<string | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState('');
   const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
+  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
 
   const courseMatch = COURSE_PATH_RE.exec(pathname);
   const courseId    = courseMatch?.[1] ?? null;
@@ -93,6 +101,13 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         email: authUser.email ?? '',
         isAdmin: roleNames.has('admin'),
       });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        fetch('/api/stripe/connect/status', { headers: { Authorization: `Bearer ${session.access_token}` } })
+          .then(res => res.ok ? res.json() : null)
+          .then(data => { if (data) setStripeStatus(data); })
+          .catch(() => setStripeStatus(null));
+      }
       setChecking(false);
     })();
   }, [router]);
@@ -212,6 +227,16 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   // ── Shared sidebar footer ────────────────────────────────────────────────
   const SidebarFooter = () => (
     <div className="px-3 py-3 border-t border-zinc-900 space-y-0.5 shrink-0">
+      <Link href="/instructor/earnings"
+        className={`mb-2 flex items-start gap-3 rounded-xl border px-3 py-3 transition-all ${stripeStatus?.connected ? 'border-green-500/25 bg-green-500/10 text-green-300 hover:bg-green-500/15' : 'border-red-500/25 bg-red-500/10 text-red-300 hover:bg-red-500/15'}`}>
+        <CreditCard size={16} className="mt-0.5 shrink-0" />
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold">Stripe Connect</span>
+          <span className="block text-xs opacity-80">
+            {stripeStatus?.connected ? 'Connected' : stripeStatus?.hasAccount ? 'Setup incomplete' : 'Not connected'}{stripeStatus?.mode === 'test' ? ' · Test mode' : ''}
+          </span>
+        </span>
+      </Link>
       <button onClick={handleLogout}
         className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-red-400 hover:bg-red-950/20 transition-all group">
         <LogOut size={16} className="group-hover:text-red-400 transition-colors" />

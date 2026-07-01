@@ -9,6 +9,7 @@ interface Enrollment {
   id: string;
   progress_pct: number;
   enrolled_at: string;
+  expires_at: string | null;
   completed_at: string | null;
   last_accessed_at: string | null;
   course: {
@@ -23,6 +24,13 @@ interface Enrollment {
 const FILTERS = ['all', 'in progress', 'completed'] as const;
 type Filter = typeof FILTERS[number];
 
+function formatAccess(expiresAt: string | null) {
+  if (!expiresAt) return 'Lifetime access';
+  const date = new Date(expiresAt);
+  if (date.getTime() <= Date.now()) return 'Access expired';
+  return `Access until ${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+}
+
 export default function MyCoursesPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +43,7 @@ export default function MyCoursesPage() {
       if (!user) return;
       const { data } = await supabase
         .from('enrollments')
-        .select('id, progress_pct, enrolled_at, completed_at, last_accessed_at, course:courses(id, title_en, thumbnail_url, slug, instructor:profiles!courses_instructor_id_fkey(full_name))')
+        .select('id, progress_pct, enrolled_at, expires_at, completed_at, last_accessed_at, course:courses(id, title_en, thumbnail_url, slug, instructor:profiles!courses_instructor_id_fkey(full_name))')
         .eq('user_id', user.id)
         .order('last_accessed_at', { ascending: false, nullsFirst: false });
       setEnrollments((data ?? []) as unknown as Enrollment[]);
@@ -92,7 +100,7 @@ export default function MyCoursesPage() {
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(({ id, course, progress_pct, completed_at }) => (
+          {filtered.map(({ id, course, progress_pct, completed_at, expires_at }) => (
             <Link key={id} href={`/learn/${course.slug}`}
               className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:border-purple-500/30 hover:bg-white/[0.04] transition-all overflow-hidden">
               {/* Thumbnail */}
@@ -120,6 +128,7 @@ export default function MyCoursesPage() {
                 {course.instructor?.full_name && (
                   <p className="text-zinc-600 text-xs mt-1">{course.instructor.full_name}</p>
                 )}
+                <p className={`text-xs mt-2 ${expires_at && new Date(expires_at).getTime() <= Date.now() ? 'text-red-400' : 'text-zinc-500'}`}>{formatAccess(expires_at)}</p>
                 <div className="mt-3 flex items-center justify-between">
                   <div className="flex-1 mr-3">
                     <div className="flex justify-between mb-1">

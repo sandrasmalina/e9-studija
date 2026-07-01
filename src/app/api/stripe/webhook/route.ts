@@ -3,7 +3,14 @@ import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase';
 
-async function enrollStudent(courseId: string, userId: string, amountPaid: number, currency: string) {
+function addMonths(date: Date, months: number) {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
+}
+
+async function enrollStudent(courseId: string, userId: string, amountPaid: number, currency: string, accessDurationMonths: number | null) {
+  const expiresAt = accessDurationMonths ? addMonths(new Date(), accessDurationMonths).toISOString() : null;
   const { error } = await supabaseAdmin.from('enrollments').upsert(
     {
       user_id: userId,
@@ -11,6 +18,7 @@ async function enrollStudent(courseId: string, userId: string, amountPaid: numbe
       status: 'active',
       amount_paid: amountPaid,
       currency: currency.toUpperCase(),
+      expires_at: expiresAt,
     },
     { onConflict: 'user_id,course_id' }
   );
@@ -94,14 +102,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Missing user info' }, { status: 400 });
       }
 
-      await enrollStudent(course_id, resolvedUserId, amountPaid, currency);
-
-      // Check if course has certificate_enabled and issue on enrollment
       const { data: course } = await supabaseAdmin
         .from('courses')
-        .select('certificate_enabled')
+        .select('certificate_enabled, access_duration_months')
         .eq('id', course_id)
         .single();
+
+      await enrollStudent(course_id, resolvedUserId, amountPaid, currency, course?.access_duration_months ?? null);
 
       console.log(`[webhook] enrolled user ${resolvedUserId} in course ${course_slug ?? course_id}`);
 

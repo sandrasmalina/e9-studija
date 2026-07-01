@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { TrendingUp, DollarSign, Users, BookOpen, CreditCard, ExternalLink } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, BookOpen, CreditCard, ExternalLink, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface Enrollment {
   id: string;
@@ -13,12 +13,24 @@ interface Enrollment {
   course: { title_en: string };
 }
 
+interface StripeConnectStatus {
+  connected: boolean;
+  hasAccount: boolean;
+  mode?: 'test' | 'live';
+  message?: string;
+  detailsSubmitted?: boolean;
+  chargesEnabled?: boolean;
+  payoutsEnabled?: boolean;
+  requirementsDue?: string[];
+}
+
 export default function EarningsPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [revenueShare, setRevenueShare] = useState(70);
   const [stripeAccountId, setStripeAccountId] = useState('');
+  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
   const [connectingStripe, setConnectingStripe] = useState(false);
 
   useEffect(() => {
@@ -31,6 +43,14 @@ export default function EarningsPage() {
         .select('revenue_share_pct,stripe_account_id').eq('id', user.id).single();
       if (profile?.revenue_share_pct) setRevenueShare(profile.revenue_share_pct);
       if (profile?.stripe_account_id) setStripeAccountId(profile.stripe_account_id);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        fetch('/api/stripe/connect/status', { headers: { Authorization: `Bearer ${session.access_token}` } })
+          .then(res => res.ok ? res.json() : null)
+          .then(data => { if (data) setStripeStatus(data); })
+          .catch(() => setStripeStatus(null));
+      }
 
       // Get instructor's courses
       const { data: courses } = await supabase.from('courses')
@@ -70,6 +90,7 @@ export default function EarningsPage() {
   };
 
   const myEarnings = (totalRevenue * revenueShare) / 100;
+  const isStripeConnected = Boolean(stripeStatus?.connected);
 
   const statCards = [
     { icon: DollarSign, label: 'Total Revenue', value: `€${totalRevenue.toFixed(2)}`, sub: 'Gross sales' },
@@ -86,10 +107,40 @@ export default function EarningsPage() {
           <p className="text-zinc-500 text-sm mt-1">Connect Stripe to receive automatic payouts from course sales.</p>
         </div>
         <button onClick={connectStripe} disabled={connectingStripe}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:border-accent/50 disabled:opacity-50">
+          className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium disabled:opacity-50 ${isStripeConnected ? 'border-green-500/30 bg-green-500/10 text-green-300 hover:bg-green-500/15' : 'border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15'}`}>
           {stripeAccountId ? <ExternalLink size={15} /> : <CreditCard size={15} />}
-          {connectingStripe ? 'Opening Stripe…' : stripeAccountId ? 'Manage Stripe Connect' : 'Connect Stripe'}
+          {connectingStripe ? 'Opening Stripe…' : isStripeConnected ? 'Manage Stripe Connect' : stripeAccountId ? 'Finish Stripe Setup' : 'Connect Stripe'}
         </button>
+      </div>
+
+      <div className={`mb-8 rounded-2xl border p-5 ${isStripeConnected ? 'border-green-500/25 bg-green-500/10' : 'border-red-500/25 bg-red-500/10'}`}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            {isStripeConnected ? <CheckCircle2 size={22} className="mt-0.5 shrink-0 text-green-400" /> : <AlertCircle size={22} className="mt-0.5 shrink-0 text-red-400" />}
+            <div>
+              <p className={`text-sm font-semibold ${isStripeConnected ? 'text-green-300' : 'text-red-300'}`}>
+                {isStripeConnected ? 'Stripe Connect is connected' : stripeStatus?.hasAccount ? 'Stripe Connect setup is incomplete' : 'Stripe Connect is not connected'}
+              </p>
+              <p className="mt-1 text-sm text-zinc-400">
+                {isStripeConnected
+                  ? 'Automatic instructor payouts are enabled for eligible course sales.'
+                  : 'Finish onboarding before payouts can go directly to this instructor.'}
+                {stripeStatus?.mode === 'test' ? ' You are currently using Stripe test mode.' : ''}
+              </p>
+            </div>
+          </div>
+          <button onClick={connectStripe} disabled={connectingStripe}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50">
+            <ExternalLink size={15} /> {connectingStripe ? 'Opening…' : stripeStatus?.hasAccount ? 'Open Stripe Onboarding' : 'Start Stripe Connect'}
+          </button>
+        </div>
+        {stripeStatus?.hasAccount && !isStripeConnected && (
+          <div className="mt-4 grid gap-2 text-xs text-zinc-400 sm:grid-cols-3">
+            <span className={stripeStatus.detailsSubmitted ? 'text-green-300' : 'text-red-300'}>Details: {stripeStatus.detailsSubmitted ? 'submitted' : 'missing'}</span>
+            <span className={stripeStatus.chargesEnabled ? 'text-green-300' : 'text-red-300'}>Charges: {stripeStatus.chargesEnabled ? 'enabled' : 'not enabled'}</span>
+            <span className={stripeStatus.payoutsEnabled ? 'text-green-300' : 'text-red-300'}>Payouts: {stripeStatus.payoutsEnabled ? 'enabled' : 'not enabled'}</span>
+          </div>
+        )}
       </div>
 
       {/* Stat cards */}

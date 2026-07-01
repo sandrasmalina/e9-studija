@@ -84,6 +84,7 @@ interface CourseForm {
   discount_type: 'none' | 'permanent' | 'period';
   is_free: boolean;
   fake_enrollment_count: string;
+  access_duration_months: string;
   starts_at: string;
   ends_at: string;
   certificate_enabled: boolean;
@@ -110,7 +111,7 @@ const EMPTY: CourseForm = {
   description_en: '', description_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', requirements_lv: '', what_you_learn: '', what_you_learn_lv: '', target_audience: '', target_audience_lv: '', delivery_mode: 'online',
   price: '0', discount_price: '', discount_starts_at: '', discount_ends_at: '', discount_type: 'none', is_free: false, fake_enrollment_count: '0',
-  starts_at: '', ends_at: '', certificate_enabled: true,
+  access_duration_months: '', starts_at: '', ends_at: '', certificate_enabled: true,
 };
 
 export default function CourseEditPage() {
@@ -132,7 +133,7 @@ export default function CourseEditPage() {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error: courseError } = await supabase.from('courses')
-        .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, fake_enrollment_count, starts_at, ends_at, certificate_enabled')
+        .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, fake_enrollment_count, access_duration_months, starts_at, ends_at, certificate_enabled')
         .eq('id', id)
         .maybeSingle();
 
@@ -176,6 +177,7 @@ export default function CourseEditPage() {
         discount_type: data.discount_price ? (data.discount_starts_at || data.discount_ends_at ? 'period' : 'permanent') : 'none',
         is_free: data.is_free ?? false,
         fake_enrollment_count: data.fake_enrollment_count != null ? String(data.fake_enrollment_count) : '0',
+        access_duration_months: data.access_duration_months != null ? String(data.access_duration_months) : '',
         starts_at: data.starts_at ? data.starts_at.slice(0, 16) : '',
         ends_at: data.ends_at ? data.ends_at.slice(0, 16) : '',
         certificate_enabled: data.certificate_enabled ?? true,
@@ -246,6 +248,7 @@ export default function CourseEditPage() {
       price: form.is_free ? 0 : Number(form.price) || 0,
       is_free: form.is_free,
       fake_enrollment_count: Math.max(0, Number(form.fake_enrollment_count) || 0),
+      access_duration_months: form.access_duration_months ? Math.max(1, Number(form.access_duration_months) || 1) : null,
       discount_price: !form.is_free && form.discount_type !== 'none' && form.discount_price ? Number(form.discount_price) : null,
       discount_starts_at: !form.is_free && form.discount_type === 'period' ? form.discount_starts_at || null : null,
       discount_ends_at: !form.is_free && form.discount_type === 'period' ? form.discount_ends_at || null : null,
@@ -429,6 +432,9 @@ export default function CourseEditPage() {
           )}
           <Field label="Display Students" hint="Fake/display students added to real enrolled students on public course pages. Does not reduce group spots.">
             <Input type="number" value={form.fake_enrollment_count} onChange={v => set('fake_enrollment_count', v)} placeholder="0" />
+          </Field>
+          <Field label="Student Access Duration" hint="Leave empty for lifetime access. Enter months to make each enrollment expire after purchase/enrollment.">
+            <Input type="number" value={form.access_duration_months} onChange={v => set('access_duration_months', v)} placeholder="Lifetime" />
           </Field>
         </Chapter>
 
