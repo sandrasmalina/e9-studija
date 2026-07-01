@@ -127,65 +127,74 @@ export default function CourseEditPage() {
   const [availabilityGroups, setAvailabilityGroups] = useState<AvailabilityGroup[]>([]);
 
   useEffect(() => {
-    Promise.all([
-      supabase.from('courses')
+    const load = async () => {
+      const { data, error: courseError } = await supabase.from('courses')
         .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, starts_at, ends_at, certificate_enabled')
         .eq('id', id)
-        .single(),
+        .single();
+
+      if (courseError || !data) {
+        setErr(courseError?.message || 'Could not load course');
+        setLoading(false);
+        return;
+      }
+
+      setCourseTitle(data.title_en);
+      setCourseSlug(data.slug ?? '');
+      setForm({
+        title_en: data.title_en ?? '',
+        title_lv: data.title_lv ?? '',
+        short_description_en: data.short_description_en ?? '',
+        short_description_lv: data.short_description_lv ?? '',
+        description_en: data.description_en ?? '',
+        description_lv: data.description_lv ?? '',
+        thumbnail_url: data.thumbnail_url ?? '',
+        thumbnail_url_lv: data.thumbnail_url_lv ?? '',
+        promo_video_url: data.promo_video_url ?? '',
+        promo_video_type: data.promo_video_type ?? 'youtube',
+        level: data.level ?? 'beginner',
+        language: data.language ?? 'en',
+        requirements: (data.requirements ?? []).join('\n'),
+        requirements_lv: (data.requirements_lv ?? []).join('\n'),
+        what_you_learn: (data.what_you_learn ?? []).join('\n'),
+        what_you_learn_lv: (data.what_you_learn_lv ?? []).join('\n'),
+        target_audience: data.target_audience ?? '',
+        target_audience_lv: data.target_audience_lv ?? '',
+        delivery_mode: data.delivery_mode ?? 'online',
+        price: data.price != null ? String(data.price) : '0',
+        discount_price: data.discount_price != null ? String(data.discount_price) : '',
+        discount_starts_at: data.discount_starts_at ? data.discount_starts_at.slice(0, 16) : '',
+        discount_ends_at: data.discount_ends_at ? data.discount_ends_at.slice(0, 16) : '',
+        discount_type: data.discount_price ? (data.discount_starts_at || data.discount_ends_at ? 'period' : 'permanent') : 'none',
+        is_free: data.is_free ?? false,
+        starts_at: data.starts_at ? data.starts_at.slice(0, 16) : '',
+        ends_at: data.ends_at ? data.ends_at.slice(0, 16) : '',
+        certificate_enabled: data.certificate_enabled ?? true,
+      });
+
+      const [{ data: groupRows }, { data: teacherRows }, { data: instructorRows }] = await Promise.all([
       supabase.from('course_availability_groups').select('id,name_en,name_lv,language,starts_at,ends_at,capacity,sort_order').eq('course_id', id).order('sort_order'),
       supabase.from('profiles').select('id, full_name, role').in('role', ['instructor', 'admin']).order('full_name'),
       supabase.from('course_instructors').select('instructor_id, sort_order').eq('course_id', id).order('sort_order'),
-    ]).then(([{ data }, { data: groupRows }, { data: teacherRows }, { data: instructorRows }]) => {
-        if (data) {
-          setCourseTitle(data.title_en);
-          setCourseSlug(data.slug ?? '');
-          setSelectedTeacherIds((instructorRows ?? []).length > 0
-            ? (instructorRows ?? []).map(row => row.instructor_id)
-            : (data.instructor_id ? [data.instructor_id] : [])
-          );
-          setForm({
-            title_en: data.title_en ?? '',
-            title_lv: data.title_lv ?? '',
-            short_description_en: data.short_description_en ?? '',
-            short_description_lv: data.short_description_lv ?? '',
-            description_en: data.description_en ?? '',
-            description_lv: data.description_lv ?? '',
-            thumbnail_url: data.thumbnail_url ?? '',
-            thumbnail_url_lv: data.thumbnail_url_lv ?? '',
-            promo_video_url: data.promo_video_url ?? '',
-            promo_video_type: data.promo_video_type ?? 'youtube',
-            level: data.level ?? 'beginner',
-            language: data.language ?? 'en',
-            requirements: (data.requirements ?? []).join('\n'),
-            requirements_lv: (data.requirements_lv ?? []).join('\n'),
-            what_you_learn: (data.what_you_learn ?? []).join('\n'),
-            what_you_learn_lv: (data.what_you_learn_lv ?? []).join('\n'),
-            target_audience: data.target_audience ?? '',
-            target_audience_lv: data.target_audience_lv ?? '',
-            delivery_mode: data.delivery_mode ?? 'online',
-            price: data.price != null ? String(data.price) : '0',
-            discount_price: data.discount_price != null ? String(data.discount_price) : '',
-            discount_starts_at: data.discount_starts_at ? data.discount_starts_at.slice(0, 16) : '',
-            discount_ends_at: data.discount_ends_at ? data.discount_ends_at.slice(0, 16) : '',
-            discount_type: data.discount_price ? (data.discount_starts_at || data.discount_ends_at ? 'period' : 'permanent') : 'none',
-            is_free: data.is_free ?? false,
-            starts_at: data.starts_at ? data.starts_at.slice(0, 16) : '',
-            ends_at: data.ends_at ? data.ends_at.slice(0, 16) : '',
-            certificate_enabled: data.certificate_enabled ?? true,
-          });
-        }
-        setTeachers((teacherRows ?? []) as Teacher[]);
-        setAvailabilityGroups(((groupRows ?? []) as any[]).map(group => ({
-          id: group.id,
-          name_en: group.name_en ?? '',
-          name_lv: group.name_lv ?? '',
-          language: group.language ?? 'both',
-          starts_at: group.starts_at ? group.starts_at.slice(0, 16) : '',
-          ends_at: group.ends_at ? group.ends_at.slice(0, 16) : '',
-          capacity: group.capacity != null ? String(group.capacity) : '',
-        })));
-        setLoading(false);
-      });
+      ]);
+
+      setSelectedTeacherIds((instructorRows ?? []).length > 0
+        ? (instructorRows ?? []).map(row => row.instructor_id)
+        : (data.instructor_id ? [data.instructor_id] : [])
+      );
+      setTeachers((teacherRows ?? []) as Teacher[]);
+      setAvailabilityGroups(((groupRows ?? []) as any[]).map(group => ({
+        id: group.id,
+        name_en: group.name_en ?? '',
+        name_lv: group.name_lv ?? '',
+        language: group.language ?? 'both',
+        starts_at: group.starts_at ? group.starts_at.slice(0, 16) : '',
+        ends_at: group.ends_at ? group.ends_at.slice(0, 16) : '',
+        capacity: group.capacity != null ? String(group.capacity) : '',
+      })));
+      setLoading(false);
+    };
+    load();
   }, [id]);
 
   const set = (k: keyof CourseForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
