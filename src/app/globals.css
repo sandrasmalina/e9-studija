@@ -78,7 +78,10 @@
   .admin-panel.admin-theme-light [class~="bg-zinc-900/70"],
   .admin-panel.admin-theme-light [class~="bg-zinc-900/80"],
   .admin-panel.admin-theme-light [class~="bg-[#0b0915]"],
+  .admin-panel.admin-theme-light [class~="bg-[#0f0c1e]"],
+  .admin-panel.admin-theme-light [class~="bg-[#16122a]"],
   .admin-panel.admin-theme-light [class~="bg-white/[0.02]"],
+  .admin-panel.admin-theme-light [class~="bg-white/[0.03]"],
   .admin-panel.admin-theme-light [class~="bg-white/[0.04]"] {
     background-color: #ffffff !important;
   }
@@ -93,7 +96,10 @@
   .admin-panel.admin-theme-light [class~="border-white/[0.05]"],
   .admin-panel.admin-theme-light [class~="border-white/[0.06]"],
   .admin-panel.admin-theme-light [class~="border-white/[0.08]"],
-  .admin-panel.admin-theme-light [class~="border-white/[0.10]"] {
+  .admin-panel.admin-theme-light [class~="border-white/[0.10]"],
+  .admin-panel.admin-theme-light [class~="border-purple-500/20"],
+  .admin-panel.admin-theme-light [class~="border-purple-500/25"],
+  .admin-panel.admin-theme-light [class~="border-purple-500/30"] {
     border-color: #e4ded3 !important;
   }
   .admin-panel.admin-theme-light [class~="text-white"],

@@ -10,7 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, BookOpen, TrendingUp, Settings, Users,
   ChevronRight, ChevronDown, ArrowLeft, Play, FileText, Paperclip,
-  LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus,
+  LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus, Moon, Sun,
 } from 'lucide-react';
 
 const NAV = [
@@ -42,9 +42,34 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   const [newSectionTitle, setNewSectionTitle]     = useState('');
   const [editingSectionId, setEditingSectionId]   = useState<string | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState('');
+  const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
 
   const courseMatch = COURSE_PATH_RE.exec(pathname);
   const courseId    = courseMatch?.[1] ?? null;
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('e9-admin-theme');
+    if (saved === 'light' || saved === 'dark') setPanelTheme(saved);
+  }, []);
+
+  const togglePanelTheme = () => {
+    setPanelTheme(current => {
+      const next = current === 'dark' ? 'light' : 'dark';
+      window.localStorage.setItem('e9-admin-theme', next);
+      return next;
+    });
+  };
+
+  const PanelThemeButton = () => (
+    <button
+      type="button"
+      onClick={togglePanelTheme}
+      className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-900 transition-colors"
+      title={panelTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+    >
+      {panelTheme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+    </button>
+  );
 
   useEffect(() => {
     (async () => {
@@ -215,7 +240,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
     ];
 
     return (
-      <div className="min-h-screen flex" style={{ background: '#09090b' }}>
+      <div className={`admin-panel admin-theme-${panelTheme} min-h-screen flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
         <aside className="w-72 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-900 sticky top-0 h-screen">
 
           {/* Back + brand */}
@@ -400,10 +425,11 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         </aside>
 
         <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
-          <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-8 flex items-center shrink-0">
+          <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-8 flex items-center justify-between shrink-0">
             <h1 className="text-white text-sm font-semibold capitalize">
               {COURSE_NAV.find(n => pathname === n.href)?.label ?? 'Course Editor'}
             </h1>
+            <PanelThemeButton />
           </header>
           <main className="flex-1 p-8 overflow-y-auto">{children}</main>
         </div>
@@ -413,7 +439,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
 
   // ── Standard instructor sidebar ──────────────────────────────────────────
   return (
-    <div className="min-h-screen flex" style={{ background: '#09090b' }}>
+    <div className={`admin-panel admin-theme-${panelTheme} min-h-screen flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
       <aside className="w-64 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-900 sticky top-0 h-screen">
 
         {/* Brand */}
@@ -466,10 +492,11 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
       </aside>
 
       <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
-        <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-8 flex items-center shrink-0">
+        <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-8 flex items-center justify-between shrink-0">
           <h1 className="text-white text-sm font-semibold">
             {t(NAV.find(n => pathname === n.href || (n.href !== '/instructor' && pathname.startsWith(n.href)))?.labelKey ?? 'instructor.title')}
           </h1>
+          <PanelThemeButton />
         </header>
         <main className="flex-1 p-8 overflow-y-auto">{children}</main>
       </div>

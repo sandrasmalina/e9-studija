@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle, Home } from 'lucide-react';
+import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle, Home, Moon, Sun } from 'lucide-react';
 
 const NAV = [
   { href: '/dashboard',             icon: LayoutDashboard, labelKey: 'dashboard.space.learner' },
@@ -21,6 +21,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { t } = useLanguage();
   const [user, setUser] = useState<{ name: string; email: string; avatar: string | null } | null>(null);
   const [checking, setChecking] = useState(true);
+  const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('e9-admin-theme');
+    if (saved === 'light' || saved === 'dark') setPanelTheme(saved);
+  }, []);
+
+  const togglePanelTheme = () => {
+    setPanelTheme(current => {
+      const next = current === 'dark' ? 'light' : 'dark';
+      window.localStorage.setItem('e9-admin-theme', next);
+      return next;
+    });
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -55,7 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initials = user?.name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() ?? 'S';
 
   return (
-    <div className="min-h-screen flex bg-[#0b0915]">
+    <div className={`admin-panel admin-theme-${panelTheme} min-h-screen flex bg-[#0b0915]`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#0b0915' }}>
       {/* Sidebar */}
       <aside className="w-60 shrink-0 flex flex-col bg-[#0f0c1e] border-r border-white/[0.06] sticky top-0 h-screen">
         {/* Logo */}
@@ -117,6 +131,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className="mt-1 flex items-center gap-2 w-full px-3 py-2 rounded-xl text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] text-sm transition-all">
             <Home size={14} /> {t('admin.nav.exit')}
           </Link>
+          <button onClick={togglePanelTheme}
+            className="mt-1 flex items-center gap-2 w-full px-3 py-2 rounded-xl text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] text-sm transition-all">
+            {panelTheme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            {panelTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+          </button>
           <DashboardLanguageSwitcher />
         </div>
       </aside>
