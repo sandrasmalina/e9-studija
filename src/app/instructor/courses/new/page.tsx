@@ -120,8 +120,9 @@ export default function NewCoursePage() {
               <label className="block text-white text-sm font-medium mb-1.5">Language</label>
               <select value={form.language} onChange={e => set('language', e.target.value)}
                 className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40">
-                <option value="en">English</option>
-                <option value="lv">Latvian</option>
+                <option value="en">Only English</option>
+                <option value="lv">Only Latvian</option>
+                <option value="both">English + Latvian</option>
               </select>
             </div>
           </div>

@@ -243,8 +243,9 @@ export default function AdminCourseNewPage() {
             </Field>
             <Field label="Language">
               <select value={form.language} onChange={e => set('language', e.target.value)} className={selectCls}>
-                <option value="en">English</option>
-                <option value="lv">Latvian</option>
+                <option value="en">Only English</option>
+                <option value="lv">Only Latvian</option>
+                <option value="both">English + Latvian</option>
               </select>
             </Field>
           </div>

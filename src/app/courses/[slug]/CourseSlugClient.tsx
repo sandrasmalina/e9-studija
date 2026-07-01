@@ -274,6 +274,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
     ?.split('\n')
     .map(item => item.trim())
     .filter(Boolean) ?? [];
+  const courseLanguageLabel = course.language === 'both' ? 'EN + LV' : course.language.toUpperCase();
   const categoryName = course.category
     ? (language === 'lv' && course.category.name_lv ? course.category.name_lv : course.category.name_en)
     : null;
@@ -347,7 +348,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                 {course.level && (
                   <span className="flex items-center gap-1.5 capitalize">{course.level}</span>
                 )}
-                <span className="flex items-center gap-1.5"><Globe size={14} />{course.language.toUpperCase()}</span>
+                <span className="flex items-center gap-1.5"><Globe size={14} />{courseLanguageLabel}</span>
               </div>
 
               {course.instructor?.full_name && (

@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Save, Upload } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Save } from 'lucide-react';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
@@ -19,17 +19,33 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-function Chapter({ id, title, subtitle, children, defaultOpen = true }: { id: string; title: string; subtitle?: string; children: React.ReactNode; defaultOpen?: boolean }) {
+function Chapter({ id, title, subtitle, children, open, onOpen }: { id: string; title: string; subtitle?: string; children: React.ReactNode; open: boolean; onOpen: () => void }) {
   return (
-    <details id={id} open={defaultOpen} className="scroll-mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-      <summary className="cursor-pointer list-none">
-        <h2 className="text-white font-semibold">{title}</h2>
-        {subtitle && <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>}
+    <details id={id} open={open} className="scroll-mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+      <summary onClick={event => { event.preventDefault(); onOpen(); }} className="cursor-pointer list-none">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-white font-semibold">{title}</h2>
+            {subtitle && <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>}
+          </div>
+          <span className="rounded-full border border-white/[0.08] px-2 py-0.5 text-xs text-zinc-500">{open ? 'Open' : 'Closed'}</span>
+        </div>
       </summary>
-      <div className="mt-5 space-y-4">{children}</div>
+      {open && <div className="mt-5 space-y-4">{children}</div>}
     </details>
   );
 }
+
+const CHAPTER_TABS = [
+  ['basic', 'Basic'],
+  ['descriptions', 'Descriptions'],
+  ['pricing', 'Pricing'],
+  ['media', 'Media'],
+  ['outcomes', 'Outcomes'],
+  ['availability', 'Availability'],
+] as const;
+
+type ChapterId = typeof CHAPTER_TABS[number][0];
 
 const inputCls = 'w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600';
 
@@ -97,18 +113,21 @@ export default function CourseEditPage() {
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState('');
   const [courseTitle, setCourseTitle] = useState('');
+  const [courseSlug, setCourseSlug] = useState('');
+  const [activeChapter, setActiveChapter] = useState<ChapterId>('basic');
   const [availabilityGroups, setAvailabilityGroups] = useState<AvailabilityGroup[]>([]);
 
   useEffect(() => {
     Promise.all([
       supabase.from('courses')
-        .select('title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, starts_at, ends_at, certificate_enabled')
+        .select('slug, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, starts_at, ends_at, certificate_enabled')
         .eq('id', id)
         .single(),
       supabase.from('course_availability_groups').select('id,name_en,name_lv,starts_at,ends_at,capacity,sort_order').eq('course_id', id).order('sort_order'),
     ]).then(([{ data }, { data: groupRows }]) => {
         if (data) {
           setCourseTitle(data.title_en);
+          setCourseSlug(data.slug ?? '');
           setForm({
             title_en: data.title_en ?? '',
             title_lv: data.title_lv ?? '',
@@ -153,6 +172,10 @@ export default function CourseEditPage() {
   }, [id]);
 
   const set = (k: keyof CourseForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
+  const openChapter = (chapterId: ChapterId) => {
+    setActiveChapter(chapterId);
+    window.requestAnimationFrame(() => document.getElementById(chapterId)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
   const setAvailability = (index: number, key: keyof AvailabilityGroup, value: string) => setAvailabilityGroups(groups => groups.map((group, groupIndex) => groupIndex === index ? { ...group, [key]: value } : group));
   const addAvailability = () => setAvailabilityGroups(groups => [...groups, { name_en: '', name_lv: '', starts_at: '', ends_at: '', capacity: '' }]);
   const removeAvailability = (index: number) => setAvailabilityGroups(groups => groups.filter((_, groupIndex) => groupIndex !== index));
@@ -233,21 +256,28 @@ export default function CourseEditPage() {
           <div className="flex items-center gap-3 mt-1">
             <Link href={`/instructor/courses/${id}/curriculum`} className="text-purple-400 text-xs hover:underline">Curriculum →</Link>
             <Link href={`/instructor/courses/${id}/settings`} className="text-purple-400 text-xs hover:underline">Settings →</Link>
+            {courseSlug && (
+              <a href={`/courses/${courseSlug}?preview=1`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-purple-400 text-xs hover:underline">
+                Preview <ExternalLink size={11} />
+              </a>
+            )}
           </div>
         </div>
       </div>
 
       <div className="mb-5 flex flex-wrap gap-2">
-        {[
-          ['#basic', 'Basic'], ['#descriptions', 'Descriptions'], ['#pricing', 'Pricing'], ['#media', 'Media'], ['#outcomes', 'Outcomes'], ['#availability', 'Availability'],
-        ].map(([href, label]) => (
-          <a key={href} href={href} className="rounded-full border border-white/[0.08] px-3 py-1.5 text-xs text-zinc-500 hover:border-purple-500/30 hover:text-white transition-colors">{label}</a>
+        {CHAPTER_TABS.map(([chapterId, label]) => (
+          <button key={chapterId} type="button" onClick={() => openChapter(chapterId)} className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+            activeChapter === chapterId
+              ? 'border-purple-500/40 bg-purple-500/15 text-white'
+              : 'border-white/[0.08] text-zinc-500 hover:border-purple-500/30 hover:text-white'
+          }`}>{label}</button>
         ))}
       </div>
 
       <div className="space-y-5">
         {/* Basic info */}
-        <Chapter id="basic" title="Basic Information" subtitle="Course identity, level, and language.">
+        <Chapter id="basic" title="Basic Information" subtitle="Course identity, level, and language." open={activeChapter === 'basic'} onOpen={() => openChapter('basic')}>
           <Field label="Course Title (English)">
             <Input value={form.title_en} onChange={v => set('title_en', v)} placeholder="e.g. Build AI Apps with Next.js" />
           </Field>
@@ -267,8 +297,9 @@ export default function CourseEditPage() {
             <Field label="Language">
               <select value={form.language} onChange={e => set('language', e.target.value)}
                 className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40">
-                <option value="en">English</option>
-                <option value="lv">Latvian</option>
+                <option value="en">Only English</option>
+                <option value="lv">Only Latvian</option>
+                <option value="both">English + Latvian</option>
               </select>
             </Field>
           </div>
@@ -282,7 +313,7 @@ export default function CourseEditPage() {
         </Chapter>
 
         {/* Descriptions */}
-        <Chapter id="descriptions" title="Descriptions" subtitle="Short text for cards and rich landing-page content.">
+        <Chapter id="descriptions" title="Descriptions" subtitle="Short text for cards and rich landing-page content." open={activeChapter === 'descriptions'} onOpen={() => openChapter('descriptions')}>
           <Field label="Short Description (EN)" hint="Shown in course cards — max ~160 chars">
             <Textarea value={form.short_description_en} onChange={v => set('short_description_en', v)} placeholder="Brief overview of the course…" rows={2} />
           </Field>
@@ -306,7 +337,7 @@ export default function CourseEditPage() {
         </Chapter>
 
         {/* Pricing */}
-        <Chapter id="pricing" title="Pricing" subtitle="Set free access, paid price, and permanent or timed discounts.">
+        <Chapter id="pricing" title="Pricing" subtitle="Set free access, paid price, and permanent or timed discounts." open={activeChapter === 'pricing'} onOpen={() => openChapter('pricing')}>
           <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-white/[0.06] bg-[#0b0915] p-4">
             <input type="checkbox" checked={form.is_free} onChange={e => set('is_free', e.target.checked)} className="w-4 h-4 rounded border-white/20 bg-[#0b0915] accent-purple-500" />
             <div>
@@ -344,7 +375,7 @@ export default function CourseEditPage() {
         </Chapter>
 
         {/* Media */}
-        <Chapter id="media" title="Media" subtitle="Course thumbnail and promo video.">
+        <Chapter id="media" title="Media" subtitle="Course thumbnail and promo video." open={activeChapter === 'media'} onOpen={() => openChapter('media')}>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Thumbnail URL (EN / EU)" hint="Paste a direct image URL (e.g. from Supabase storage)">
               <Input value={form.thumbnail_url} onChange={v => set('thumbnail_url', v)} placeholder="https://.../thumbnail.jpg" type="url" />
@@ -374,7 +405,7 @@ export default function CourseEditPage() {
         </Chapter>
 
         {/* Learning outcomes */}
-        <Chapter id="outcomes" title="Learning Outcomes" subtitle="What students learn and what they need before starting.">
+        <Chapter id="outcomes" title="Learning Outcomes" subtitle="What students learn and what they need before starting." open={activeChapter === 'outcomes'} onOpen={() => openChapter('outcomes')}>
           <div className="grid grid-cols-2 gap-4">
             <Field label="What Students Will Learn (EN)" hint="One item per line">
               <Textarea value={form.what_you_learn} onChange={v => set('what_you_learn', v)} placeholder={"Build a full-stack app\nDeploy to Vercel\nIntegrate with Supabase"} rows={5} />
@@ -394,7 +425,7 @@ export default function CourseEditPage() {
         </Chapter>
 
         {/* Availability */}
-        <Chapter id="availability" title="Availability and Certificate" subtitle="Add one or more groups/cohorts, for example August, September, or November." defaultOpen={false}>
+        <Chapter id="availability" title="Availability and Certificate" subtitle="Add one or more groups/cohorts, for example August, September, or November." open={activeChapter === 'availability'} onOpen={() => openChapter('availability')}>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Course Opens"><input type="datetime-local" value={form.starts_at} onChange={e => set('starts_at', e.target.value)} className={`${inputCls} [color-scheme:dark]`} /></Field>
             <Field label="Course Finishes"><input type="datetime-local" value={form.ends_at} onChange={e => set('ends_at', e.target.value)} className={`${inputCls} [color-scheme:dark]`} /></Field>
