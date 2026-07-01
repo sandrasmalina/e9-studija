@@ -100,6 +100,24 @@
     text-align: center;
   }
 
+  .lecture-content {
+    --tw-prose-body: #d4d4d8;
+    --tw-prose-headings: #f8fafc;
+    --tw-prose-links: #c084fc;
+    --tw-prose-bold: #f8fafc;
+    --tw-prose-bullets: #a855f7;
+    --tw-prose-quotes: #d8b4fe;
+    --tw-prose-quote-borders: #a855f7;
+  }
+
+  .lecture-content :where(p, li, span, div, blockquote, figcaption, td, th)[style*="color"] {
+    color: inherit !important;
+  }
+
+  .lecture-content :where(p, li, span, div, blockquote, figcaption, td, th)[style*="background"] {
+    background: transparent !important;
+  }
+
   .admin-panel.admin-theme-light {
     color: #4b5563;
   }

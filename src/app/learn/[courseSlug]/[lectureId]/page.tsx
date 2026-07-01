@@ -166,7 +166,10 @@ export default function LecturePage() {
 
       {lecture.content_type === 'text' && lecture.text_content && (
         <div className="rounded-xl border border-white/[0.06] bg-[#0f0c1e] p-6 mb-6 prose prose-invert prose-sm max-w-none">
-          <div className="text-zinc-300 leading-relaxed whitespace-pre-wrap">{lecture.text_content}</div>
+          <div
+            className="lecture-content text-zinc-300 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: lecture.text_content }}
+          />
         </div>
       )}
 
@@ -194,7 +197,10 @@ export default function LecturePage() {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-white">{lecture.title_en}</h1>
           {lecture.description_en && (
-            <p className="text-zinc-500 text-sm mt-2 leading-relaxed">{lecture.description_en}</p>
+            <div
+              className="lecture-content prose prose-invert prose-sm max-w-none mt-2 text-zinc-500 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: lecture.description_en }}
+            />
           )}
         </div>
 

@@ -94,7 +94,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
   useEffect(() => {
     if (!editor || editor.isDestroyed || lastExternalValue.current === value) return;
     lastExternalValue.current = value;
-    if (!editor.isFocused) editor.commands.setContent(value || '', { emitUpdate: false });
+    editor.commands.setContent(value || '', { emitUpdate: false });
   }, [value, editor]);
 
   const addLink = () => {
