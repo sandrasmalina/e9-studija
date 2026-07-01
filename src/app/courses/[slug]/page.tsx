@@ -48,6 +48,7 @@ export default async function CourseSlugPage({ params, searchParams }: Props) {
         id, title_en, title_lv, sort_order,
         lectures(id, title_en, title_lv, video_duration_seconds, is_preview, content_type, sort_order)
       ),
+      course_availability_groups(id, name_en, name_lv, language, starts_at, ends_at, capacity, sort_order),
       reviews(id, rating, review_text, created_at,
         reviewer:profiles!user_id(full_name, avatar_url)
       )

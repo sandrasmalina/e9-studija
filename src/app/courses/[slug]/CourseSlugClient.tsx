@@ -31,6 +31,10 @@ function formatMinutes(min: number) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 interface Lecture {
   id: string;
   title_en: string;
@@ -57,6 +61,17 @@ interface Review {
   reviewer: { full_name: string | null; avatar_url: string | null } | null;
 }
 
+interface AvailabilityGroup {
+  id: string;
+  name_en: string | null;
+  name_lv: string | null;
+  language: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  capacity: number | null;
+  sort_order: number | null;
+}
+
 interface Course {
   id: string;
   slug: string;
@@ -78,6 +93,7 @@ interface Course {
   is_free: boolean;
   level: string | null;
   language: string;
+  delivery_mode: string | null;
   total_duration_minutes: number;
   total_lectures: number;
   enrollment_count: number;
@@ -95,6 +111,7 @@ interface Course {
   ends_at?: string | null;
   instructor: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; bio_lv: string | null; website: string | null } | null;
   category: { name_en: string; name_lv: string | null; slug: string; icon: string | null } | null;
+  course_availability_groups: AvailabilityGroup[] | null;
   sections: Section[];
   reviews: Review[];
 }
@@ -282,6 +299,13 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
     .map(item => item.trim())
     .filter(Boolean) ?? [];
   const courseLanguageLabel = course.language === 'both' ? 'EN + LV' : course.language.toUpperCase();
+  const groupLanguageLabel = (groupLanguage: string | null) => groupLanguage === 'both' ? 'EN + LV' : (groupLanguage || course.language).toUpperCase();
+  const deliveryModeLabel = language === 'lv'
+    ? ({ online: 'Tiešsaistē', live: 'Klātienē', hybrid: 'Hibrīds' } as Record<string, string>)[course.delivery_mode || 'online'] || 'Tiešsaistē'
+    : ({ online: 'Online', live: 'Live', hybrid: 'Hybrid' } as Record<string, string>)[course.delivery_mode || 'online'] || 'Online';
+  const availabilityGroups = (course.course_availability_groups ?? [])
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const categoryName = course.category
     ? (language === 'lv' && course.category.name_lv ? course.category.name_lv : course.category.name_en)
     : null;
@@ -455,6 +479,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                 )}
 
                 <ul className="mt-4 grid gap-2 text-sm text-neutral-400 sm:grid-cols-2 lg:grid-cols-1">
+                  <li className="flex items-center gap-2"><Globe size={14} className="text-accent shrink-0" />{language === 'lv' ? 'Formāts' : 'Format'}: {deliveryModeLabel}</li>
                   {course.certificate_enabled && (
                     <li className="flex items-center gap-2"><Award size={14} className="text-accent shrink-0" />{t('courses.feature.certificate')}</li>
                   )}
@@ -463,12 +488,39 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                     <li className="flex items-center gap-2"><BookOpen size={14} className="text-accent shrink-0" />{totalLectures} {t('courses.feature.lectures')}</li>
                   )}
                   {course.starts_at && (
-                    <li className="flex items-center gap-2"><Clock size={14} className="text-accent shrink-0" />Opens {new Date(course.starts_at).toLocaleDateString('en-GB')}</li>
+                    <li className="flex items-center gap-2"><Clock size={14} className="text-accent shrink-0" />{language === 'lv' ? 'Atveras' : 'Opens'} {formatDate(course.starts_at)}</li>
                   )}
                   {course.ends_at && (
-                    <li className="flex items-center gap-2"><Clock size={14} className="text-accent shrink-0" />Finishes {new Date(course.ends_at).toLocaleDateString('en-GB')}</li>
+                    <li className="flex items-center gap-2"><Clock size={14} className="text-accent shrink-0" />{language === 'lv' ? 'Noslēdzas' : 'Finishes'} {formatDate(course.ends_at)}</li>
                   )}
                 </ul>
+
+                {availabilityGroups.length > 0 && (
+                  <div className="mt-5 border-t border-white/10 pt-4">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-500">{language === 'lv' ? 'Grupas un vietas' : 'Groups and spots'}</p>
+                    <div className="space-y-2">
+                      {availabilityGroups.map(group => {
+                        const groupName = (language === 'lv' && group.name_lv) ? group.name_lv : group.name_en || group.name_lv || (language === 'lv' ? 'Grupa' : 'Group');
+                        const spots = group.capacity && group.capacity > 0
+                          ? `${group.capacity} ${language === 'lv' ? 'vietas' : 'spots'}`
+                          : `∞ ${language === 'lv' ? 'vietas' : 'spots'}`;
+                        return (
+                          <div key={group.id} className="rounded-xl border border-white/8 bg-white/[0.03] p-3 text-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="font-medium text-white">{groupName}</p>
+                              <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">{spots}</span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-500">
+                              <span>{groupLanguageLabel(group.language)}</span>
+                              {group.starts_at && <span>{language === 'lv' ? 'Sākas' : 'Starts'} {formatDate(group.starts_at)}</span>}
+                              {group.ends_at && <span>{language === 'lv' ? 'Beidzas' : 'Ends'} {formatDate(group.ends_at)}</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>
