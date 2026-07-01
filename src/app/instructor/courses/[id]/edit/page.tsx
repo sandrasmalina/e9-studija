@@ -114,7 +114,7 @@ export default function CourseEditPage() {
   const [err, setErr] = useState('');
   const [courseTitle, setCourseTitle] = useState('');
   const [courseSlug, setCourseSlug] = useState('');
-  const [activeChapter, setActiveChapter] = useState<ChapterId>('basic');
+  const [activeChapter, setActiveChapter] = useState<ChapterId | null>('basic');
   const [availabilityGroups, setAvailabilityGroups] = useState<AvailabilityGroup[]>([]);
 
   useEffect(() => {
@@ -173,8 +173,11 @@ export default function CourseEditPage() {
 
   const set = (k: keyof CourseForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
   const openChapter = (chapterId: ChapterId) => {
-    setActiveChapter(chapterId);
-    window.requestAnimationFrame(() => document.getElementById(chapterId)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    setActiveChapter(current => {
+      if (current === chapterId) return null;
+      window.requestAnimationFrame(() => document.getElementById(chapterId)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      return chapterId;
+    });
   };
   const setAvailability = (index: number, key: keyof AvailabilityGroup, value: string) => setAvailabilityGroups(groups => groups.map((group, groupIndex) => groupIndex === index ? { ...group, [key]: value } : group));
   const addAvailability = () => setAvailabilityGroups(groups => [...groups, { name_en: '', name_lv: '', starts_at: '', ends_at: '', capacity: '' }]);

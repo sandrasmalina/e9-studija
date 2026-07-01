@@ -306,16 +306,16 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
         </div>
       )}
       {/* Hero */}
-      <div className="bg-[#0f0c1e] border-b border-white/5 pt-24 pb-12">
+      <div className="bg-[#0f0c1e] border-b border-white/5 pt-24 pb-8">
         <div className="max-w-7xl mx-auto px-6">
-          <Link href="/courses" className="inline-flex items-center gap-2 text-neutral-500 hover:text-white text-sm mb-6 transition-colors">
+          <Link href="/courses" className="inline-flex items-center gap-2 text-neutral-500 hover:text-white text-sm mb-5 transition-colors">
             <ArrowLeft size={14} />
             {t('courses.back')}
           </Link>
 
-          <div className="grid lg:grid-cols-[1fr_360px] gap-12 items-start">
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,404px)] gap-8 xl:gap-10 items-start">
             {/* Left: info */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl pt-1">
               {course.category && (
                 <Link href={`/courses/category/${course.category.slug}`}
                   className="inline-flex items-center gap-1.5 text-accent text-xs font-medium uppercase tracking-wider mb-3 hover:underline">
@@ -325,13 +325,13 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
               )}
               <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">{title}</h1>
               {course.short_description_en && (
-                <p className="text-neutral-400 text-lg mb-6 leading-relaxed">
+                <p className="text-neutral-400 text-lg mb-5 leading-relaxed max-w-2xl">
                   {language === 'lv' && course.short_description_lv ? course.short_description_lv : course.short_description_en}
                 </p>
               )}
 
               {/* Meta row */}
-              <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-400 mb-6">
+              <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-400 mb-5">
                 {course.rating_count > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="text-yellow-400 font-bold">{Number(course.rating_avg).toFixed(1)}</span>
@@ -366,7 +366,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
 
             {/* Right: sticky buy card */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              className="lg:sticky lg:top-28 rounded-2xl border border-white/10 bg-[#16122a] overflow-hidden">
+              className="lg:sticky lg:top-24 rounded-2xl border border-white/10 bg-[#16122a] overflow-hidden shadow-2xl shadow-black/10">
               {/* Thumbnail / promo */}
               <div className="relative aspect-video bg-bg-secondary">
                 {thumbnailUrl ? (
@@ -385,7 +385,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                 )}
               </div>
 
-              <div className="p-6">
+              <div className="p-5">
                 <PriceBadge
                   price={Number(course.price)}
                   discountPrice={course.discount_price ? Number(course.discount_price) : null}
@@ -433,7 +433,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                   <p className="text-center text-xs text-neutral-500 mt-3">{t('courses.preview.hint')}</p>
                 )}
 
-                <ul className="mt-5 space-y-2 text-sm text-neutral-400">
+                <ul className="mt-4 grid gap-2 text-sm text-neutral-400 sm:grid-cols-2 lg:grid-cols-1">
                   {course.certificate_enabled && (
                     <li className="flex items-center gap-2"><Award size={14} className="text-accent shrink-0" />{t('courses.feature.certificate')}</li>
                   )}
@@ -455,9 +455,9 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
       </div>
 
       {/* Body */}
-      <div className="max-w-7xl mx-auto px-6 py-14">
-        <div className="grid lg:grid-cols-[1fr_360px] gap-12">
-          <div className="space-y-12">
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,404px)] gap-8 xl:gap-10">
+          <div className="space-y-10">
 
             {/* What you'll learn */}
             {course.what_you_learn && course.what_you_learn.length > 0 && (
@@ -474,33 +474,36 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
               </section>
             )}
 
-            {/* Requirements */}
-            {course.requirements && course.requirements.length > 0 && (
-              <section>
-                <h2 className="text-xl font-bold text-white mb-5">{t('courses.section.requirements')}</h2>
-                <ul className="space-y-2">
-                  {course.requirements.map((req, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-neutral-400">
-                      <span className="text-accent mt-1">•</span>
-                      {req}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+            {((course.requirements && course.requirements.length > 0) || targetAudience.length > 0) && (
+              <div className="grid gap-8 lg:grid-cols-2">
+                {course.requirements && course.requirements.length > 0 && (
+                  <section>
+                    <h2 className="text-xl font-bold text-white mb-5">{t('courses.section.requirements')}</h2>
+                    <ul className="space-y-2">
+                      {course.requirements.map((req, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-neutral-400">
+                          <span className="text-accent mt-1">•</span>
+                          {req}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
 
-            {targetAudience.length > 0 && (
-              <section>
-                <h2 className="text-xl font-bold text-white mb-5">{language === 'lv' ? 'Kam šis kurss ir paredzēts' : 'Who this course is for'}</h2>
-                <ul className="grid sm:grid-cols-2 gap-3">
-                  {targetAudience.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-neutral-400">
-                      <Users size={14} className="text-accent shrink-0 mt-0.5" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </section>
+                {targetAudience.length > 0 && (
+                  <section>
+                    <h2 className="text-xl font-bold text-white mb-5">{language === 'lv' ? 'Kam šis kurss ir paredzēts' : 'Who this course is for'}</h2>
+                    <ul className="space-y-2">
+                      {targetAudience.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-neutral-400">
+                          <Users size={14} className="text-accent shrink-0 mt-0.5" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+              </div>
             )}
 
             {/* Description */}
