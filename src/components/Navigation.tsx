@@ -78,7 +78,7 @@ export default function Navigation() {
             : 'bg-transparent'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
             <Image src="/logo-512.png" alt="E9 Studija" width={38} height={38} className="object-contain" priority />
             <span className="text-white font-semibold text-lg tracking-tight" style={{ fontFamily: 'var(--font-jakarta, sans-serif)' }}>
@@ -166,7 +166,7 @@ export default function Navigation() {
               onClick={() => setMenuOpen(false)}
             />
             <motion.div
-              className="fixed top-0 right-0 h-full w-72 bg-bg-secondary border-l border-white/8 z-50 flex flex-col p-8"
+              className="fixed top-0 right-0 h-full w-[min(18rem,calc(100vw-1rem))] max-w-full bg-bg-secondary border-l border-white/8 z-50 flex flex-col p-6 sm:p-8 overflow-y-auto"
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}

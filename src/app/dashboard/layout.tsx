@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
+import LegalAcceptanceBanner from '@/components/LegalAcceptanceBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle, Home, Moon, Sun } from 'lucide-react';
 
@@ -144,6 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="flex-1 p-8 overflow-y-auto">
         {children}
       </main>
+      <LegalAcceptanceBanner />
     </div>
   );
 }

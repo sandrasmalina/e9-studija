@@ -349,7 +349,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
       )}
       {/* Hero */}
       <div className="bg-[#0f0c1e] border-b border-white/5 pt-24 pb-8">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <Link href="/courses" className="inline-flex items-center gap-2 text-neutral-500 hover:text-white text-sm mb-5 transition-colors">
             <ArrowLeft size={14} />
             {t('courses.back')}
@@ -365,7 +365,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                   {categoryName}
                 </Link>
               )}
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">{title}</h1>
+              <h1 className="break-words text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">{title}</h1>
               {course.short_description_en && (
                 <p className="text-neutral-400 text-lg mb-5 leading-relaxed max-w-2xl">
                   {language === 'lv' && course.short_description_lv ? course.short_description_lv : course.short_description_en}
@@ -545,7 +545,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
       </div>
 
       {/* Body */}
-      <div className="max-w-7xl mx-auto px-6 py-10 lg:pr-[444px] xl:pr-[488px]">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 sm:py-10 lg:pr-[444px] xl:pr-[488px]">
         <div className="max-w-4xl space-y-10">
 
             {((requirements && requirements.length > 0) || targetAudience.length > 0) && (
@@ -607,13 +607,13 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                       <div key={section.id} className="rounded-xl border border-white/8 overflow-hidden">
                         <button
                           onClick={() => toggleSection(section.id)}
-                          className="w-full flex items-center justify-between px-5 py-4 bg-[#0f0c1e] hover:bg-white/3 transition-colors text-left"
+                          className="w-full flex items-start justify-between gap-3 px-4 py-4 sm:px-5 bg-[#0f0c1e] hover:bg-white/3 transition-colors text-left"
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="min-w-0 flex items-start gap-3">
                             {open ? <ChevronUp size={14} className="text-neutral-500 shrink-0" /> : <ChevronDown size={14} className="text-neutral-500 shrink-0" />}
-                            <span className="text-white font-medium text-sm">{sectionTitle}</span>
+                            <span className="break-words text-white font-medium text-sm">{sectionTitle}</span>
                           </div>
-                          <span className="text-neutral-500 text-xs shrink-0 ml-4">
+                          <span className="text-right text-neutral-500 text-xs shrink-0">
                             {section.lectures.length} lectures{sectionDuration > 0 ? ` · ${formatDuration(sectionDuration)}` : ''}
                           </span>
                         </button>
@@ -629,13 +629,13 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                                 const lecTitle = (language === 'lv' && lecture.title_lv) ? lecture.title_lv : lecture.title_en;
                                 return (
                                   <div key={lecture.id}
-                                    className="flex items-center justify-between px-5 py-3 border-t border-white/5 text-sm hover:bg-white/2">
-                                    <div className="flex items-center gap-3">
+                                    className="flex items-start justify-between gap-3 px-4 py-3 sm:px-5 border-t border-white/5 text-sm hover:bg-white/2">
+                                    <div className="min-w-0 flex items-start gap-3">
                                       {lecture.is_preview
                                         ? <Play size={13} className="text-accent shrink-0" />
                                         : <Lock size={13} className="text-neutral-600 shrink-0" />
                                       }
-                                      <span className={lecture.is_preview ? 'text-neutral-300' : 'text-neutral-500'}>{lecTitle}</span>
+                                      <span className={`${lecture.is_preview ? 'text-neutral-300' : 'text-neutral-500'} break-words`}>{lecTitle}</span>
                                       {lecture.is_preview && (
                                         <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/10 text-accent">Preview</span>
                                       )}
@@ -812,6 +812,12 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                   {modalError && (
                     <p className="text-red-400 text-xs">{modalError}</p>
                   )}
+                  <p className="text-xs leading-relaxed text-neutral-500">
+                    By continuing, you agree to the{' '}
+                    <Link href="/terms" target="_blank" className="text-accent hover:underline">Terms of Service</Link>
+                    {' '}and acknowledge the{' '}
+                    <Link href="/privacy" target="_blank" className="text-accent hover:underline">Privacy Policy</Link>.
+                  </p>
                   <button type="submit" disabled={modalLoading}
                     className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent/90 disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
                     {modalLoading && <Loader2 size={15} className="animate-spin" />}

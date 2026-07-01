@@ -156,6 +156,13 @@ function RegisterForm() {
             onError={() => { setTurnstileToken(''); setError('Security check failed. Please try again.'); }}
           />
 
+          <p className="text-xs leading-relaxed text-neutral-500">
+            By creating an account, you agree to the{' '}
+            <Link href="/terms" target="_blank" className="text-accent hover:underline">Terms of Service</Link>
+            {' '}and acknowledge the{' '}
+            <Link href="/privacy" target="_blank" className="text-accent hover:underline">Privacy Policy</Link>.
+          </p>
+
           <button type="submit" disabled={saving || !turnstileToken} className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent/90 disabled:opacity-60 transition-colors">
             {saving ? 'Creating…' : 'Create Account'}
           </button>

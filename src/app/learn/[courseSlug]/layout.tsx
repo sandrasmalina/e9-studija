@@ -5,6 +5,7 @@ import { useRouter, usePathname, useParams, useSearchParams } from 'next/navigat
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { LearnerContext, LearnerCtxValue, SectionMeta, LectureMeta } from '@/contexts/LearnerContext';
+import LegalAcceptanceBanner from '@/components/LegalAcceptanceBanner';
 import { CheckCircle2, Circle, ChevronDown, ChevronRight, X, Menu, Moon, Sun } from 'lucide-react';
 
 function fmtSeconds(s: number) {
@@ -357,17 +358,18 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           {sidebarOpen && (
             <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSidebarOpen(false)}>
               <div className="absolute inset-0 bg-black/60" />
-              <aside className="absolute top-14 right-0 bottom-0 w-72 border-l border-white/[0.06] overflow-y-auto z-50" onClick={e => e.stopPropagation()}>
+              <aside className="absolute top-14 right-0 bottom-0 w-[min(18rem,calc(100vw-1rem))] max-w-full border-l border-white/[0.06] overflow-y-auto z-50" onClick={e => e.stopPropagation()}>
                 <Sidebar />
               </aside>
             </div>
           )}
 
           {/* Main content */}
-          <main className="flex-1 overflow-y-auto">
+          <main className="min-w-0 flex-1 overflow-y-auto">
             {children}
           </main>
         </div>
+        <LegalAcceptanceBanner />
       </div>
     </LearnerContext.Provider>
   );

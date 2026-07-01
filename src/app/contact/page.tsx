@@ -64,7 +64,7 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-bg pt-28 pb-24">
-      <div className="max-w-6xl mx-auto px-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <motion.div initial="hidden" animate="visible" variants={stagger} className="text-center mb-16">
           <motion.h1 variants={fadeUp} className="text-4xl md:text-6xl font-bold text-white mb-4">{t('contact.title')}</motion.h1>
           <motion.p variants={fadeUp} className="text-neutral-400 max-w-2xl mx-auto">{t('contact.subtitle')}</motion.p>
@@ -84,7 +84,7 @@ export default function ContactPage() {
         </div>
 
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="max-w-2xl mx-auto p-8 rounded-2xl border border-white/8 bg-bg-card">
+          className="max-w-2xl mx-auto p-5 sm:p-8 rounded-2xl border border-white/8 bg-bg-card">
           {status === 'success' ? (
             <div className="text-center py-8">
               <div className="w-14 h-14 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
@@ -157,29 +157,29 @@ export default function ContactPage() {
 
         {/* Company details */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-          className="max-w-2xl mx-auto mt-8 p-6 rounded-2xl border border-white/8 bg-bg-card">
+          className="max-w-2xl mx-auto mt-8 p-5 sm:p-6 rounded-2xl border border-white/8 bg-bg-card overflow-hidden">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 rounded-lg bg-accent/10"><Building2 size={15} className="text-accent" /></div>
             <p className="text-xs text-neutral-500 uppercase tracking-widest">
               {language === 'lv' ? 'Uzņēmuma rekvizīti' : 'Company Details'}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+            <div className="min-w-0">
               <span className="text-neutral-500">{language === 'lv' ? 'Nosaukums' : 'Company'}:</span>
               <span className="text-white ml-2">SIA E9 Studija</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-neutral-500">{language === 'lv' ? 'Reģ. nr.' : 'Reg. No.'}:</span>
               <span className="text-white ml-2">44103139391</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-neutral-500">{language === 'lv' ? 'Banka' : 'Bank'}:</span>
               <span className="text-white ml-2">A/S Swedbank</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-neutral-500">{language === 'lv' ? 'Konts' : 'Account'}:</span>
-              <span className="text-white ml-2 font-mono tracking-wide">LV89HABA0551047910013</span>
+              <span className="text-white ml-2 font-mono tracking-wide break-all">LV89HABA0551047910013</span>
             </div>
           </div>
         </motion.div>

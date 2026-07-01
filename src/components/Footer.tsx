@@ -88,12 +88,17 @@ export default function Footer() {
     { label: t('nav.contact'), href: '/contact' },
   ];
 
+  const legalLinks = [
+    { label: 'Terms of Service', href: '/terms' },
+    { label: 'Privacy Policy', href: '/privacy' },
+  ];
+
   if (hideFooter) return null;
 
   return (
     <footer className="bg-bg-secondary border-t border-white/8 py-16">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="grid md:grid-cols-3 gap-10 mb-12">
+        <div className="grid gap-10 mb-12 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <h3 className="text-white text-xl font-bold mb-3">E9 Studija</h3>
             <p className="text-neutral-500 text-sm leading-relaxed">{t('footer.description')}</p>
@@ -103,6 +108,19 @@ export default function Footer() {
             <h4 className="text-white text-sm font-semibold mb-4 uppercase tracking-widest">{t('footer.quicklinks')}</h4>
             <ul className="space-y-2">
               {navLinks.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-neutral-500 hover:text-accent text-sm transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-white text-sm font-semibold mb-4 uppercase tracking-widest">Legal</h4>
+            <ul className="space-y-2">
+              {legalLinks.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-neutral-500 hover:text-accent text-sm transition-colors">
                     {link.label}

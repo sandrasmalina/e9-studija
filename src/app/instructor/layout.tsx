@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
+import LegalAcceptanceBanner from '@/components/LegalAcceptanceBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, BookOpen, TrendingUp, Settings, Users,
@@ -472,7 +473,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
 
   // ── Standard instructor sidebar ──────────────────────────────────────────
   return (
-    <div className={`admin-panel admin-theme-${panelTheme} min-h-screen flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
+      <div className={`admin-panel admin-theme-${panelTheme} min-h-screen flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
       <aside className="w-64 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-900 sticky top-0 h-screen">
 
         {/* Brand */}
@@ -524,15 +525,17 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         <SidebarFooter />
       </aside>
 
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
         <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-8 flex items-center justify-between shrink-0">
           <h1 className="text-white text-sm font-semibold">
             {t(NAV.find(n => pathname === n.href || (n.href !== '/instructor' && pathname.startsWith(n.href)))?.labelKey ?? 'instructor.title')}
           </h1>
           <PanelThemeButton />
         </header>
-        <main className="flex-1 p-8 overflow-y-auto">{children}</main>
+          <main className="flex-1 p-8 overflow-y-auto">{children}</main>
       </div>
+        <LegalAcceptanceBanner />
+      <LegalAcceptanceBanner />
     </div>
   );
 }
