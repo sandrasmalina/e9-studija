@@ -17,26 +17,14 @@ CREATE POLICY "Public read course instructors" ON public.course_instructors FOR 
 DROP POLICY IF EXISTS "Course owners manage course instructors" ON public.course_instructors;
 CREATE POLICY "Course owners manage course instructors" ON public.course_instructors FOR ALL TO authenticated
   USING (
-    EXISTS (
-      SELECT 1 FROM public.courses c
-      WHERE c.id = course_id
-        AND (
-          c.instructor_id = auth.uid()
-          OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-          OR public.current_user_has_role(ARRAY['admin'])
-        )
-    )
+    instructor_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    OR public.current_user_has_role(ARRAY['admin'])
   )
   WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.courses c
-      WHERE c.id = course_id
-        AND (
-          c.instructor_id = auth.uid()
-          OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-          OR public.current_user_has_role(ARRAY['admin'])
-        )
-    )
+    instructor_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    OR public.current_user_has_role(ARRAY['admin'])
   );
 
 DROP POLICY IF EXISTS "Public read published courses" ON public.courses;
