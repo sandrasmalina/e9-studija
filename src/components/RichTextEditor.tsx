@@ -36,6 +36,17 @@ const TEXT_COLORS = [
   { label: 'Red', value: '#ef4444' },
 ];
 
+function stripPastedColorStyles(html: string) {
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  parsed.body.querySelectorAll<HTMLElement>('[style]').forEach(element => {
+    element.style.removeProperty('color');
+    element.style.removeProperty('background-color');
+    element.style.removeProperty('background');
+    if (!element.getAttribute('style')?.trim()) element.removeAttribute('style');
+  });
+  return parsed.body.innerHTML;
+}
+
 export default function RichTextEditor({ value, onChange, placeholder, minHeight = '160px' }: Props) {
   const [mounted, setMounted] = useState(false);
   const lastExternalValue = useRef(value);
@@ -67,6 +78,9 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
       onChange(editor.isEmpty ? '' : editor.getHTML());
     },
     editorProps: {
+      transformPastedHTML(html) {
+        return stripPastedColorStyles(html);
+      },
       attributes: {
         class: `prose prose-sm prose-invert max-w-none px-4 py-3 text-sm leading-relaxed focus:outline-none prose-table:border prose-table:border-zinc-700 prose-th:border prose-th:border-zinc-700 prose-td:border prose-td:border-zinc-700 prose-th:px-3 prose-th:py-2 prose-td:px-3 prose-td:py-2`,
         style: `min-height: ${minHeight}`,

@@ -387,7 +387,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
 
             {/* Right: sticky buy card */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              className="lg:sticky lg:top-24 rounded-2xl border border-white/10 bg-[#16122a] overflow-hidden shadow-2xl shadow-black/10">
+              className="rounded-2xl border border-white/10 bg-[#16122a] overflow-hidden shadow-2xl shadow-black/10 lg:fixed lg:right-6 lg:top-24 lg:z-30 lg:w-[360px] xl:w-[404px] 2xl:right-[calc((100vw-80rem)/2+1.5rem)]">
               {/* Thumbnail / promo */}
               <div className="relative aspect-video bg-bg-secondary">
                 {thumbnailUrl ? (
@@ -476,46 +476,48 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
       </div>
 
       {/* Body */}
-      <div className="max-w-7xl mx-auto px-6 py-10">
-        <div className="max-w-5xl space-y-10">
+      <div className="max-w-7xl mx-auto px-6 py-10 lg:pr-[444px] xl:pr-[488px]">
+        <div className="max-w-4xl space-y-10">
 
             {((requirements && requirements.length > 0) || targetAudience.length > 0) && (
-              <div className="grid gap-8 lg:grid-cols-2">
+              <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] shadow-2xl shadow-black/5">
+                <div className="grid lg:grid-cols-2">
                 {requirements && requirements.length > 0 && (
-                  <section>
+                  <div className="p-6 sm:p-7">
                     <h2 className="text-xl font-bold text-white mb-5">{t('courses.section.requirements')}</h2>
-                    <ul className="space-y-2">
+                    <ul className="space-y-3">
                       {requirements.map((req, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-neutral-400">
-                          <span className="text-accent mt-1">•</span>
-                          {req}
+                        <li key={i} className="flex items-start gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-sm text-neutral-400">
+                          <CheckCircle size={15} className="text-accent shrink-0 mt-0.5" />
+                          <span>{req}</span>
                         </li>
                       ))}
                     </ul>
-                  </section>
+                  </div>
                 )}
 
                 {targetAudience.length > 0 && (
-                  <section>
+                  <div className="border-t border-white/10 p-6 sm:p-7 lg:border-l lg:border-t-0">
                     <h2 className="text-xl font-bold text-white mb-5">{language === 'lv' ? 'Kam šis kurss ir paredzēts' : 'Who this course is for'}</h2>
-                    <ul className="space-y-2">
+                    <ul className="space-y-3">
                       {targetAudience.map((item, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-neutral-400">
-                          <Users size={14} className="text-accent shrink-0 mt-0.5" />
-                          {item}
+                        <li key={i} className="flex items-start gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-sm text-neutral-400">
+                          <Users size={15} className="text-accent shrink-0 mt-0.5" />
+                          <span>{item}</span>
                         </li>
                       ))}
                     </ul>
-                  </section>
+                  </div>
                 )}
-              </div>
+                </div>
+              </section>
             )}
 
             {/* Description */}
             {desc && (
               <section>
                 <h2 className="text-xl font-bold text-white mb-5">{t('courses.section.description')}</h2>
-                <div className="prose prose-invert prose-sm max-w-none text-neutral-400 [&_h2]:text-white [&_h3]:text-neutral-200 [&_a]:text-purple-400 [&_a:hover]:text-purple-300" dangerouslySetInnerHTML={{ __html: desc }} />
+                <div className="course-description-content prose prose-invert prose-sm max-w-none text-neutral-400 [&_h2]:text-white [&_h3]:text-neutral-200 [&_a]:text-purple-400 [&_a:hover]:text-purple-300" dangerouslySetInnerHTML={{ __html: desc }} />
               </section>
             )}
 

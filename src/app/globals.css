@@ -68,6 +68,38 @@
     height: 1px;
   }
 
+  .course-description-content {
+    --tw-prose-body: #b4b0c8;
+    --tw-prose-headings: #f0eeff;
+    --tw-prose-lead: #c7c3d8;
+    --tw-prose-links: #c084fc;
+    --tw-prose-bold: #f8fafc;
+    --tw-prose-counters: #a1a1aa;
+    --tw-prose-bullets: #a855f7;
+    --tw-prose-quotes: #d8b4fe;
+    --tw-prose-quote-borders: #a855f7;
+    --tw-prose-captions: #a1a1aa;
+  }
+
+  .course-description-content :where(p, li, span, div, blockquote, figcaption, td, th)[style*="color"] {
+    color: inherit !important;
+  }
+
+  .course-description-content :where(p, li, span, div, blockquote, figcaption, td, th)[style*="background"] {
+    background: transparent !important;
+  }
+
+  .course-description-content figure {
+    margin: 1.5rem 0;
+  }
+
+  .course-description-content figcaption {
+    margin-top: 0.5rem;
+    color: #a1a1aa;
+    font-size: 0.875rem;
+    text-align: center;
+  }
+
   .admin-panel.admin-theme-light {
     color: #4b5563;
   }
@@ -184,6 +216,21 @@
     --tw-prose-pre-bg: #171717;
     --tw-prose-th-borders: #d8d1c4;
     --tw-prose-td-borders: #e6dfd3;
+  }
+  .content-page.content-theme-light .course-description-content {
+    --tw-prose-body: #4b5563;
+    --tw-prose-headings: #171717;
+    --tw-prose-lead: #4b5563;
+    --tw-prose-links: #7c3aed;
+    --tw-prose-bold: #171717;
+    --tw-prose-counters: #6b7280;
+    --tw-prose-bullets: #7c3aed;
+    --tw-prose-quotes: #374151;
+    --tw-prose-quote-borders: #a855f7;
+    --tw-prose-captions: #6b7280;
+  }
+  .content-page.content-theme-light .course-description-content figcaption {
+    color: #6b7280;
   }
   .content-page.content-theme-light img,
   .content-page.content-theme-light video,
