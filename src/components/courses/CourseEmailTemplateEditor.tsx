@@ -133,6 +133,31 @@ const DEFAULT_REMINDER_TEMPLATE: EmailTemplateForm = {
   ].join('\n'),
 };
 
+const DEFAULT_LV_REMINDER_TEMPLATE: EmailTemplateForm = {
+  ...DEFAULT_REMINDER_TEMPLATE,
+  language: 'lv',
+  name: 'Nodarbības atgādinājums',
+  subject: 'Atgādinājums: {{class_title}} kursā {{course_title}}',
+  preheader: 'Nākamā nodarbība tuvojas.',
+  body_html: [
+    '<p>Sveiki, {{student_name}}!</p>',
+    '<p>Atgādinām par <strong>{{class_title}}</strong> kursā {{course_title}}.</p>',
+    '<p>Datums: {{class_date}}<br>Laiks: {{class_time}}</p>',
+    '<p>Pievienošanās saite: <a href="{{zoom_link}}">{{zoom_link}}</a></p>',
+    '<p>Ar cieņu,<br>{{teacher_name}}</p>',
+  ].join('\n'),
+  body_text: [
+    'Sveiki, {{student_name}}!',
+    '',
+    'Atgādinājums par {{class_title}} kursā {{course_title}}.',
+    'Datums: {{class_date}}',
+    'Laiks: {{class_time}}',
+    'Pievienošanās saite: {{zoom_link}}',
+    '',
+    '{{teacher_name}}',
+  ].join('\n'),
+};
+
 const emailTypes: { value: EmailType; label: string }[] = [
   { value: 'course_purchased', label: 'Purchase email' },
   { value: 'course_reminder', label: 'Course reminder' },
@@ -160,7 +185,13 @@ const variables = [
 ];
 
 function getDefaultTemplate(language: EmailLanguage, type: EmailType = 'course_purchased') {
-  const base = language === 'lv' && type === 'course_purchased' ? DEFAULT_LV_TEMPLATE : type === 'course_purchased' ? DEFAULT_TEMPLATE : DEFAULT_REMINDER_TEMPLATE;
+  const base = language === 'lv' && type === 'course_purchased'
+    ? DEFAULT_LV_TEMPLATE
+    : language === 'lv'
+      ? DEFAULT_LV_REMINDER_TEMPLATE
+      : type === 'course_purchased'
+        ? DEFAULT_TEMPLATE
+        : DEFAULT_REMINDER_TEMPLATE;
   return { ...base, type, language, id: '', scheduled_send_at: '', metadata: { ...emptyMetadata } };
 }
 
@@ -289,6 +320,28 @@ export default function CourseEmailTemplateEditor({ courseId, courseTitle, varia
       name: current.id ? current.name : nextDefault.name,
       sender_name: current.sender_name,
       reply_to_email: current.reply_to_email,
+      is_active: current.is_active,
+    }));
+  };
+
+  const handleLanguageChange = (language: EmailLanguage) => {
+    setError('');
+    setMessage('');
+
+    const existingTemplate = templates.find(template => template.type === form.type && template.language === language);
+    if (existingTemplate) {
+      setForm(existingTemplate);
+      return;
+    }
+
+    const nextDefault = getDefaultTemplate(language, form.type);
+    setForm(current => ({
+      ...nextDefault,
+      sender_name: current.sender_name,
+      reply_to_email: current.reply_to_email,
+      send_timing: current.type === 'course_purchased' ? 'immediate' : current.send_timing,
+      scheduled_send_at: current.scheduled_send_at,
+      metadata: { ...current.metadata },
       is_active: current.is_active,
     }));
   };
@@ -457,7 +510,7 @@ export default function CourseEmailTemplateEditor({ courseId, courseTitle, varia
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className={labelCls}>Email Language</label>
-              <select value={form.language} onChange={event => set('language', event.target.value)} className={inputCls}>
+              <select value={form.language} onChange={event => handleLanguageChange(event.target.value as EmailLanguage)} className={inputCls}>
                 <option value="en">English buyers</option>
                 <option value="lv">Latvian buyers</option>
                 <option value="both">Fallback for both languages</option>
