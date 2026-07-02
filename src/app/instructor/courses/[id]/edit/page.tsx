@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type DragEvent } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -239,6 +239,17 @@ export default function CourseEditPage() {
     }
   };
 
+  const handleThumbnailDrop = (event: DragEvent<HTMLLabelElement>, field: 'thumbnail_url' | 'thumbnail_url_lv') => {
+    event.preventDefault();
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErr('Please drop an image file.');
+      return;
+    }
+    handleThumbnailUpload(file, field);
+  };
+
   const handleSave = async () => {
     if (!form.title_en.trim()) { setErr('Title is required'); return; }
     setSaving(true); setErr(''); setSaved(false);
@@ -465,12 +476,12 @@ export default function CourseEditPage() {
             ]).map(item => (
               <Field key={item.field} label={item.label} hint={item.hint}>
                 <div className="space-y-3">
-                  <label className={`flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors ${uploading ? 'pointer-events-none border-white/[0.08] opacity-50' : 'border-white/[0.10] hover:border-white/25'}`}>
+                  <label onDragEnter={event => event.preventDefault()} onDragOver={event => event.preventDefault()} onDrop={event => handleThumbnailDrop(event, item.field)} className={`flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors ${uploading ? 'pointer-events-none border-white/[0.08] opacity-50' : 'border-white/[0.10] hover:border-white/25'}`}>
                     <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={event => { const file = event.target.files?.[0]; if (file) handleThumbnailUpload(file, item.field); }} />
                     {uploading ? (
                       <><div className="h-5 w-5 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" /><span className="text-xs text-zinc-500">Uploading...</span></>
                     ) : (
-                      <><Upload size={20} className="text-zinc-600" /><span className="text-xs text-zinc-500">Click to upload image</span></>
+                      <><Upload size={20} className="text-zinc-600" /><span className="text-xs text-zinc-500">Drag image here or click to upload</span></>
                     )}
                   </label>
                   {form[item.field] && (

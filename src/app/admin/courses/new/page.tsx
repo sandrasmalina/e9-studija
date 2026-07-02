@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type DragEvent } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -115,6 +115,17 @@ export default function AdminCourseNewPage() {
       set(field, data.publicUrl);
     } catch (e: unknown) { setErr(e instanceof Error ? e.message : 'Upload failed'); }
     finally { setUploading(false); }
+  };
+
+  const handleThumbnailDrop = (event: DragEvent<HTMLLabelElement>, field: 'thumbnail_url' | 'thumbnail_url_lv') => {
+    event.preventDefault();
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErr('Please drop an image file.');
+      return;
+    }
+    handleThumbnailUpload(file, field);
   };
 
   const handleCreate = async () => {
@@ -290,14 +301,14 @@ export default function AdminCourseNewPage() {
             ]).map(item => (
               <Field key={item.field} label={item.label}>
                 <div className="space-y-3">
-                  <label className={`flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
+                  <label onDragEnter={event => event.preventDefault()} onDragOver={event => event.preventDefault()} onDrop={event => handleThumbnailDrop(event, item.field)} className={`flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
                     uploading ? 'border-zinc-700 opacity-50 pointer-events-none' : 'border-zinc-700 hover:border-zinc-500'
                   }`}>
                     <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={e => { const f = e.target.files?.[0]; if (f) handleThumbnailUpload(f, item.field); }} />
                     {uploading ? (
                       <><div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" /><span className="text-zinc-500 text-xs">Uploading…</span></>
                     ) : (
-                      <><Upload size={20} className="text-zinc-600" /><span className="text-zinc-500 text-xs">Click to upload image</span></>
+                      <><Upload size={20} className="text-zinc-600" /><span className="text-zinc-500 text-xs">Drag image here or click to upload</span></>
                     )}
                   </label>
                   {form[item.field] && (
