@@ -108,9 +108,9 @@ function wrapEmailHtml(content: string, language: string | null | undefined, pre
           ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>` : ''}
           <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
             <tr>
-              <td style="background:linear-gradient(135deg,#f0eeff 0%,#e879f9 60%,#a855f7 100%);background-color:#a855f7;border-radius:16px 16px 0 0;padding:44px 48px 38px;text-align:center;">
-                <img src="${siteUrl}/logo_e9.png" width="180" alt="" style="display:block;margin:0 auto 24px;max-width:180px;border:0;outline:none;text-decoration:none;" />
-                <h1 style="margin:0;font-size:26px;font-weight:700;color:#26215C;line-height:1.3;">${slogan}</h1>
+              <td style="background:linear-gradient(135deg,#f0eeff 0%,#e879f9 60%,#a855f7 100%);background-color:#a855f7;border-radius:16px 16px 0 0;padding:34px 48px 30px;text-align:center;">
+                <img src="${siteUrl}/logo_e9.png" width="148" alt="" style="display:block;margin:0 auto 16px;max-width:148px;border:0;outline:none;text-decoration:none;" />
+                <h1 style="margin:0;font-size:21px;font-weight:500;color:#30285f;line-height:1.35;letter-spacing:0.2px;">${slogan}</h1>
               </td>
             </tr>
             <tr>
