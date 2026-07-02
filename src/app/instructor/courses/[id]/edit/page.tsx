@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, ExternalLink, Save } from 'lucide-react';
+import { ArrowLeft, ExternalLink, ImageIcon, Save, Upload, X } from 'lucide-react';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
@@ -128,6 +128,7 @@ export default function CourseEditPage() {
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [availabilityGroups, setAvailabilityGroups] = useState<AvailabilityGroup[]>([]);
   const [canManageTeacherAssignments, setCanManageTeacherAssignments] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -220,6 +221,23 @@ export default function CourseEditPage() {
   const addAvailability = () => setAvailabilityGroups(groups => [...groups, { name_en: '', name_lv: '', language: 'both', starts_at: '', ends_at: '', capacity: '' }]);
   const removeAvailability = (index: number) => setAvailabilityGroups(groups => groups.filter((_, groupIndex) => groupIndex !== index));
   const toggleTeacher = (teacherId: string) => setSelectedTeacherIds(ids => ids.includes(teacherId) ? ids.filter(id => id !== teacherId) : [...ids, teacherId]);
+
+  const handleThumbnailUpload = async (file: File, field: 'thumbnail_url' | 'thumbnail_url_lv') => {
+    setUploading(true);
+    setErr('');
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `courses/thumbnails/${id}-${field}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('images').upload(path, file, { contentType: file.type, upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from('images').getPublicUrl(path);
+      set(field, data.publicUrl);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!form.title_en.trim()) { setErr('Title is required'); return; }
@@ -441,20 +459,35 @@ export default function CourseEditPage() {
         {/* Media */}
         <Chapter id="media" title="Media" subtitle="Course thumbnail and promo video." open={activeChapter === 'media'} onOpen={() => openChapter('media')}>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Thumbnail URL (EN / EU)" hint="Paste a direct image URL (e.g. from Supabase storage)">
-              <Input value={form.thumbnail_url} onChange={v => set('thumbnail_url', v)} placeholder="https://.../thumbnail.jpg" type="url" />
-            </Field>
-            <Field label="Thumbnail URL (LV)" hint="Optional Latvian thumbnail">
-              <Input value={form.thumbnail_url_lv} onChange={v => set('thumbnail_url_lv', v)} placeholder="https://.../thumbnail-lv.jpg" type="url" />
-            </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {form.thumbnail_url && (
-              <img src={form.thumbnail_url} alt="English thumbnail preview" className="w-48 rounded-xl border border-white/[0.06] object-cover aspect-video" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            )}
-            {form.thumbnail_url_lv && (
-              <img src={form.thumbnail_url_lv} alt="Latvian thumbnail preview" className="w-48 rounded-xl border border-white/[0.06] object-cover aspect-video" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            )}
+            {([
+              { field: 'thumbnail_url' as const, label: 'Thumbnail URL (EN / EU)', hint: 'Upload a course picture or paste a direct image URL.', alt: 'English thumbnail preview' },
+              { field: 'thumbnail_url_lv' as const, label: 'Thumbnail URL (LV)', hint: 'Optional Latvian thumbnail. Upload or paste a direct image URL.', alt: 'Latvian thumbnail preview' },
+            ]).map(item => (
+              <Field key={item.field} label={item.label} hint={item.hint}>
+                <div className="space-y-3">
+                  <label className={`flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors ${uploading ? 'pointer-events-none border-white/[0.08] opacity-50' : 'border-white/[0.10] hover:border-white/25'}`}>
+                    <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={event => { const file = event.target.files?.[0]; if (file) handleThumbnailUpload(file, item.field); }} />
+                    {uploading ? (
+                      <><div className="h-5 w-5 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" /><span className="text-xs text-zinc-500">Uploading...</span></>
+                    ) : (
+                      <><Upload size={20} className="text-zinc-600" /><span className="text-xs text-zinc-500">Click to upload image</span></>
+                    )}
+                  </label>
+                  {form[item.field] && (
+                    <div className="relative w-48 max-w-full">
+                      <img src={form[item.field]} alt={item.alt} className="aspect-video w-48 rounded-xl border border-white/[0.06] object-cover" onError={event => { (event.target as HTMLImageElement).style.display = 'none'; }} />
+                      <button type="button" onClick={() => set(item.field, '')} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-zinc-900 text-zinc-400 hover:text-white">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <ImageIcon size={14} className="shrink-0 text-zinc-600" />
+                    <Input value={form[item.field]} onChange={value => set(item.field, value)} placeholder="https://.../thumbnail.jpg" type="url" />
+                  </div>
+                </div>
+              </Field>
+            ))}
           </div>
           <Field label="Promo Video URL" hint="YouTube or Vimeo video URL or ID">
             <div className="flex gap-2">
