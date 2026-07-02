@@ -16,6 +16,19 @@ function addMonths(date: Date, months: number) {
   return next;
 }
 
+async function getLeadTeacherName(courseId: string, fallback?: string | null) {
+  const { data } = await supabaseAdmin
+    .from('course_instructors')
+    .select('role, sort_order, instructor:profiles!course_instructors_instructor_id_fkey(full_name)')
+    .eq('course_id', courseId)
+    .order('sort_order', { ascending: true })
+    .limit(1);
+
+  const assignment = data?.[0] as { instructor?: { full_name?: string | null } | { full_name?: string | null }[] | null } | undefined;
+  const instructor = Array.isArray(assignment?.instructor) ? assignment?.instructor[0] : assignment?.instructor;
+  return instructor?.full_name?.trim() || fallback || null;
+}
+
 async function enrollStudent(courseId: string, userId: string, amountPaid: number, currency: string, accessDurationMonths: number | null, stripeSubscriptionId: string | null, stripeCustomerId: string | null) {
   const expiresAt = accessDurationMonths ? addMonths(new Date(), accessDurationMonths).toISOString() : null;
   const { error } = await supabaseAdmin.from('enrollments').upsert(
@@ -157,6 +170,7 @@ export async function POST(req: NextRequest) {
           ?? globalTemplates.find(item => item.language === 'en')
           ?? null;
         const instructor = Array.isArray(course.instructor) ? course.instructor[0] : course.instructor;
+        const teacherName = await getLeadTeacherName(course_id, instructor?.full_name ?? null);
         const emailInput = {
           to: recipientEmail,
           studentName: recipientName,
@@ -167,7 +181,7 @@ export async function POST(req: NextRequest) {
           billingType: course.billing_type,
           subscriptionInterval: course.subscription_interval,
           purchaseLanguage: preferredLanguage,
-          teacherName: instructor?.full_name ?? null,
+          teacherName,
           supportEmail: process.env.E9_SUPPORT_EMAIL ?? process.env.E9_ADMIN_EMAIL ?? null,
           template: template ?? null,
         };

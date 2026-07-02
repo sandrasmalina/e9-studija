@@ -147,7 +147,7 @@ function buildCourseVariables(input: CourseEnrollmentEmailInput, price: string):
     course_title: input.courseTitle,
     course_access_link: input.courseUrl,
     login_link: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv',
-    teacher_name: input.teacherName ?? '',
+    teacher_name: input.teacherName?.trim() || 'E9 Studija',
     teacher_email: input.teacherEmail ?? '',
     support_email: input.supportEmail ?? process.env.E9_SUPPORT_EMAIL ?? process.env.E9_ADMIN_EMAIL ?? '',
     payment_amount: price,

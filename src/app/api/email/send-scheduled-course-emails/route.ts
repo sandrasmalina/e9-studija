@@ -27,6 +27,19 @@ function normalizeMetadata(value: unknown): RenderVariables {
   );
 }
 
+async function getLeadTeacherName(courseId: string, fallback?: string | null) {
+  const { data } = await supabaseAdmin
+    .from('course_instructors')
+    .select('role, sort_order, instructor:profiles!course_instructors_instructor_id_fkey(full_name)')
+    .eq('course_id', courseId)
+    .order('sort_order', { ascending: true })
+    .limit(1);
+
+  const assignment = data?.[0] as { instructor?: { full_name?: string | null } | { full_name?: string | null }[] | null } | undefined;
+  const instructor = Array.isArray(assignment?.instructor) ? assignment?.instructor[0] : assignment?.instructor;
+  return instructor?.full_name?.trim() || fallback || null;
+}
+
 export async function GET(req: NextRequest) {
   return sendDueScheduledEmails(req);
 }
@@ -79,6 +92,7 @@ async function sendDueScheduledEmails(req: NextRequest) {
 
       const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv').replace(/\/$/, '');
       const instructor = Array.isArray(course.instructor) ? course.instructor[0] : course.instructor;
+      const teacherName = await getLeadTeacherName(template.course_id, instructor?.full_name ?? null);
       const extraVariables = normalizeMetadata(template.metadata);
 
       for (const enrollment of enrollments ?? []) {
@@ -97,7 +111,7 @@ async function sendDueScheduledEmails(req: NextRequest) {
           billingType: course.billing_type,
           subscriptionInterval: course.subscription_interval,
           purchaseLanguage: template.language === 'lv' ? 'lv' : 'en',
-          teacherName: instructor?.full_name ?? null,
+          teacherName,
           supportEmail: process.env.E9_SUPPORT_EMAIL ?? process.env.E9_ADMIN_EMAIL ?? null,
           extraVariables,
           template,

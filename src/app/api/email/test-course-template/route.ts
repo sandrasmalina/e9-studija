@@ -10,6 +10,19 @@ function canManageCourse(course: any, userId: string, role?: string | null, cour
   return role === 'admin' || course?.instructor_id === userId || Boolean(courseInstructor);
 }
 
+async function getLeadTeacherName(courseId: string, fallback?: string | null) {
+  const { data } = await supabaseAdmin
+    .from('course_instructors')
+    .select('role, sort_order, instructor:profiles!course_instructors_instructor_id_fkey(full_name)')
+    .eq('course_id', courseId)
+    .order('sort_order', { ascending: true })
+    .limit(1);
+
+  const assignment = data?.[0] as { instructor?: { full_name?: string | null } | { full_name?: string | null }[] | null } | undefined;
+  const instructor = Array.isArray(assignment?.instructor) ? assignment?.instructor[0] : assignment?.instructor;
+  return instructor?.full_name?.trim() || fallback || null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization') ?? '';
@@ -41,6 +54,7 @@ export async function POST(req: NextRequest) {
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv';
     const instructor = Array.isArray(course.instructor) ? course.instructor[0] : course.instructor;
+    const teacherName = await getLeadTeacherName(courseId, instructor?.full_name ?? null);
     const delivery = await sendCourseEnrollmentEmail({
       to: user.email,
       studentName: profile?.full_name ?? user.email,
@@ -50,7 +64,7 @@ export async function POST(req: NextRequest) {
       currency: 'eur',
       billingType: course.billing_type,
       subscriptionInterval: course.subscription_interval,
-      teacherName: instructor?.full_name ?? null,
+      teacherName,
       supportEmail: process.env.E9_SUPPORT_EMAIL ?? process.env.E9_ADMIN_EMAIL ?? null,
       extraVariables,
       template,
