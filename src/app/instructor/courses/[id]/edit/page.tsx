@@ -40,6 +40,7 @@ function Chapter({ id, title, subtitle, children, open, onOpen }: { id: string; 
 const CHAPTER_TABS = [
   ['basic', 'Basic'],
   ['descriptions', 'Descriptions'],
+  ['schedule', 'Schedule'],
   ['pricing', 'Pricing'],
   ['media', 'Media'],
   ['outcomes', 'Outcomes'],
@@ -65,6 +66,8 @@ interface CourseForm {
   short_description_lv: string;
   description_en: string;
   description_lv: string;
+  learning_schedule_en: string;
+  learning_schedule_lv: string;
   thumbnail_url: string;
   thumbnail_url_lv: string;
   promo_video_url: string;
@@ -109,7 +112,7 @@ interface Teacher {
 
 const EMPTY: CourseForm = {
   title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
-  description_en: '', description_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
+  description_en: '', description_lv: '', learning_schedule_en: '', learning_schedule_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', requirements_lv: '', what_you_learn: '', what_you_learn_lv: '', target_audience: '', target_audience_lv: '', delivery_mode: 'online',
   price: '0', discount_price: '', discount_starts_at: '', discount_ends_at: '', discount_type: 'none', is_free: false, fake_enrollment_count: '0',
   access_duration_months: '', starts_at: '', ends_at: '', certificate_enabled: true,
@@ -140,7 +143,7 @@ export default function CourseEditPage() {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error: courseError } = await supabase.from('courses')
-        .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, fake_enrollment_count, access_duration_months, starts_at, ends_at, certificate_enabled')
+        .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, learning_schedule_en, learning_schedule_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, fake_enrollment_count, access_duration_months, starts_at, ends_at, certificate_enabled')
         .eq('id', id)
         .maybeSingle();
 
@@ -164,6 +167,8 @@ export default function CourseEditPage() {
         short_description_lv: data.short_description_lv ?? '',
         description_en: data.description_en ?? '',
         description_lv: data.description_lv ?? '',
+        learning_schedule_en: data.learning_schedule_en ?? '',
+        learning_schedule_lv: data.learning_schedule_lv ?? '',
         thumbnail_url: data.thumbnail_url ?? '',
         thumbnail_url_lv: data.thumbnail_url_lv ?? '',
         promo_video_url: data.promo_video_url ?? '',
@@ -272,6 +277,8 @@ export default function CourseEditPage() {
       short_description_lv: form.short_description_lv.trim() || null,
       description_en: form.description_en.trim() || null,
       description_lv: form.description_lv.trim() || null,
+      learning_schedule_en: form.learning_schedule_en.trim() || null,
+      learning_schedule_lv: form.learning_schedule_lv.trim() || null,
       thumbnail_url: form.thumbnail_url.trim() || null,
       thumbnail_url_lv: form.thumbnail_url_lv.trim() || null,
       promo_video_url: form.promo_video_url.trim() || null,
@@ -432,6 +439,16 @@ export default function CourseEditPage() {
           </Field>
           <Field label="Full Description (LV)" hint="Optional Latvian version with the same rich content tools.">
             <RichTextEditor value={form.description_lv} onChange={v => set('description_lv', v)} placeholder="Detalizēts kursa apraksts latviešu valodā…" minHeight="220px" />
+          </Field>
+        </Chapter>
+
+        {/* Schedule */}
+        <Chapter id="schedule" title="Learning Dates and Format" subtitle="Explain whether the course is on demand, live, hybrid, or runs on specific dates/groups." open={activeChapter === 'schedule'} onOpen={() => openChapter('schedule')}>
+          <Field label="Learning Dates / How It Happens (EN / EU)" hint="Use this for online on-demand details, live lesson dates, weekly times, groups, recordings, and timezone notes.">
+            <RichTextEditor value={form.learning_schedule_en} onChange={v => set('learning_schedule_en', v)} placeholder="Example: Five live online sessions every Tuesday and Friday, 14:00-16:00 Riga time. August group: Aug 7 · Aug 11… Recordings are available." minHeight="220px" />
+          </Field>
+          <Field label="Mācību datumi / Kā notiek kurss (LV)" hint="Piemēram: nodarbību dienas, laiki, grupas, ieraksti, vai kurss ir skatāms pēc pieprasījuma.">
+            <RichTextEditor value={form.learning_schedule_lv} onChange={v => set('learning_schedule_lv', v)} placeholder="Kurss notiek piecu tiešsaistes nodarbību formātā, katru otrdienu un piektdienu plkst. 14:00-16:00 pēc Rīgas laika…" minHeight="220px" />
           </Field>
         </Chapter>
 

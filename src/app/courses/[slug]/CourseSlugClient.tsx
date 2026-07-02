@@ -79,6 +79,8 @@ interface Course {
   title_lv: string | null;
   description_en: string | null;
   description_lv: string | null;
+  learning_schedule_en: string | null;
+  learning_schedule_lv: string | null;
   short_description_en: string | null;
   short_description_lv: string | null;
   thumbnail_url: string | null;
@@ -298,6 +300,8 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
 
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
   const desc = (language === 'lv' && course.description_lv) ? course.description_lv : course.description_en;
+  const useLatvianCourseContent = course.language === 'lv' || (course.language === 'both' && language === 'lv');
+  const learningSchedule = useLatvianCourseContent && course.learning_schedule_lv ? course.learning_schedule_lv : course.learning_schedule_en;
   const useLatvianThumbnail = course.language === 'lv' || (course.language === 'both' && language === 'lv');
   const thumbnailUrl = useLatvianThumbnail && course.thumbnail_url_lv ? course.thumbnail_url_lv : course.thumbnail_url;
   const learningOutcomes = (language === 'lv' && course.what_you_learn_lv?.length) ? course.what_you_learn_lv : course.what_you_learn;
@@ -584,6 +588,13 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
             )}
 
             {/* Description */}
+            {learningSchedule && (
+              <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-7">
+                <h2 className="text-xl font-bold text-white mb-5">{language === 'lv' ? 'Mācību datumi un formāts' : 'Learning Dates and Format'}</h2>
+                <div className="course-description-content prose prose-invert prose-sm max-w-none text-neutral-400 [&_h2]:text-white [&_h3]:text-neutral-200 [&_a]:text-purple-400 [&_a:hover]:text-purple-300" dangerouslySetInnerHTML={{ __html: learningSchedule }} />
+              </section>
+            )}
+
             {desc && (
               <section>
                 <h2 className="text-xl font-bold text-white mb-5">{t('courses.section.description')}</h2>

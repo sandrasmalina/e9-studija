@@ -17,6 +17,8 @@ interface CourseForm {
   short_description_lv: string;
   description_en: string;
   description_lv: string;
+  learning_schedule_en: string;
+  learning_schedule_lv: string;
   thumbnail_url: string;
   thumbnail_url_lv: string;
   promo_video_url: string;
@@ -56,7 +58,7 @@ interface CourseForm {
 
 const EMPTY: CourseForm = {
   title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
-  description_en: '', description_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
+  description_en: '', description_lv: '', learning_schedule_en: '', learning_schedule_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '', target_audience_lv: '',
   price: '0', discount_price: '', discount_ends_at: '', is_free: false, access_duration_months: '', starts_at: '', ends_at: '',
   meta_title: '', meta_description: '', meta_keywords: '', og_title: '', og_description: '', og_image: '', canonical_url: '', no_index: false,
@@ -94,7 +96,7 @@ export default function AdminCourseEditPage() {
       const [{ data: cats }, { data: course }, { data: instructorList }] = await Promise.all([
         supabase.from('categories').select('id, name_en').order('name_en'),
         supabase.from('courses')
-          .select('title_en, title_lv, slug, short_description_en, short_description_lv, description_en, description_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience, target_audience_lv, price, discount_price, discount_ends_at, is_free, access_duration_months, starts_at, ends_at, meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url, no_index, ai_summary, key_takeaways, faq_items, tags_ai_topics, expertise_level, industry, certificate_enabled, status, category_id, instructor_id')
+          .select('title_en, title_lv, slug, short_description_en, short_description_lv, description_en, description_lv, learning_schedule_en, learning_schedule_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, what_you_learn, target_audience, target_audience_lv, price, discount_price, discount_ends_at, is_free, access_duration_months, starts_at, ends_at, meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url, no_index, ai_summary, key_takeaways, faq_items, tags_ai_topics, expertise_level, industry, certificate_enabled, status, category_id, instructor_id')
           .eq('id', id).single(),
         supabase.from('profiles').select('id, full_name').in('role', ['instructor', 'admin']).order('full_name'),
       ]);
@@ -112,6 +114,8 @@ export default function AdminCourseEditPage() {
           short_description_lv: course.short_description_lv ?? '',
           description_en: course.description_en ?? '',
           description_lv: course.description_lv ?? '',
+          learning_schedule_en: course.learning_schedule_en ?? '',
+          learning_schedule_lv: course.learning_schedule_lv ?? '',
           thumbnail_url: course.thumbnail_url ?? '',
           thumbnail_url_lv: course.thumbnail_url_lv ?? '',
           promo_video_url: course.promo_video_url ?? '',
@@ -195,6 +199,8 @@ export default function AdminCourseEditPage() {
       short_description_lv: form.short_description_lv.trim() || null,
       description_en: form.description_en.trim() || null,
       description_lv: form.description_lv.trim() || null,
+      learning_schedule_en: form.learning_schedule_en.trim() || null,
+      learning_schedule_lv: form.learning_schedule_lv.trim() || null,
       thumbnail_url: form.thumbnail_url.trim() || null,
       thumbnail_url_lv: form.thumbnail_url_lv.trim() || null,
       promo_video_url: form.promo_video_url.trim() || null,
@@ -345,6 +351,15 @@ export default function AdminCourseEditPage() {
           <Field label="Full Description (LV)" hint="Optional — supports headings, images, tables, embeds, and code blocks">
             <RichTextEditor value={form.description_lv} onChange={v => set('description_lv', v)} placeholder="Detalizēts kursa apraksts latviešu valodā…" minHeight="240px" />
           </Field>
+          <div className="rounded-xl border border-zinc-700/50 bg-zinc-950/40 p-4 space-y-4">
+            <h3 className="text-white text-sm font-semibold">Learning Dates and Format</h3>
+            <Field label="Learning Dates / How It Happens (EN / EU)" hint="Use this for on-demand details, live lesson dates, weekly times, groups, recordings, and timezone notes.">
+              <RichTextEditor value={form.learning_schedule_en} onChange={v => set('learning_schedule_en', v)} placeholder="Five live online sessions every Tuesday and Friday, 14:00-16:00 Riga time…" minHeight="220px" />
+            </Field>
+            <Field label="Mācību datumi / Kā notiek kurss (LV)" hint="Piemēram: nodarbību dienas, laiki, grupas, ieraksti, vai kurss ir skatāms pēc pieprasījuma.">
+              <RichTextEditor value={form.learning_schedule_lv} onChange={v => set('learning_schedule_lv', v)} placeholder="Kurss notiek piecu tiešsaistes nodarbību formātā, katru otrdienu un piektdienu…" minHeight="220px" />
+            </Field>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Target Audience (EN)" hint="One item per line">
               <textarea value={form.target_audience} onChange={e => set('target_audience', e.target.value)} rows={5} placeholder={"Entrepreneurs with business ideas\nCoaches and consultants\nSmall business owners"} className={textareaCls} />
