@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendCourseEnrollmentEmail, type CourseEmailTemplate } from '@/lib/email';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 
+interface RenderVariables {
+  [key: string]: string;
+}
+
 function canManageCourse(course: any, userId: string, role?: string | null, courseInstructor?: { instructor_id: string } | null) {
   return role === 'admin' || course?.instructor_id === userId || Boolean(courseInstructor);
 }
@@ -16,7 +20,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { courseId, template } = await req.json() as { courseId?: string; template?: CourseEmailTemplate };
+    const { courseId, template, extraVariables } = await req.json() as { courseId?: string; template?: CourseEmailTemplate; extraVariables?: RenderVariables };
     if (!courseId || !template?.subject) {
       return NextResponse.json({ error: 'courseId and template subject are required' }, { status: 400 });
     }
@@ -48,6 +52,7 @@ export async function POST(req: NextRequest) {
       subscriptionInterval: course.subscription_interval,
       teacherName: instructor?.full_name ?? null,
       supportEmail: process.env.E9_SUPPORT_EMAIL ?? process.env.E9_ADMIN_EMAIL ?? null,
+      extraVariables,
       template,
     });
 

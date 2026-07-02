@@ -1,3 +1,9 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/email/send-scheduled-course-emails",
+      "schedule": "*/15 * * * *"
+    }
+  ]
 }

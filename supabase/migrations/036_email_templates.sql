@@ -12,17 +12,36 @@ CREATE TABLE IF NOT EXISTS public.email_templates (
   sender_name text,
   reply_to_email text,
   send_timing text NOT NULL DEFAULT 'immediate',
+  scheduled_send_at timestamptz,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  last_sent_at timestamptz,
   is_active boolean NOT NULL DEFAULT true,
   created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   updated_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT email_templates_type_check CHECK (type IN ('account_created', 'course_purchased', 'ticket_submitted', 'course_reminder', 'class_reminder', 'recording_available', 'course_announcement')),
-  CONSTRAINT email_templates_language_check CHECK (language IN ('en', 'lv', 'both'))
+  CONSTRAINT email_templates_language_check CHECK (language IN ('en', 'lv', 'both')),
+  CONSTRAINT email_templates_send_timing_check CHECK (send_timing IN ('immediate', 'scheduled', 'manual'))
 );
+
+ALTER TABLE public.email_templates
+  ADD COLUMN IF NOT EXISTS scheduled_send_at timestamptz,
+  ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS last_sent_at timestamptz;
+
+ALTER TABLE public.email_templates
+  DROP CONSTRAINT IF EXISTS email_templates_send_timing_check;
+
+ALTER TABLE public.email_templates
+  ADD CONSTRAINT email_templates_send_timing_check CHECK (send_timing IN ('immediate', 'scheduled', 'manual'));
 
 CREATE INDEX IF NOT EXISTS idx_email_templates_course_type
   ON public.email_templates(course_id, type, is_active);
+
+CREATE INDEX IF NOT EXISTS idx_email_templates_scheduled_due
+  ON public.email_templates(scheduled_send_at, is_active, last_sent_at)
+  WHERE send_timing = 'scheduled';
 
 CREATE TABLE IF NOT EXISTS public.email_logs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -13,6 +13,7 @@ interface CourseEnrollmentEmailInput {
   teacherName?: string | null;
   teacherEmail?: string | null;
   supportEmail?: string | null;
+  extraVariables?: RenderVariables;
   template?: CourseEmailTemplate | null;
 }
 
@@ -88,6 +89,23 @@ function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function getSiteUrl() {
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv').replace(/\/$/, '');
+}
+
+function wrapEmailHtml(content: string, preheader = '') {
+  const siteUrl = getSiteUrl();
+  return `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#18181b;max-width:560px;margin:0 auto;padding:24px;">
+      ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>` : ''}
+      <div style="margin:0 0 24px;">
+        <img src="${siteUrl}/logo-512.png" width="48" height="48" alt="E9 Studija" style="display:block;border:0;outline:none;text-decoration:none;border-radius:10px;" />
+      </div>
+      ${content}
+    </div>
+  `;
+}
+
 function getFromAddress(template?: CourseEmailTemplate | null) {
   const from = process.env.RESEND_FROM_EMAIL;
   if (!from) return null;
@@ -110,6 +128,12 @@ function buildCourseVariables(input: CourseEnrollmentEmailInput, price: string):
     payment_amount: price,
     billing_type: input.billingType === 'subscription' ? 'subscription' : 'single purchase',
     subscription_interval: input.subscriptionInterval === 'year' ? 'year' : input.subscriptionInterval === 'month' ? 'month' : '',
+    class_title: '',
+    class_date: '',
+    class_time: '',
+    zoom_link: '',
+    recording_link: '',
+    ...(input.extraVariables ?? {}),
   };
 }
 
@@ -141,9 +165,7 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
     subject,
     ...(input.template?.reply_to_email ? { replyTo: input.template.reply_to_email } : {}),
     text: customHtml && !input.template?.body_text ? stripHtml(customHtml) : text,
-    html: customHtml ?? `
-      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#18181b;max-width:560px;margin:0 auto;padding:24px;">
-        ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>` : ''}
+    html: customHtml ? wrapEmailHtml(customHtml, preheader) : wrapEmailHtml(`
         <h1 style="font-size:24px;margin:0 0 16px;">${input.purchaseLanguage === 'lv' ? 'Reģistrācija apstiprināta' : 'Enrollment confirmed'}</h1>
         <p>${input.purchaseLanguage === 'lv' ? (safeStudentName ? `Sveiki, ${safeStudentName}!` : 'Sveiki!') : (safeStudentName ? `Hi ${safeStudentName},` : 'Hi,')}</p>
         <p>${input.purchaseLanguage === 'lv' ? `Jūsu reģistrācija kursam <strong>${safeCourseTitle}</strong> ir apstiprināta.` : `Your enrollment in <strong>${safeCourseTitle}</strong> is confirmed.`}</p>
@@ -153,8 +175,7 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
         </p>
         <p style="font-size:13px;color:#71717a;">${input.purchaseLanguage === 'lv' ? 'Ja poga nedarbojas, atveriet šo saiti' : 'If the button does not work, open this link'}: ${safeCourseUrl}</p>
         <p style="margin-top:28px;">E9 Studija</p>
-      </div>
-    `,
+    `, preheader),
   });
 
   if (result.error) throw result.error;
