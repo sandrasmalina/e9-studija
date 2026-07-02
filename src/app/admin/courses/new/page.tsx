@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { ArrowLeft, Plus, ImageIcon, Upload, X } from 'lucide-react';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
@@ -91,6 +92,8 @@ export default function AdminCourseNewPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState('');
+
+  useUnsavedChangesGuard(!saving && JSON.stringify(form) !== JSON.stringify(EMPTY));
 
   useEffect(() => {
     Promise.all([

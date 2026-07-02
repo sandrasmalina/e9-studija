@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { ArrowLeft, ExternalLink, ImageIcon, Save, Upload, X } from 'lucide-react';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
@@ -114,6 +115,10 @@ const EMPTY: CourseForm = {
   access_duration_months: '', starts_at: '', ends_at: '', certificate_enabled: true,
 };
 
+function serializeCourseEditState(form: CourseForm, teacherIds: string[], groups: AvailabilityGroup[]) {
+  return JSON.stringify({ form, teacherIds, groups });
+}
+
 export default function CourseEditPage() {
   const { id } = useParams() as { id: string };
   const [form, setForm] = useState<CourseForm>(EMPTY);
@@ -129,6 +134,7 @@ export default function CourseEditPage() {
   const [availabilityGroups, setAvailabilityGroups] = useState<AvailabilityGroup[]>([]);
   const [canManageTeacherAssignments, setCanManageTeacherAssignments] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -151,7 +157,7 @@ export default function CourseEditPage() {
 
       setCourseTitle(data.title_en);
       setCourseSlug(data.slug ?? '');
-      setForm({
+      const nextForm: CourseForm = {
         title_en: data.title_en ?? '',
         title_lv: data.title_lv ?? '',
         short_description_en: data.short_description_en ?? '',
@@ -182,7 +188,8 @@ export default function CourseEditPage() {
         starts_at: data.starts_at ? data.starts_at.slice(0, 16) : '',
         ends_at: data.ends_at ? data.ends_at.slice(0, 16) : '',
         certificate_enabled: data.certificate_enabled ?? true,
-      });
+      };
+      setForm(nextForm);
 
       const [{ data: groupRows }, { data: teacherRows }, { data: instructorRows }] = await Promise.all([
       supabase.from('course_availability_groups').select('id,name_en,name_lv,language,starts_at,ends_at,capacity,sort_order').eq('course_id', id).order('sort_order'),
@@ -190,12 +197,10 @@ export default function CourseEditPage() {
       supabase.from('course_instructors').select('instructor_id, sort_order').eq('course_id', id).order('sort_order'),
       ]);
 
-      setSelectedTeacherIds((instructorRows ?? []).length > 0
+      const nextTeacherIds = (instructorRows ?? []).length > 0
         ? (instructorRows ?? []).map(row => row.instructor_id)
-        : (data.instructor_id ? [data.instructor_id] : [])
-      );
-      setTeachers((teacherRows ?? []) as Teacher[]);
-      setAvailabilityGroups(((groupRows ?? []) as any[]).map(group => ({
+        : (data.instructor_id ? [data.instructor_id] : []);
+      const nextGroups = ((groupRows ?? []) as any[]).map(group => ({
         id: group.id,
         name_en: group.name_en ?? '',
         name_lv: group.name_lv ?? '',
@@ -203,11 +208,17 @@ export default function CourseEditPage() {
         starts_at: group.starts_at ? group.starts_at.slice(0, 16) : '',
         ends_at: group.ends_at ? group.ends_at.slice(0, 16) : '',
         capacity: group.capacity != null ? String(group.capacity) : '',
-      })));
+      }));
+      setSelectedTeacherIds(nextTeacherIds);
+      setTeachers((teacherRows ?? []) as Teacher[]);
+      setAvailabilityGroups(nextGroups);
+      setSavedSnapshot(serializeCourseEditState(nextForm, nextTeacherIds, nextGroups));
       setLoading(false);
     };
     load();
   }, [id]);
+
+  useUnsavedChangesGuard(!saving && !loading && !!savedSnapshot && savedSnapshot !== serializeCourseEditState(form, selectedTeacherIds, availabilityGroups));
 
   const set = (k: keyof CourseForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
   const openChapter = (chapterId: ChapterId) => {
@@ -326,6 +337,7 @@ export default function CourseEditPage() {
     setSaving(false);
     setSaved(true);
     setCourseTitle(form.title_en);
+    setSavedSnapshot(serializeCourseEditState(form, selectedTeacherIds, availabilityGroups));
     setTimeout(() => setSaved(false), 3000);
   };
 

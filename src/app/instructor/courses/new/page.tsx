@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -14,12 +15,15 @@ function toSlug(s: string) {
 
 export default function NewCoursePage() {
   const router = useRouter();
+  const emptyForm = { title_en: '', title_lv: '', category_id: '', level: 'beginner', language: 'en' };
   const [categories, setCategories] = useState<Category[]>([]);
-  const [form, setForm] = useState({ title_en: '', title_lv: '', category_id: '', level: 'beginner', language: 'en' });
+  const [form, setForm] = useState(emptyForm);
   const [slug, setSlug] = useState('');
   const [slugEdited, setSlugEdited] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+
+  useUnsavedChangesGuard(!saving && (JSON.stringify(form) !== JSON.stringify(emptyForm) || slugEdited));
 
   useEffect(() => {
     supabase.from('categories').select('id, name_en').eq('is_active', true).order('sort_order')

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { ArrowLeft, Save, ImageIcon, Upload, X, ExternalLink, BookOpen } from 'lucide-react';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
@@ -86,6 +87,7 @@ export default function AdminCourseEditPage() {
   const [courseTitle, setCourseTitle] = useState('');
   const [courseSlug, setCourseSlug] = useState('');
   const [instructors, setInstructors] = useState<{ id: string; full_name: string }[]>([]);
+  const [savedSnapshot, setSavedSnapshot] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -103,7 +105,7 @@ export default function AdminCourseEditPage() {
       if (course) {
         setCourseTitle(course.title_en);
         setCourseSlug(course.slug ?? '');
-        setForm({
+        const nextForm = {
           title_en: course.title_en ?? '',
           title_lv: course.title_lv ?? '',
           short_description_en: course.short_description_en ?? '',
@@ -145,12 +147,16 @@ export default function AdminCourseEditPage() {
           status: course.status ?? 'draft',
           category_id: course.category_id ?? '',
           instructor_id: course.instructor_id ?? '',
-        });
+        };
+        setForm(nextForm);
+        setSavedSnapshot(JSON.stringify(nextForm));
       }
       setLoading(false);
     };
     load();
   }, [id]);
+
+  useUnsavedChangesGuard(!saving && !loading && !!savedSnapshot && savedSnapshot !== JSON.stringify(form));
 
   const set = (k: keyof CourseForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
 
@@ -232,6 +238,7 @@ export default function AdminCourseEditPage() {
     if (error) { setErr(error.message); return; }
     setSaved(true);
     setCourseTitle(form.title_en);
+    setSavedSnapshot(JSON.stringify(form));
     setTimeout(() => setSaved(false), 3000);
   };
 
