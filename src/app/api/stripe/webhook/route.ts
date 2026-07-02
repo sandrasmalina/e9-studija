@@ -141,15 +141,20 @@ export async function POST(req: NextRequest) {
         const preferredLanguage = purchase_language === 'lv' ? 'lv' : 'en';
         const { data: templates } = await supabaseAdmin
           .from('email_templates')
-          .select('id, subject, preheader, body_html, body_text, sender_name, reply_to_email, language')
+          .select('id, subject, preheader, body_html, body_text, sender_name, reply_to_email, language, course_id')
           .eq('type', 'course_purchased')
-          .eq('course_id', course_id)
+          .or(`course_id.eq.${course_id},course_id.is.null`)
           .eq('is_active', true)
           .order('updated_at', { ascending: false })
           .limit(10);
-        const template = (templates ?? []).find(item => item.language === preferredLanguage)
-          ?? (templates ?? []).find(item => item.language === 'both')
-          ?? (templates ?? []).find(item => item.language === 'en')
+        const courseTemplates = (templates ?? []).filter(item => item.course_id === course_id);
+        const globalTemplates = (templates ?? []).filter(item => !item.course_id);
+        const template = courseTemplates.find(item => item.language === preferredLanguage)
+          ?? globalTemplates.find(item => item.language === preferredLanguage)
+          ?? courseTemplates.find(item => item.language === 'both')
+          ?? globalTemplates.find(item => item.language === 'both')
+          ?? courseTemplates.find(item => item.language === 'en')
+          ?? globalTemplates.find(item => item.language === 'en')
           ?? null;
         const instructor = Array.isArray(course.instructor) ? course.instructor[0] : course.instructor;
         const emailInput = {

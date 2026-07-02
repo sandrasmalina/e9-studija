@@ -104,7 +104,7 @@ export default function CourseSettingsPage() {
   const statusInfo = STATUS_INFO[settings.status];
 
   return (
-    <div className="max-w-xl">
+    <div className="w-full max-w-4xl">
       <div className="flex items-center gap-3 mb-8">
         <Link href={`/instructor/courses/${id}/curriculum`} className="p-2 rounded-xl border border-white/[0.06] text-zinc-500 hover:text-white transition-colors">
           <ArrowLeft size={15} />

@@ -62,7 +62,7 @@ export default function NewCoursePage() {
   };
 
   return (
-    <div className="max-w-xl">
+    <div className="w-full max-w-4xl">
       <div className="flex items-center gap-3 mb-8">
         <Link href="/instructor/courses" className="p-2 rounded-xl border border-white/[0.06] text-zinc-500 hover:text-white transition-colors">
           <ArrowLeft size={15} />
@@ -74,7 +74,7 @@ export default function NewCoursePage() {
       </div>
 
       <div className="space-y-5">
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 space-y-4">
+        <div className="grid gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 md:grid-cols-2">
           {/* Title EN */}
           <div>
             <label className="block text-white text-sm font-medium mb-1.5">Course Title (English) <span className="text-red-400">*</span></label>
@@ -92,7 +92,7 @@ export default function NewCoursePage() {
           </div>
 
           {/* Slug */}
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-white text-sm font-medium mb-1.5">URL Slug <span className="text-red-400">*</span></label>
             <input value={slug} onChange={e => { setSlug(e.target.value); setSlugEdited(true); }}
               className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm font-mono focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
@@ -110,7 +110,7 @@ export default function NewCoursePage() {
           </div>
 
           {/* Level + Language */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 md:col-span-2 md:grid-cols-2">
             <div>
               <label className="block text-white text-sm font-medium mb-1.5">Level</label>
               <select value={form.level} onChange={e => set('level', e.target.value)}

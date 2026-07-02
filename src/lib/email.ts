@@ -19,6 +19,7 @@ interface CourseEnrollmentEmailInput {
 
 export interface CourseEmailTemplate {
   id?: string;
+  language?: 'en' | 'lv' | 'both' | string | null;
   subject: string;
   preheader?: string | null;
   body_html?: string | null;
@@ -93,9 +94,13 @@ function getSiteUrl() {
   return (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv').replace(/\/$/, '');
 }
 
-function wrapEmailHtml(content: string, courseTitle: string, preheader = '') {
+function wrapEmailHtml(content: string, language: string | null | undefined, preheader = '') {
   const siteUrl = getSiteUrl();
-  const safeCourseTitle = escapeHtml(courseTitle);
+  const isLatvian = language === 'lv';
+  const slogan = isLatvian ? 'Tava digitālā pasaule' : 'Your digital world';
+  const footerText = isLatvian
+    ? 'Jūs saņēmāt šo e-pastu, jo reģistrējāties kursam E9 Studija platformā.'
+    : 'You received this email because you enrolled in a course on E9 Studija.';
   return `
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f3ff;padding:40px 0;font-family:'Segoe UI',Arial,sans-serif;">
       <tr>
@@ -104,8 +109,8 @@ function wrapEmailHtml(content: string, courseTitle: string, preheader = '') {
           <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
             <tr>
               <td style="background:linear-gradient(135deg,#f0eeff 0%,#e879f9 60%,#a855f7 100%);background-color:#a855f7;border-radius:16px 16px 0 0;padding:44px 48px 38px;text-align:center;">
-                <img src="${siteUrl}/logo-512.png" width="96" height="96" alt="" style="display:block;margin:0 auto 24px;max-width:96px;border:0;outline:none;text-decoration:none;border-radius:18px;" />
-                <h1 style="margin:0;font-size:26px;font-weight:700;color:#26215C;line-height:1.3;">${safeCourseTitle}</h1>
+                <img src="${siteUrl}/logo_e9.png" width="180" alt="" style="display:block;margin:0 auto 24px;max-width:180px;border:0;outline:none;text-decoration:none;" />
+                <h1 style="margin:0;font-size:26px;font-weight:700;color:#26215C;line-height:1.3;">${slogan}</h1>
               </td>
             </tr>
             <tr>
@@ -115,7 +120,7 @@ function wrapEmailHtml(content: string, courseTitle: string, preheader = '') {
             </tr>
             <tr>
               <td style="background:#f5f3ff;border-radius:0 0 16px 16px;padding:28px 48px;text-align:center;">
-                <p style="margin:0 0 8px;font-size:12px;color:#9ca3af;">You received this email because you enrolled in a course on E9 Studija.</p>
+                <p style="margin:0 0 8px;font-size:12px;color:#9ca3af;">${footerText}</p>
                 <p style="margin:0;font-size:12px;color:#c4b5fd;">&copy; 2026 E9 Studija · <a href="${siteUrl}" style="color:#a855f7;text-decoration:none;">e9studija.lv</a></p>
               </td>
             </tr>
@@ -167,11 +172,11 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
   }
 
   const resend = new Resend(apiKey);
-  const safeCourseTitle = escapeHtml(input.courseTitle);
   const safeStudentName = input.studentName ? escapeHtml(input.studentName) : null;
   const safeCourseUrl = escapeHtml(input.courseUrl);
   const price = formatPrice(input.amountPaid, input.currency, input.billingType, input.subscriptionInterval);
   const variables = buildCourseVariables(input, price);
+  const emailLanguage = input.template?.language === 'lv' || input.purchaseLanguage === 'lv' ? 'lv' : 'en';
   const subject = input.template?.subject ? renderTemplate(input.template.subject, variables) : defaultSubject(input);
   const text = input.template?.body_text
     ? renderTemplate(input.template.body_text, variables)
@@ -185,9 +190,9 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
     subject,
     ...(input.template?.reply_to_email ? { replyTo: input.template.reply_to_email } : {}),
     text: customHtml && !input.template?.body_text ? stripHtml(customHtml) : text,
-    html: customHtml ? wrapEmailHtml(customHtml, input.courseTitle, preheader) : wrapEmailHtml(`
+    html: customHtml ? wrapEmailHtml(customHtml, emailLanguage, preheader) : wrapEmailHtml(`
         <p style="margin:0 0 8px;font-size:22px;font-weight:600;color:#26215C;">${input.purchaseLanguage === 'lv' ? (safeStudentName ? `Sveiki, ${safeStudentName}!` : 'Sveiki!') : (safeStudentName ? `Hello, ${safeStudentName}` : 'Hello')}</p>
-        <p style="margin:0 0 28px;font-size:16px;color:#6b7280;line-height:1.6;">${input.purchaseLanguage === 'lv' ? 'Paldies, ka pievienojāties kursam. Jūsu piekļuve ir gatava, un jūs varat sākt mācīties jau tagad.' : 'Thank you for joining the course. Your access is ready and you can start learning now.'}</p>
+        <p style="margin:0 0 28px;font-size:16px;color:#6b7280;line-height:1.6;">${input.purchaseLanguage === 'lv' ? `Paldies, ka pievienojāties kursam <strong>${escapeHtml(input.courseTitle)}</strong>. Jūsu piekļuve ir gatava, un jūs varat sākt mācīties jau tagad.` : `Thank you for joining <strong>${escapeHtml(input.courseTitle)}</strong>. Your access is ready and you can start learning now.`}</p>
         <p style="margin:28px 0;text-align:center;">
           <a href="${safeCourseUrl}" style="display:inline-block;background:linear-gradient(135deg,#e879f9,#a855f7);background-color:#a855f7;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:16px 40px;border-radius:50px;letter-spacing:0.3px;">${input.purchaseLanguage === 'lv' ? 'Sākt mācības &rarr;' : 'Start learning &rarr;'}</a>
         </p>
@@ -200,7 +205,7 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
           </tr>
         </table>
         <p style="margin:0;font-size:15px;color:#374151;line-height:1.6;">${input.purchaseLanguage === 'lv' ? 'Uz tikšanos pirmajā nodarbībā,' : 'See you in the first session,'}<br><strong style="color:#26215C;">${escapeHtml(input.teacherName ?? 'E9 Studija')}</strong></p>
-    `, input.courseTitle, preheader),
+    `, emailLanguage, preheader),
   });
 
   if (result.error) throw result.error;

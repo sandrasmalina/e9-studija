@@ -303,7 +303,7 @@ export default function CurriculumPage() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="w-full max-w-[1180px]">
       {!lectureModal ? (
         <div className="flex flex-col items-center justify-center min-h-96 gap-4 text-center">
           <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
