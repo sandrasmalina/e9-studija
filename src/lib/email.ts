@@ -191,7 +191,7 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
     ...(input.template?.reply_to_email ? { replyTo: input.template.reply_to_email } : {}),
     text: customHtml && !input.template?.body_text ? stripHtml(customHtml) : text,
     html: customHtml ? wrapEmailHtml(customHtml, emailLanguage, preheader) : wrapEmailHtml(`
-        <p style="margin:0 0 8px;font-size:22px;font-weight:600;color:#26215C;">${input.purchaseLanguage === 'lv' ? (safeStudentName ? `Sveiki, ${safeStudentName}!` : 'Sveiki!') : (safeStudentName ? `Hello, ${safeStudentName}` : 'Hello')}</p>
+        <p style="margin:0 0 8px;font-size:18px;font-weight:600;line-height:1.35;color:#26215C;">${input.purchaseLanguage === 'lv' ? (safeStudentName ? `Sveiki, ${safeStudentName}!` : 'Sveiki!') : (safeStudentName ? `Hello, ${safeStudentName}` : 'Hello')}</p>
         <p style="margin:0 0 28px;font-size:16px;color:#6b7280;line-height:1.6;">${input.purchaseLanguage === 'lv' ? `Paldies, ka pievienojāties kursam <strong>${escapeHtml(input.courseTitle)}</strong>. Jūsu piekļuve ir gatava, un jūs varat sākt mācīties jau tagad.` : `Thank you for joining <strong>${escapeHtml(input.courseTitle)}</strong>. Your access is ready and you can start learning now.`}</p>
         <p style="margin:28px 0;text-align:center;">
           <a href="${safeCourseUrl}" style="display:inline-block;background:linear-gradient(135deg,#e879f9,#a855f7);background-color:#a855f7;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:16px 40px;border-radius:50px;letter-spacing:0.3px;">${input.purchaseLanguage === 'lv' ? 'Sākt mācības &rarr;' : 'Start learning &rarr;'}</a>
