@@ -15,11 +15,13 @@ export interface CourseCardData {
   short_description_en: string | null;
   short_description_lv: string | null;
   thumbnail_url: string | null;
+  thumbnail_url_lv: string | null;
   price: number;
   discount_price: number | null;
   currency: string;
   is_free: boolean;
   level: string | null;
+  language: string | null;
   total_duration_minutes: number;
   total_lectures: number;
   enrollment_count: number;
@@ -59,6 +61,8 @@ export default function CourseCard({ course }: CourseCardProps) {
   const { language } = useLanguage();
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
   const desc = (language === 'lv' && course.short_description_lv) ? course.short_description_lv : course.short_description_en;
+  const useLatvianThumbnail = course.language === 'lv' || (course.language === 'both' && language === 'lv');
+  const thumbnailUrl = useLatvianThumbnail && course.thumbnail_url_lv ? course.thumbnail_url_lv : course.thumbnail_url;
   const levelClass = course.level ? (levelColors[course.level] ?? levelColors.all) : null;
   const displayStudentCount = (course.enrollment_count || 0) + (course.fake_enrollment_count || 0);
 
@@ -69,10 +73,10 @@ export default function CourseCard({ course }: CourseCardProps) {
     >
       {/* Thumbnail */}
       <div className="relative aspect-video bg-bg-secondary overflow-hidden">
-        {course.thumbnail_url ? (
+        {thumbnailUrl ? (
           <>
             <Image
-              src={course.thumbnail_url}
+              src={thumbnailUrl}
               alt={title}
               fill
               className="object-cover group-hover:scale-105 transition-transform duration-500"

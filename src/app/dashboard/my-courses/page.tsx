@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, PlayCircle, Search, CheckCircle2 } from 'lucide-react';
 
 interface Enrollment {
@@ -15,7 +16,10 @@ interface Enrollment {
   course: {
     id: string;
     title_en: string;
+    title_lv: string | null;
     thumbnail_url: string | null;
+    thumbnail_url_lv: string | null;
+    language: string | null;
     slug: string;
     instructor: { full_name: string } | null;
   };
@@ -36,6 +40,7 @@ export default function MyCoursesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
+  const { language } = useLanguage();
 
   useEffect(() => {
     (async () => {
@@ -43,7 +48,7 @@ export default function MyCoursesPage() {
       if (!user) return;
       const { data } = await supabase
         .from('enrollments')
-        .select('id, progress_pct, enrolled_at, expires_at, completed_at, last_accessed_at, course:courses(id, title_en, thumbnail_url, slug, instructor:profiles!courses_instructor_id_fkey(full_name))')
+        .select('id, progress_pct, enrolled_at, expires_at, completed_at, last_accessed_at, course:courses(id, title_en, title_lv, thumbnail_url, thumbnail_url_lv, language, slug, instructor:profiles!courses_instructor_id_fkey(full_name))')
         .eq('user_id', user.id)
         .order('last_accessed_at', { ascending: false, nullsFirst: false });
       setEnrollments((data ?? []) as unknown as Enrollment[]);
@@ -100,31 +105,35 @@ export default function MyCoursesPage() {
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(({ id, course, progress_pct, completed_at, expires_at }) => (
-            <Link key={id} href={`/learn/${course.slug}`}
-              className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:border-purple-500/30 hover:bg-white/[0.04] transition-all overflow-hidden">
-              {/* Thumbnail */}
-              <div className="aspect-video bg-[#16122a] relative overflow-hidden">
-                {course.thumbnail_url ? (
-                  <img src={course.thumbnail_url} alt={course.title_en} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <PlayCircle size={32} className="text-zinc-700" />
+          {filtered.map(({ id, course, progress_pct, completed_at, expires_at }) => {
+            const title = language === 'lv' && course.title_lv ? course.title_lv : course.title_en;
+            const useLatvianThumbnail = course.language === 'lv' || (course.language === 'both' && language === 'lv');
+            const thumbnailUrl = useLatvianThumbnail && course.thumbnail_url_lv ? course.thumbnail_url_lv : course.thumbnail_url;
+            return (
+              <Link key={id} href={`/learn/${course.slug}`}
+                className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:border-purple-500/30 hover:bg-white/[0.04] transition-all overflow-hidden">
+                {/* Thumbnail */}
+                <div className="aspect-video bg-[#16122a] relative overflow-hidden">
+                  {thumbnailUrl ? (
+                    <img src={thumbnailUrl} alt={title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <PlayCircle size={32} className="text-zinc-700" />
+                    </div>
+                  )}
+                  {completed_at && (
+                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 bg-green-900/80 text-green-400 text-xs font-medium px-2.5 py-1 rounded-lg backdrop-blur">
+                      <CheckCircle2 size={12} /> Completed
+                    </div>
+                  )}
+                  {/* Progress bar */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                    <div className="h-full bg-purple-500 transition-all" style={{ width: `${progress_pct ?? 0}%` }} />
                   </div>
-                )}
-                {completed_at && (
-                  <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 bg-green-900/80 text-green-400 text-xs font-medium px-2.5 py-1 rounded-lg backdrop-blur">
-                    <CheckCircle2 size={12} /> Completed
-                  </div>
-                )}
-                {/* Progress bar */}
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-                  <div className="h-full bg-purple-500 transition-all" style={{ width: `${progress_pct ?? 0}%` }} />
                 </div>
-              </div>
 
-              <div className="p-4">
-                <h3 className="text-white text-sm font-medium line-clamp-2 group-hover:text-purple-300 transition-colors">{course.title_en}</h3>
+                <div className="p-4">
+                  <h3 className="text-white text-sm font-medium line-clamp-2 group-hover:text-purple-300 transition-colors">{title}</h3>
                 {course.instructor?.full_name && (
                   <p className="text-zinc-600 text-xs mt-1">{course.instructor.full_name}</p>
                 )}
@@ -140,9 +149,10 @@ export default function MyCoursesPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

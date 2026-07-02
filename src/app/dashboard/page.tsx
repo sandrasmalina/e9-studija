@@ -11,7 +11,10 @@ interface EnrolledCourse {
   course: {
     id: string;
     title_en: string;
+    title_lv: string | null;
     thumbnail_url: string | null;
+    thumbnail_url_lv: string | null;
+    language: string | null;
     slug: string;
   };
   progress_pct: number;
@@ -31,7 +34,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats>({ enrolled: 0, completed: 0, certificates: 0, wishlist: 0 });
   const [recent, setRecent] = useState<EnrolledCourse[]>([]);
   const [loading, setLoading] = useState(true);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   useEffect(() => {
     (async () => {
@@ -40,7 +43,7 @@ export default function DashboardPage() {
 
       const [profileRes, enrollRes, wishRes] = await Promise.all([
         supabase.from('profiles').select('full_name').eq('id', user.id).single(),
-        supabase.from('enrollments').select('id, progress_pct, completed_at, last_accessed_at, course:courses(id, title_en, thumbnail_url, slug)').eq('user_id', user.id).order('last_accessed_at', { ascending: false }),
+        supabase.from('enrollments').select('id, progress_pct, completed_at, last_accessed_at, course:courses(id, title_en, title_lv, thumbnail_url, thumbnail_url_lv, language, slug)').eq('user_id', user.id).order('last_accessed_at', { ascending: false }),
         supabase.from('wishlists').select('id', { count: 'exact' }).eq('user_id', user.id),
       ]);
 
@@ -111,37 +114,42 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-3">
-            {recent.map(({ id, course, progress_pct, last_accessed_at }) => (
-              <Link key={id} href={`/learn/${course.slug}`}
-                className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-purple-500/30 transition-all overflow-hidden">
-                {/* Thumbnail */}
-                <div className="aspect-video bg-[#16122a] relative overflow-hidden">
-                  {course.thumbnail_url ? (
-                    <img src={course.thumbnail_url} alt={course.title_en} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <PlayCircle size={32} className="text-zinc-700" />
-                    </div>
-                  )}
-                  {/* Progress overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-                    <div className="h-full bg-purple-500 transition-all" style={{ width: `${progress_pct ?? 0}%` }} />
-                  </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="text-white text-sm font-medium line-clamp-2 group-hover:text-purple-300 transition-colors">{course.title_en}</h3>
-                  <div className="flex items-center justify-between mt-3">
-                    <span className="text-purple-400 text-xs font-medium">{t('dashboard.progressComplete').replace('{value}', String(progress_pct ?? 0))}</span>
-                    {last_accessed_at && (
-                      <span className="text-zinc-600 text-xs flex items-center gap-1">
-                        <Clock size={11} />
-                        {new Date(last_accessed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                      </span>
+            {recent.map(({ id, course, progress_pct, last_accessed_at }) => {
+              const title = language === 'lv' && course.title_lv ? course.title_lv : course.title_en;
+              const useLatvianThumbnail = course.language === 'lv' || (course.language === 'both' && language === 'lv');
+              const thumbnailUrl = useLatvianThumbnail && course.thumbnail_url_lv ? course.thumbnail_url_lv : course.thumbnail_url;
+              return (
+                <Link key={id} href={`/learn/${course.slug}`}
+                  className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-purple-500/30 transition-all overflow-hidden">
+                  {/* Thumbnail */}
+                  <div className="aspect-video bg-[#16122a] relative overflow-hidden">
+                    {thumbnailUrl ? (
+                      <img src={thumbnailUrl} alt={title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <PlayCircle size={32} className="text-zinc-700" />
+                      </div>
                     )}
+                    {/* Progress overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                      <div className="h-full bg-purple-500 transition-all" style={{ width: `${progress_pct ?? 0}%` }} />
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                  <div className="p-4">
+                    <h3 className="text-white text-sm font-medium line-clamp-2 group-hover:text-purple-300 transition-colors">{title}</h3>
+                    <div className="flex items-center justify-between mt-3">
+                      <span className="text-purple-400 text-xs font-medium">{t('dashboard.progressComplete').replace('{value}', String(progress_pct ?? 0))}</span>
+                      {last_accessed_at && (
+                        <span className="text-zinc-600 text-xs flex items-center gap-1">
+                          <Clock size={11} />
+                          {new Date(last_accessed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

@@ -298,7 +298,8 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
 
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
   const desc = (language === 'lv' && course.description_lv) ? course.description_lv : course.description_en;
-  const thumbnailUrl = (language === 'lv' && course.thumbnail_url_lv) ? course.thumbnail_url_lv : course.thumbnail_url;
+  const useLatvianThumbnail = course.language === 'lv' || (course.language === 'both' && language === 'lv');
+  const thumbnailUrl = useLatvianThumbnail && course.thumbnail_url_lv ? course.thumbnail_url_lv : course.thumbnail_url;
   const learningOutcomes = (language === 'lv' && course.what_you_learn_lv?.length) ? course.what_you_learn_lv : course.what_you_learn;
   const requirements = (language === 'lv' && course.requirements_lv?.length) ? course.requirements_lv : course.requirements;
   const instructorBio = course.instructor

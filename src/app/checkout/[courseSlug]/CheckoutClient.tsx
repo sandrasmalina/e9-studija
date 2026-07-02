@@ -17,6 +17,8 @@ interface CourseSummary {
   discount_price: number | null;
   currency: string;
   thumbnail_url: string | null;
+  thumbnail_url_lv: string | null;
+  language: string | null;
   is_free: boolean;
 }
 
@@ -28,6 +30,8 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
   const [error, setError] = useState('');
 
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
+  const useLatvianThumbnail = course.language === 'lv' || (course.language === 'both' && language === 'lv');
+  const thumbnailUrl = useLatvianThumbnail && course.thumbnail_url_lv ? course.thumbnail_url_lv : course.thumbnail_url;
   const displayPrice = course.discount_price ?? course.price;
 
   useEffect(() => {
@@ -88,8 +92,8 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
         <div className="rounded-2xl border border-white/10 bg-[#16122a] overflow-hidden">
           {/* Course summary */}
           <div className="flex items-center gap-4 p-5 border-b border-white/8">
-            {course.thumbnail_url ? (
-              <Image src={course.thumbnail_url} alt={title} width={72} height={48}
+            {thumbnailUrl ? (
+              <Image src={thumbnailUrl} alt={title} width={72} height={48}
                 className="rounded-lg object-cover shrink-0" />
             ) : (
               <div className="w-[72px] h-12 rounded-lg bg-accent/10 shrink-0" />
