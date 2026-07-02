@@ -86,6 +86,8 @@ interface CourseForm {
   discount_starts_at: string;
   discount_ends_at: string;
   discount_type: 'none' | 'permanent' | 'period';
+  billing_type: 'one_time' | 'subscription';
+  subscription_interval: 'month' | 'year';
   is_free: boolean;
   fake_enrollment_count: string;
   access_duration_months: string;
@@ -114,7 +116,7 @@ const EMPTY: CourseForm = {
   title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
   description_en: '', description_lv: '', learning_schedule_en: '', learning_schedule_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', requirements_lv: '', what_you_learn: '', what_you_learn_lv: '', target_audience: '', target_audience_lv: '', delivery_mode: 'online',
-  price: '0', discount_price: '', discount_starts_at: '', discount_ends_at: '', discount_type: 'none', is_free: false, fake_enrollment_count: '0',
+  price: '0', discount_price: '', discount_starts_at: '', discount_ends_at: '', discount_type: 'none', billing_type: 'one_time', subscription_interval: 'month', is_free: false, fake_enrollment_count: '0',
   access_duration_months: '', starts_at: '', ends_at: '', certificate_enabled: true,
 };
 
@@ -143,7 +145,7 @@ export default function CourseEditPage() {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error: courseError } = await supabase.from('courses')
-        .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, learning_schedule_en, learning_schedule_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, is_free, fake_enrollment_count, access_duration_months, starts_at, ends_at, certificate_enabled')
+        .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, learning_schedule_en, learning_schedule_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, billing_type, subscription_interval, is_free, fake_enrollment_count, access_duration_months, starts_at, ends_at, certificate_enabled')
         .eq('id', id)
         .maybeSingle();
 
@@ -187,6 +189,8 @@ export default function CourseEditPage() {
         discount_starts_at: data.discount_starts_at ? data.discount_starts_at.slice(0, 16) : '',
         discount_ends_at: data.discount_ends_at ? data.discount_ends_at.slice(0, 16) : '',
         discount_type: data.discount_price ? (data.discount_starts_at || data.discount_ends_at ? 'period' : 'permanent') : 'none',
+        billing_type: data.billing_type === 'subscription' ? 'subscription' : 'one_time',
+        subscription_interval: data.subscription_interval === 'year' ? 'year' : 'month',
         is_free: data.is_free ?? false,
         fake_enrollment_count: data.fake_enrollment_count != null ? String(data.fake_enrollment_count) : '0',
         access_duration_months: data.access_duration_months != null ? String(data.access_duration_months) : '',
@@ -294,6 +298,8 @@ export default function CourseEditPage() {
       delivery_mode: form.delivery_mode,
       price: form.is_free ? 0 : Number(form.price) || 0,
       is_free: form.is_free,
+      billing_type: form.is_free ? 'one_time' : form.billing_type,
+      subscription_interval: form.subscription_interval,
       fake_enrollment_count: Math.max(0, Number(form.fake_enrollment_count) || 0),
       access_duration_months: form.access_duration_months ? Math.max(1, Number(form.access_duration_months) || 1) : null,
       discount_price: !form.is_free && form.discount_type !== 'none' && form.discount_price ? Number(form.discount_price) : null,
@@ -463,6 +469,21 @@ export default function CourseEditPage() {
           </label>
           {!form.is_free && (
             <>
+              <Field label="Pricing Model">
+                <div className="grid grid-cols-2 gap-2">
+                  {([['one_time', 'Single purchase'], ['subscription', 'Subscription']] as const).map(([value, label]) => (
+                    <button key={value} type="button" onClick={() => set('billing_type', value)} className={`rounded-xl border px-3 py-2 text-sm transition-colors ${form.billing_type === value ? 'border-purple-500/40 bg-purple-500/15 text-white' : 'border-white/[0.08] text-zinc-500 hover:text-white'}`}>{label}</button>
+                  ))}
+                </div>
+              </Field>
+              {form.billing_type === 'subscription' && (
+                <Field label="Billing Interval">
+                  <select value={form.subscription_interval} onChange={e => set('subscription_interval', e.target.value)} className={inputCls}>
+                    <option value="month">Monthly</option>
+                    <option value="year">Yearly</option>
+                  </select>
+                </Field>
+              )}
               <Field label="Price (€)">
                 <Input type="number" value={form.price} onChange={v => set('price', v)} placeholder="0.00" />
               </Field>

@@ -14,6 +14,8 @@ interface CourseSettings {
   discount_starts_at: string;
   discount_ends_at: string;
   discount_type: 'none' | 'permanent' | 'period';
+  billing_type: 'one_time' | 'subscription';
+  subscription_interval: 'month' | 'year';
   is_free: boolean;
   certificate_enabled: boolean;
   status: string;
@@ -36,7 +38,7 @@ export default function CourseSettingsPage() {
 
   useEffect(() => {
     supabase.from('courses')
-      .select('title_en, slug, price, discount_price, discount_starts_at, discount_ends_at, is_free, certificate_enabled, status')
+      .select('title_en, slug, price, discount_price, discount_starts_at, discount_ends_at, billing_type, subscription_interval, is_free, certificate_enabled, status')
       .eq('id', id)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -51,6 +53,8 @@ export default function CourseSettingsPage() {
             discount_starts_at: data.discount_starts_at ? data.discount_starts_at.slice(0, 16) : '',
             discount_ends_at: data.discount_ends_at ? data.discount_ends_at.slice(0, 16) : '',
             discount_type: data.discount_price ? (data.discount_starts_at || data.discount_ends_at ? 'period' : 'permanent') : 'none',
+            billing_type: data.billing_type === 'subscription' ? 'subscription' : 'one_time',
+            subscription_interval: data.subscription_interval === 'year' ? 'year' : 'month',
             is_free: data.is_free ?? false,
             certificate_enabled: data.certificate_enabled ?? true,
             status: data.status ?? 'draft',
@@ -72,6 +76,8 @@ export default function CourseSettingsPage() {
     const { error } = await supabase.from('courses').update({
       price: settings.is_free ? 0 : Number(settings.price),
       is_free: settings.is_free,
+      billing_type: settings.is_free ? 'one_time' : settings.billing_type,
+      subscription_interval: settings.subscription_interval,
       discount_price: !settings.is_free && settings.discount_type !== 'none' && settings.discount_price ? Number(settings.discount_price) : null,
       discount_starts_at: !settings.is_free && settings.discount_type === 'period' ? settings.discount_starts_at || null : null,
       discount_ends_at: !settings.is_free && settings.discount_type === 'period' ? settings.discount_ends_at || null : null,
@@ -167,6 +173,23 @@ export default function CourseSettingsPage() {
 
           {!settings.is_free && (
             <>
+              <div>
+                <label className="block text-white text-sm font-medium mb-1.5">Pricing Model</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([['one_time', 'Single purchase'], ['subscription', 'Subscription']] as const).map(([value, label]) => (
+                    <button key={value} type="button" onClick={() => set('billing_type', value)} className={`rounded-xl border px-3 py-2 text-sm transition-colors ${settings.billing_type === value ? 'border-purple-500/40 bg-purple-500/15 text-white' : 'border-white/[0.08] text-zinc-500 hover:text-white'}`}>{label}</button>
+                  ))}
+                </div>
+              </div>
+              {settings.billing_type === 'subscription' && (
+                <div>
+                  <label className="block text-white text-sm font-medium mb-1.5">Billing Interval</label>
+                  <select value={settings.subscription_interval} onChange={e => set('subscription_interval', e.target.value)} className="w-full px-4 py-2.5 bg-[#0b0915] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/40">
+                    <option value="month">Monthly</option>
+                    <option value="year">Yearly</option>
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-white text-sm font-medium mb-1.5">Price (€)</label>
                 <input type="number" min="0" step="0.01" value={settings.price}

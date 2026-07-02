@@ -7,6 +7,8 @@ interface PriceBadgeProps {
   discountEndsAt?: string | null;
   currency?: string;
   isFree?: boolean;
+  billingType?: string | null;
+  subscriptionInterval?: string | null;
 }
 
 export function isDiscountActive(discountPrice: number | null | undefined, price: number, discountStartsAt?: string | null, discountEndsAt?: string | null) {
@@ -17,8 +19,9 @@ export function isDiscountActive(discountPrice: number | null | undefined, price
   return (!starts || starts <= now) && (!ends || ends >= now);
 }
 
-export default function PriceBadge({ price, discountPrice, discountStartsAt, discountEndsAt, currency = 'EUR', isFree }: PriceBadgeProps) {
+export default function PriceBadge({ price, discountPrice, discountStartsAt, discountEndsAt, currency = 'EUR', isFree, billingType, subscriptionInterval }: PriceBadgeProps) {
   const symbol = currency === 'EUR' ? '€' : currency === 'USD' ? '$' : currency;
+  const intervalLabel = billingType === 'subscription' ? `/${subscriptionInterval === 'year' ? 'year' : 'month'}` : '';
 
   if (isFree || price === 0) {
     return (
@@ -31,7 +34,7 @@ export default function PriceBadge({ price, discountPrice, discountStartsAt, dis
 
   return (
     <div className="flex items-baseline gap-2">
-      <span className="text-white font-bold text-lg">{symbol}{active.toFixed(2)}</span>
+      <span className="text-white font-bold text-lg">{symbol}{active.toFixed(2)}{intervalLabel}</span>
       {hasDiscount && (
         <span className="text-neutral-500 text-sm line-through">{symbol}{price.toFixed(2)}</span>
       )}

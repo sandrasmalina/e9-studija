@@ -20,6 +20,8 @@ interface CourseSummary {
   thumbnail_url_lv: string | null;
   language: string | null;
   is_free: boolean;
+  billing_type: string | null;
+  subscription_interval: string | null;
 }
 
 export default function CheckoutClient({ course }: { course: CourseSummary }) {
@@ -33,6 +35,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
   const useLatvianThumbnail = course.language === 'lv' || (course.language === 'both' && language === 'lv');
   const thumbnailUrl = useLatvianThumbnail && course.thumbnail_url_lv ? course.thumbnail_url_lv : course.thumbnail_url;
   const displayPrice = course.discount_price ?? course.price;
+  const intervalLabel = course.billing_type === 'subscription' ? `/${course.subscription_interval === 'year' ? 'year' : 'month'}` : '';
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -101,7 +104,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
             <div className="min-w-0">
               <p className="text-white font-medium text-sm truncate">{title}</p>
               <p className="text-2xl font-bold text-white mt-1">
-                {displayPrice === 0 ? 'Free' : `${displayPrice} ${course.currency.toUpperCase()}`}
+                {displayPrice === 0 ? 'Free' : `${displayPrice} ${course.currency.toUpperCase()}${intervalLabel}`}
               </p>
               {course.discount_price !== null && course.discount_price < course.price && (
                 <p className="text-neutral-500 text-xs line-through">{course.price} {course.currency.toUpperCase()}</p>

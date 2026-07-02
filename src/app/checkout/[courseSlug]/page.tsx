@@ -9,7 +9,7 @@ interface PageProps {
 export default async function CheckoutPage({ params }: PageProps) {
   const { data: course } = await serverSupabase
     .from('courses')
-    .select('id, slug, title_en, title_lv, price, discount_price, currency, thumbnail_url, thumbnail_url_lv, language, is_free')
+    .select('id, slug, title_en, title_lv, price, discount_price, currency, thumbnail_url, thumbnail_url_lv, language, is_free, billing_type, subscription_interval')
     .eq('slug', params.courseSlug)
     .single();
 

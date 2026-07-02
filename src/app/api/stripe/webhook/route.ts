@@ -9,7 +9,7 @@ function addMonths(date: Date, months: number) {
   return next;
 }
 
-async function enrollStudent(courseId: string, userId: string, amountPaid: number, currency: string, accessDurationMonths: number | null) {
+async function enrollStudent(courseId: string, userId: string, amountPaid: number, currency: string, accessDurationMonths: number | null, stripeSubscriptionId: string | null, stripeCustomerId: string | null) {
   const expiresAt = accessDurationMonths ? addMonths(new Date(), accessDurationMonths).toISOString() : null;
   const { error } = await supabaseAdmin.from('enrollments').upsert(
     {
@@ -19,6 +19,8 @@ async function enrollStudent(courseId: string, userId: string, amountPaid: numbe
       amount_paid: amountPaid,
       currency: currency.toUpperCase(),
       expires_at: expiresAt,
+      stripe_subscription_id: stripeSubscriptionId,
+      stripe_customer_id: stripeCustomerId,
     },
     { onConflict: 'user_id,course_id' }
   );
@@ -108,7 +110,10 @@ export async function POST(req: NextRequest) {
         .eq('id', course_id)
         .single();
 
-      await enrollStudent(course_id, resolvedUserId, amountPaid, currency, course?.access_duration_months ?? null);
+      const stripeSubscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id ?? null;
+      const stripeCustomerId = typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null;
+
+      await enrollStudent(course_id, resolvedUserId, amountPaid, currency, course?.access_duration_months ?? null, stripeSubscriptionId, stripeCustomerId);
 
       console.log(`[webhook] enrolled user ${resolvedUserId} in course ${course_slug ?? course_id}`);
 
@@ -126,6 +131,14 @@ export async function POST(req: NextRequest) {
       const session = event.data.object as Stripe.Checkout.Session;
       console.warn('[webhook] async payment failed for session', session.id);
       // Could notify user here via email in future
+    }
+
+    if (event.type === 'customer.subscription.deleted') {
+      const subscription = event.data.object as Stripe.Subscription;
+      await supabaseAdmin
+        .from('enrollments')
+        .update({ status: 'canceled', canceled_at: new Date().toISOString(), expires_at: new Date().toISOString() } as Record<string, unknown>)
+        .eq('stripe_subscription_id', subscription.id);
     }
   } catch (err) {
     console.error('[webhook] handler error:', err);

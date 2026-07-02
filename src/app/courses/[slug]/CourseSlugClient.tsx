@@ -99,6 +99,8 @@ interface Course {
   discount_ends_at: string | null;
   currency: string;
   is_free: boolean;
+  billing_type: string | null;
+  subscription_interval: string | null;
   access_duration_months: number | null;
   level: string | null;
   language: string;
@@ -469,6 +471,8 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                   discountEndsAt={course.discount_ends_at}
                   currency={course.currency}
                   isFree={course.is_free}
+                  billingType={course.billing_type}
+                  subscriptionInterval={course.subscription_interval}
                 />
 
                 {/* Enrollment CTA — dynamic based on auth + enrollment state */}
@@ -495,7 +499,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                   )}
                   {!isPreview && enrollState === 'not-enrolled' && !course.is_free && course.price > 0 && (
                     <Link href={`/checkout/${course.slug}`}>
-                      <Button className="w-full text-base py-3">{t('courses.enroll.paid') || 'Buy Course'}</Button>
+                      <Button className="w-full text-base py-3">{course.billing_type === 'subscription' ? (language === 'lv' ? 'Abonēt kursu' : 'Subscribe') : (t('courses.enroll.paid') || 'Buy Course')}</Button>
                     </Link>
                   )}
                   {!isPreview && enrollState === 'not-authed' && (

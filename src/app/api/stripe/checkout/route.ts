@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     // 2. Fetch course
     const { data: course, error: courseErr } = await supabase
       .from('courses')
-      .select('id, title_en, slug, price, discount_price, discount_starts_at, discount_ends_at, currency, thumbnail_url, is_free, instructor_id, profiles!courses_instructor_id_fkey(role,stripe_account_id,revenue_share_pct)')
+      .select('id, title_en, slug, price, discount_price, discount_starts_at, discount_ends_at, currency, thumbnail_url, is_free, billing_type, subscription_interval, instructor_id, profiles!courses_instructor_id_fkey(role,stripe_account_id,revenue_share_pct)')
       .eq('slug', courseSlug)
       .single();
 
@@ -40,11 +40,12 @@ export async function POST(req: NextRequest) {
     if (user) {
       const { data: existing } = await supabase
         .from('enrollments')
-        .select('id')
+        .select('id, status, expires_at')
         .eq('user_id', user.id)
         .eq('course_id', course.id)
         .maybeSingle();
-      if (existing) {
+      const existingExpired = existing?.expires_at ? new Date(existing.expires_at).getTime() <= Date.now() : false;
+      if (existing && existing.status === 'active' && !existingExpired) {
         return NextResponse.json({ error: 'Already enrolled' }, { status: 409 });
       }
     }
@@ -59,16 +60,25 @@ export async function POST(req: NextRequest) {
     const isAdminCourse = instructorProfile?.role === 'admin';
     const stripeAccountId = isAdminCourse ? null : instructorProfile?.stripe_account_id;
     const platformFeePct = isAdminCourse ? 100 : Math.max(0, Math.min(100, 100 - (instructorProfile?.revenue_share_pct ?? 70)));
+    const isSubscription = course.billing_type === 'subscription';
     let paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData | undefined;
+    let subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData | undefined;
 
     if (stripeAccountId) {
       try {
         const account = await stripe.accounts.retrieve(stripeAccountId);
         if (!account.deleted && account.charges_enabled && account.payouts_enabled) {
-          paymentIntentData = {
-            application_fee_amount: Math.round(unitAmount * (platformFeePct / 100)),
-            transfer_data: { destination: stripeAccountId },
-          };
+          if (isSubscription) {
+            subscriptionData = {
+              application_fee_percent: platformFeePct,
+              transfer_data: { destination: stripeAccountId },
+            };
+          } else {
+            paymentIntentData = {
+              application_fee_amount: Math.round(unitAmount * (platformFeePct / 100)),
+              transfer_data: { destination: stripeAccountId },
+            };
+          }
         }
       } catch (connectErr) {
         console.warn('[stripe/checkout] connect account unavailable:', connectErr);
@@ -77,7 +87,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
+      mode: isSubscription ? 'subscription' : 'payment',
       payment_method_types: ['card'],
       ...(isGuest
         ? { customer_email: guestEmail }  // prefill email for guest
@@ -87,6 +97,7 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: course.currency.toLowerCase(),
             unit_amount: unitAmount,
+            ...(isSubscription ? { recurring: { interval: course.subscription_interval === 'year' ? 'year' : 'month' } } : {}),
             product_data: {
               name: course.title_en,
               ...(course.thumbnail_url ? { images: [course.thumbnail_url] } : {}),
@@ -100,13 +111,16 @@ export async function POST(req: NextRequest) {
         course_slug: course.slug,
         instructor_id: course.instructor_id ?? '',
         platform_fee_pct: String(platformFeePct),
+        billing_type: isSubscription ? 'subscription' : 'one_time',
+        subscription_interval: isSubscription ? (course.subscription_interval ?? 'month') : '',
         connect_account_id: stripeAccountId ?? '',
-        transfer_status: isAdminCourse ? 'platform_income' : paymentIntentData ? 'automatic' : 'platform_hold',
+        transfer_status: isAdminCourse ? 'platform_income' : paymentIntentData || subscriptionData ? 'automatic' : 'platform_hold',
         ...(user
           ? { user_id: user.id }
           : { guest_email: guestEmail, guest_name: guestName ?? '' }),
       },
       ...(paymentIntentData ? { payment_intent_data: paymentIntentData } : {}),
+      ...(subscriptionData ? { subscription_data: subscriptionData } : {}),
       success_url: `${origin}/checkout/${course.slug}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/courses/${course.slug}`,
     });

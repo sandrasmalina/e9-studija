@@ -20,6 +20,8 @@ export interface CourseCardData {
   discount_price: number | null;
   currency: string;
   is_free: boolean;
+  billing_type: string | null;
+  subscription_interval: string | null;
   level: string | null;
   language: string | null;
   total_duration_minutes: number;
@@ -162,6 +164,8 @@ export default function CourseCard({ course }: CourseCardProps) {
             discountPrice={course.discount_price ? Number(course.discount_price) : null}
             currency={course.currency}
             isFree={course.is_free}
+            billingType={course.billing_type}
+            subscriptionInterval={course.subscription_interval}
           />
         </div>
       </div>

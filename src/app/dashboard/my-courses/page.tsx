@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { BookOpen, PlayCircle, Search, CheckCircle2 } from 'lucide-react';
+import { BookOpen, PlayCircle, Search, CheckCircle2, XCircle } from 'lucide-react';
 
 interface Enrollment {
   id: string;
@@ -13,6 +13,7 @@ interface Enrollment {
   expires_at: string | null;
   completed_at: string | null;
   last_accessed_at: string | null;
+  status: string;
   course: {
     id: string;
     title_en: string;
@@ -20,6 +21,8 @@ interface Enrollment {
     thumbnail_url: string | null;
     thumbnail_url_lv: string | null;
     language: string | null;
+    billing_type: string | null;
+    subscription_interval: string | null;
     slug: string;
     instructor: { full_name: string } | null;
   };
@@ -38,6 +41,8 @@ function formatAccess(expiresAt: string | null) {
 export default function MyCoursesPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState('');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const { language } = useLanguage();
@@ -48,13 +53,46 @@ export default function MyCoursesPage() {
       if (!user) return;
       const { data } = await supabase
         .from('enrollments')
-        .select('id, progress_pct, enrolled_at, expires_at, completed_at, last_accessed_at, course:courses(id, title_en, title_lv, thumbnail_url, thumbnail_url_lv, language, slug, instructor:profiles!courses_instructor_id_fkey(full_name))')
+        .select('id, progress_pct, enrolled_at, expires_at, completed_at, last_accessed_at, status, course:courses(id, title_en, title_lv, thumbnail_url, thumbnail_url_lv, language, billing_type, subscription_interval, slug, instructor:profiles!courses_instructor_id_fkey(full_name))')
         .eq('user_id', user.id)
+        .neq('status', 'canceled')
         .order('last_accessed_at', { ascending: false, nullsFirst: false });
       setEnrollments((data ?? []) as unknown as Enrollment[]);
       setLoading(false);
     })();
   }, []);
+
+  const handleUnsubscribe = async (enrollmentId: string, courseTitle: string) => {
+    if (!window.confirm(`Unsubscribe from ${courseTitle}? Your access to this course will stop.`)) return;
+    setCancellingId(enrollmentId);
+    setActionError('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setActionError('Please sign in again to unsubscribe.');
+      setCancellingId(null);
+      return;
+    }
+
+    const response = await fetch('/api/enrollments/unsubscribe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ enrollmentId }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      setActionError(data.error ?? 'Could not unsubscribe from this course.');
+      setCancellingId(null);
+      return;
+    }
+
+    setEnrollments(current => current.filter(enrollment => enrollment.id !== enrollmentId));
+    setCancellingId(null);
+  };
 
   const filtered = enrollments.filter(e => {
     const matchSearch = e.course.title_en.toLowerCase().includes(search.toLowerCase());
@@ -89,6 +127,8 @@ export default function MyCoursesPage() {
         </div>
       </div>
 
+      {actionError && <p className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">{actionError}</p>}
+
       {loading ? (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => <div key={i} className="h-64 rounded-2xl bg-white/[0.04] animate-pulse" />)}
@@ -109,35 +149,47 @@ export default function MyCoursesPage() {
             const title = language === 'lv' && course.title_lv ? course.title_lv : course.title_en;
             const useLatvianThumbnail = course.language === 'lv' || (course.language === 'both' && language === 'lv');
             const thumbnailUrl = useLatvianThumbnail && course.thumbnail_url_lv ? course.thumbnail_url_lv : course.thumbnail_url;
+            const isSubscription = course.billing_type === 'subscription';
             return (
-              <Link key={id} href={`/learn/${course.slug}`}
+              <div key={id}
                 className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:border-purple-500/30 hover:bg-white/[0.04] transition-all overflow-hidden">
                 {/* Thumbnail */}
-                <div className="aspect-video bg-[#16122a] relative overflow-hidden">
-                  {thumbnailUrl ? (
-                    <img src={thumbnailUrl} alt={title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <PlayCircle size={32} className="text-zinc-700" />
+                <Link href={`/learn/${course.slug}`} className="block">
+                  <div className="aspect-video bg-[#16122a] relative overflow-hidden">
+                    {thumbnailUrl ? (
+                      <img src={thumbnailUrl} alt={title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <PlayCircle size={32} className="text-zinc-700" />
+                      </div>
+                    )}
+                    {completed_at && (
+                      <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 bg-green-900/80 text-green-400 text-xs font-medium px-2.5 py-1 rounded-lg backdrop-blur">
+                        <CheckCircle2 size={12} /> Completed
+                      </div>
+                    )}
+                    {/* Progress bar */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                      <div className="h-full bg-purple-500 transition-all" style={{ width: `${progress_pct ?? 0}%` }} />
                     </div>
-                  )}
-                  {completed_at && (
-                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 bg-green-900/80 text-green-400 text-xs font-medium px-2.5 py-1 rounded-lg backdrop-blur">
-                      <CheckCircle2 size={12} /> Completed
-                    </div>
-                  )}
-                  {/* Progress bar */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-                    <div className="h-full bg-purple-500 transition-all" style={{ width: `${progress_pct ?? 0}%` }} />
                   </div>
-                </div>
+                </Link>
 
                 <div className="p-4">
-                  <h3 className="text-white text-sm font-medium line-clamp-2 group-hover:text-purple-300 transition-colors">{title}</h3>
+                  <Link href={`/learn/${course.slug}`} className="block">
+                    <h3 className="text-white text-sm font-medium line-clamp-2 group-hover:text-purple-300 transition-colors">{title}</h3>
+                  </Link>
                 {course.instructor?.full_name && (
                   <p className="text-zinc-600 text-xs mt-1">{course.instructor.full_name}</p>
                 )}
-                <p className={`text-xs mt-2 ${expires_at && new Date(expires_at).getTime() <= Date.now() ? 'text-red-400' : 'text-zinc-500'}`}>{formatAccess(expires_at)}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <p className={`text-xs ${expires_at && new Date(expires_at).getTime() <= Date.now() ? 'text-red-400' : 'text-zinc-500'}`}>{formatAccess(expires_at)}</p>
+                  {isSubscription && (
+                    <span className="rounded-full border border-purple-500/20 bg-purple-500/10 px-2 py-0.5 text-[11px] font-medium text-purple-300">
+                      {course.subscription_interval === 'year' ? 'Yearly subscription' : 'Monthly subscription'}
+                    </span>
+                  )}
+                </div>
                 <div className="mt-3 flex items-center justify-between">
                   <div className="flex-1 mr-3">
                     <div className="flex justify-between mb-1">
@@ -149,8 +201,19 @@ export default function MyCoursesPage() {
                     </div>
                   </div>
                 </div>
+                {isSubscription && (
+                  <button
+                    type="button"
+                    onClick={() => handleUnsubscribe(id, title)}
+                    disabled={cancellingId === id}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300 transition-colors hover:border-red-500/40 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <XCircle size={15} />
+                    {cancellingId === id ? 'Unsubscribing...' : 'Unsubscribe'}
+                  </button>
+                )}
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>

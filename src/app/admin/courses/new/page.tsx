@@ -32,6 +32,8 @@ interface CourseForm {
   price: string;
   discount_price: string;
   discount_ends_at: string;
+  billing_type: 'one_time' | 'subscription';
+  subscription_interval: 'month' | 'year';
   is_free: boolean;
   access_duration_months: string;
   starts_at: string;
@@ -60,7 +62,7 @@ const EMPTY: CourseForm = {
   title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
   description_en: '', description_lv: '', learning_schedule_en: '', learning_schedule_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '', target_audience_lv: '',
-  price: '0', discount_price: '', discount_ends_at: '', is_free: false, access_duration_months: '', starts_at: '', ends_at: '',
+  price: '0', discount_price: '', discount_ends_at: '', billing_type: 'one_time', subscription_interval: 'month', is_free: false, access_duration_months: '', starts_at: '', ends_at: '',
   meta_title: '', meta_description: '', meta_keywords: '', og_title: '', og_description: '', og_image: '', canonical_url: '', no_index: false,
   ai_summary: '', key_takeaways: '', faq_items: '', tags_ai_topics: '', expertise_level: '', industry: '',
   certificate_enabled: true, status: 'draft',
@@ -164,6 +166,8 @@ export default function AdminCourseNewPage() {
       price: form.is_free ? 0 : Number(form.price) || 0,
       discount_price: form.discount_price ? Number(form.discount_price) : null,
       discount_ends_at: form.discount_ends_at || null,
+      billing_type: form.is_free ? 'one_time' : form.billing_type,
+      subscription_interval: form.subscription_interval,
       is_free: form.is_free,
       access_duration_months: form.access_duration_months ? Math.max(1, Number(form.access_duration_months) || 1) : null,
       starts_at: form.starts_at || null,
@@ -363,6 +367,20 @@ export default function AdminCourseNewPage() {
           </label>
           {!form.is_free && (
             <div className="grid grid-cols-2 gap-4">
+              <Field label="Pricing Model">
+                <select value={form.billing_type} onChange={e => set('billing_type', e.target.value)} className={selectCls}>
+                  <option value="one_time">Single purchase</option>
+                  <option value="subscription">Subscription</option>
+                </select>
+              </Field>
+              {form.billing_type === 'subscription' && (
+                <Field label="Billing Interval">
+                  <select value={form.subscription_interval} onChange={e => set('subscription_interval', e.target.value)} className={selectCls}>
+                    <option value="month">Monthly</option>
+                    <option value="year">Yearly</option>
+                  </select>
+                </Field>
+              )}
               <Field label="Price (€)">
                 <input type="number" min="0" step="0.01" value={form.price} onChange={e => set('price', e.target.value)} className={inputCls} />
               </Field>
