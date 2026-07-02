@@ -72,6 +72,12 @@ interface AvailabilityGroup {
   sort_order: number | null;
 }
 
+interface CourseInstructor {
+  instructor_id: string;
+  sort_order: number | null;
+  instructor: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; bio_lv: string | null; website: string | null } | null;
+}
+
 interface Course {
   id: string;
   slug: string;
@@ -114,6 +120,7 @@ interface Course {
   starts_at?: string | null;
   ends_at?: string | null;
   instructor: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; bio_lv: string | null; website: string | null } | null;
+  course_instructors: CourseInstructor[] | null;
   category: { name_en: string; name_lv: string | null; slug: string; icon: string | null } | null;
   course_availability_groups: AvailabilityGroup[] | null;
   sections: Section[];
@@ -303,11 +310,18 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   const useLatvianCourseContent = course.language === 'lv' || (course.language === 'both' && language === 'lv');
   const learningSchedule = useLatvianCourseContent && course.learning_schedule_lv ? course.learning_schedule_lv : course.learning_schedule_en;
   const useLatvianThumbnail = course.language === 'lv' || (course.language === 'both' && language === 'lv');
-  const thumbnailUrl = useLatvianThumbnail && course.thumbnail_url_lv ? course.thumbnail_url_lv : course.thumbnail_url;
+  const thumbnailUrl = useLatvianThumbnail
+    ? (course.thumbnail_url_lv || course.thumbnail_url)
+    : (course.thumbnail_url || course.thumbnail_url_lv);
+  const assignedInstructor = (course.course_instructors ?? [])
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .find(row => row.instructor?.full_name)?.instructor ?? null;
+  const displayInstructor = course.instructor?.full_name ? course.instructor : assignedInstructor;
   const learningOutcomes = (language === 'lv' && course.what_you_learn_lv?.length) ? course.what_you_learn_lv : course.what_you_learn;
   const requirements = (language === 'lv' && course.requirements_lv?.length) ? course.requirements_lv : course.requirements;
-  const instructorBio = course.instructor
-    ? ((language === 'lv' && course.instructor.bio_lv) ? course.instructor.bio_lv : course.instructor.bio)
+  const instructorBio = displayInstructor
+    ? ((language === 'lv' && displayInstructor.bio_lv) ? displayInstructor.bio_lv : displayInstructor.bio)
     : null;
   const targetAudience = ((language === 'lv' && course.target_audience_lv) ? course.target_audience_lv : course.target_audience)
     ?.split('\n')
@@ -398,14 +412,14 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                 <span className="flex items-center gap-1.5"><Globe size={14} />{courseLanguageLabel}</span>
               </div>
 
-              {course.instructor?.full_name && (
+              {displayInstructor?.full_name && (
                 <div className="flex items-center gap-3 mb-6">
-                  {course.instructor.avatar_url && (
-                    <img src={course.instructor.avatar_url} alt={course.instructor.full_name}
+                  {displayInstructor.avatar_url && (
+                    <img src={displayInstructor.avatar_url} alt={displayInstructor.full_name}
                       className="h-8 w-8 rounded-full object-cover" />
                   )}
                   <span className="text-neutral-400 text-sm">
-                    {t('courses.by')} <span className="text-accent">{course.instructor.full_name}</span>
+                    {t('courses.by')} <span className="text-accent">{displayInstructor.full_name}</span>
                   </span>
                 </div>
               )}
@@ -669,20 +683,20 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
             )}
 
             {/* Instructor */}
-            {course.instructor && (
+            {displayInstructor && (
               <section>
                 <h2 className="text-xl font-bold text-white mb-5">{t('courses.section.instructor')}</h2>
                 <div className="flex items-start gap-4">
-                  {course.instructor.avatar_url ? (
-                    <img src={course.instructor.avatar_url} alt={course.instructor.full_name ?? ''}
+                  {displayInstructor.avatar_url ? (
+                    <img src={displayInstructor.avatar_url} alt={displayInstructor.full_name ?? ''}
                       className="h-16 w-16 rounded-full object-cover shrink-0" />
                   ) : (
                     <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                      <span className="text-accent text-xl font-bold">{course.instructor.full_name?.[0]}</span>
+                      <span className="text-accent text-xl font-bold">{displayInstructor.full_name?.[0]}</span>
                     </div>
                   )}
                   <div>
-                    <h3 className="text-white font-semibold">{course.instructor.full_name}</h3>
+                    <h3 className="text-white font-semibold">{displayInstructor.full_name}</h3>
                     {instructorBio && (
                       <p className="text-neutral-400 text-sm mt-2 leading-relaxed">{instructorBio}</p>
                     )}

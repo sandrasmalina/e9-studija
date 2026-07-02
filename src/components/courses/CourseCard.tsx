@@ -62,7 +62,9 @@ export default function CourseCard({ course }: CourseCardProps) {
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
   const desc = (language === 'lv' && course.short_description_lv) ? course.short_description_lv : course.short_description_en;
   const useLatvianThumbnail = course.language === 'lv' || (course.language === 'both' && language === 'lv');
-  const thumbnailUrl = useLatvianThumbnail && course.thumbnail_url_lv ? course.thumbnail_url_lv : course.thumbnail_url;
+  const thumbnailUrl = useLatvianThumbnail
+    ? (course.thumbnail_url_lv || course.thumbnail_url)
+    : (course.thumbnail_url || course.thumbnail_url_lv);
   const levelClass = course.level ? (levelColors[course.level] ?? levelColors.all) : null;
   const displayStudentCount = (course.enrollment_count || 0) + (course.fake_enrollment_count || 0);
 

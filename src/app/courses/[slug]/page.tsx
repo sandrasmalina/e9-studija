@@ -43,6 +43,10 @@ export default async function CourseSlugPage({ params, searchParams }: Props) {
     .select(`
       *,
       instructor:profiles!instructor_id(id, full_name, avatar_url, bio, bio_lv, website),
+      course_instructors(
+        instructor_id, sort_order,
+        instructor:profiles!course_instructors_instructor_id_fkey(id, full_name, avatar_url, bio, bio_lv, website)
+      ),
       category:categories!category_id(name_en, name_lv, slug, icon),
       sections(
         id, title_en, title_lv, sort_order,
