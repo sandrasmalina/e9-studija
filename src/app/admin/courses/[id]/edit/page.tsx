@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { ArrowLeft, Save, ImageIcon, Upload, X, ExternalLink, BookOpen } from 'lucide-react';
+import CourseEmailTemplateEditor from '@/components/courses/CourseEmailTemplateEditor';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
@@ -474,6 +475,8 @@ export default function AdminCourseEditPage() {
             </Field>
           </div>
         </div>
+
+        <CourseEmailTemplateEditor courseId={id} courseTitle={courseTitle || form.title_en} variant="admin" />
 
         {/* Options */}
         <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/50 p-6">

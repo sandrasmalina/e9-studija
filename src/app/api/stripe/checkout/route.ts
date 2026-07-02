@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 export async function POST(req: NextRequest) {
   try {
     const stripe = getStripe();
-    const { courseSlug, guestEmail, guestName } = await req.json();
+    const { courseSlug, guestEmail, guestName, language } = await req.json();
     if (!courseSlug) {
       return NextResponse.json({ error: 'courseSlug required' }, { status: 400 });
     }
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
     const stripeAccountId = isAdminCourse ? null : instructorProfile?.stripe_account_id;
     const platformFeePct = isAdminCourse ? 100 : Math.max(0, Math.min(100, 100 - (instructorProfile?.revenue_share_pct ?? 70)));
     const isSubscription = course.billing_type === 'subscription';
+    const purchaseLanguage = language === 'lv' ? 'lv' : 'en';
     let paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData | undefined;
     let subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData | undefined;
 
@@ -113,6 +114,7 @@ export async function POST(req: NextRequest) {
         platform_fee_pct: String(platformFeePct),
         billing_type: isSubscription ? 'subscription' : 'one_time',
         subscription_interval: isSubscription ? (course.subscription_interval ?? 'month') : '',
+        purchase_language: purchaseLanguage,
         connect_account_id: stripeAccountId ?? '',
         transfer_status: isAdminCourse ? 'platform_income' : paymentIntentData || subscriptionData ? 'automatic' : 'platform_hold',
         ...(user

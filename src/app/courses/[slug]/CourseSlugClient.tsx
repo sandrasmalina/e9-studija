@@ -267,7 +267,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ courseSlug: course.slug, guestEmail: email, guestName: name }),
+        body: JSON.stringify({ courseSlug: course.slug, guestEmail: email, guestName: name, language }),
       });
       const data = await res.json();
       if (data.url) {

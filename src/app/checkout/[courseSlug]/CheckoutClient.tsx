@@ -63,7 +63,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ courseSlug: course.slug }),
+      body: JSON.stringify({ courseSlug: course.slug, language }),
     });
 
     const data = await res.json();

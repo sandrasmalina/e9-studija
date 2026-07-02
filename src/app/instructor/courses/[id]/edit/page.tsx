@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { ArrowLeft, ExternalLink, ImageIcon, Save, Upload, X } from 'lucide-react';
+import CourseEmailTemplateEditor from '@/components/courses/CourseEmailTemplateEditor';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
@@ -42,6 +43,7 @@ const CHAPTER_TABS = [
   ['descriptions', 'Descriptions'],
   ['schedule', 'Schedule'],
   ['pricing', 'Pricing'],
+  ['emails', 'Emails'],
   ['media', 'Media'],
   ['outcomes', 'Outcomes'],
   ['availability', 'Availability'],
@@ -515,6 +517,10 @@ export default function CourseEditPage() {
           <Field label="Student Access Duration" hint="Leave empty for lifetime access. Enter months to make each enrollment expire after purchase/enrollment.">
             <Input type="number" value={form.access_duration_months} onChange={v => set('access_duration_months', v)} placeholder="Lifetime" />
           </Field>
+        </Chapter>
+
+        <Chapter id="emails" title="Course Emails" subtitle="Customize the purchase confirmation email and send a test before publishing." open={activeChapter === 'emails'} onOpen={() => openChapter('emails')}>
+          <CourseEmailTemplateEditor courseId={id} courseTitle={courseTitle || form.title_en} />
         </Chapter>
 
         {/* Media */}

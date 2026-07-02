@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
+import { sendAdminEnrollmentNotification, sendCourseEnrollmentEmail } from '@/lib/email';
 import { supabaseAdmin } from '@/lib/supabase';
+
+interface EmailDeliveryResult {
+  status: 'sent' | 'skipped';
+  id?: string | null;
+  subject?: string;
+}
 
 function addMonths(date: Date, months: number) {
   const next = new Date(date);
@@ -54,7 +61,7 @@ export async function POST(req: NextRequest) {
       event.type === 'checkout.session.async_payment_succeeded'
     ) {
       const session = event.data.object as Stripe.Checkout.Session;
-      const { course_id, user_id, course_slug, guest_email, guest_name } = session.metadata ?? {};
+      const { course_id, user_id, course_slug, guest_email, guest_name, purchase_language } = session.metadata ?? {};
 
       if (!course_id) {
         console.error('[webhook] missing course_id in metadata', session.metadata);
@@ -106,7 +113,7 @@ export async function POST(req: NextRequest) {
 
       const { data: course } = await supabaseAdmin
         .from('courses')
-        .select('certificate_enabled, access_duration_months')
+        .select('title_en, title_lv, slug, certificate_enabled, access_duration_months, billing_type, subscription_interval, instructor:profiles!courses_instructor_id_fkey(full_name)')
         .eq('id', course_id)
         .single();
 
@@ -124,7 +131,75 @@ export async function POST(req: NextRequest) {
         .eq('user_id', resolvedUserId)
         .eq('course_id', course_id);
 
-      void course; // referenced above
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(resolvedUserId);
+      const recipientEmail = authUser.user?.email ?? guest_email ?? session.customer_details?.email ?? null;
+      const recipientName = authUser.user?.user_metadata?.full_name ?? guest_name ?? session.customer_details?.name ?? null;
+
+      if (recipientEmail && course) {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv';
+        const courseUrl = `${siteUrl}/learn/${course.slug ?? course_slug ?? ''}`;
+        const preferredLanguage = purchase_language === 'lv' ? 'lv' : 'en';
+        const { data: templates } = await supabaseAdmin
+          .from('email_templates')
+          .select('id, subject, preheader, body_html, body_text, sender_name, reply_to_email, language')
+          .eq('type', 'course_purchased')
+          .eq('course_id', course_id)
+          .eq('is_active', true)
+          .order('updated_at', { ascending: false })
+          .limit(10);
+        const template = (templates ?? []).find(item => item.language === preferredLanguage)
+          ?? (templates ?? []).find(item => item.language === 'both')
+          ?? (templates ?? []).find(item => item.language === 'en')
+          ?? null;
+        const instructor = Array.isArray(course.instructor) ? course.instructor[0] : course.instructor;
+        const emailInput = {
+          to: recipientEmail,
+          studentName: recipientName,
+          courseTitle: course.title_en ?? 'E9 Studija course',
+          courseUrl,
+          amountPaid,
+          currency,
+          billingType: course.billing_type,
+          subscriptionInterval: course.subscription_interval,
+          purchaseLanguage: preferredLanguage,
+          teacherName: instructor?.full_name ?? null,
+          supportEmail: process.env.E9_SUPPORT_EMAIL ?? process.env.E9_ADMIN_EMAIL ?? null,
+          template: template ?? null,
+        };
+
+        const emailResults = await Promise.allSettled([
+          sendCourseEnrollmentEmail(emailInput),
+          sendAdminEnrollmentNotification(emailInput),
+        ]);
+        const studentEmailResult = emailResults[0];
+        if (studentEmailResult.status === 'fulfilled') {
+          const delivery = studentEmailResult.value as EmailDeliveryResult | undefined;
+          if (delivery) {
+            await supabaseAdmin.from('email_logs').insert({
+              recipient_email: recipientEmail,
+              subject: delivery.subject ?? `You are enrolled in ${course.title_en ?? 'E9 Studija course'}`,
+              status: delivery.status,
+              template_id: template?.id ?? null,
+              course_id,
+              resend_email_id: delivery.id ?? null,
+              sent_at: delivery.status === 'sent' ? new Date().toISOString() : null,
+            });
+          }
+        }
+        if (studentEmailResult.status === 'rejected') {
+          console.error('[webhook] enrollment email failed:', studentEmailResult.reason);
+          await supabaseAdmin.from('email_logs').insert({
+            recipient_email: recipientEmail,
+            subject: template?.subject ?? `You are enrolled in ${course.title_en ?? 'E9 Studija course'}`,
+            status: 'failed',
+            template_id: template?.id ?? null,
+            course_id,
+            error_message: studentEmailResult.reason instanceof Error ? studentEmailResult.reason.message : String(studentEmailResult.reason),
+          });
+        }
+        const adminEmailResult = emailResults[1];
+        if (adminEmailResult.status === 'rejected') console.error('[webhook] admin enrollment email failed:', adminEmailResult.reason);
+      }
     }
 
     if (event.type === 'checkout.session.async_payment_failed') {
