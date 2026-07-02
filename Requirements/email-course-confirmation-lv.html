@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Jūs esat reģistrēts kursam {{course_title}}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f3ff;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f3ff;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+          <tr>
+            <td style="background:linear-gradient(135deg,#f0eeff 0%,#e879f9 60%,#a855f7 100%);background-color:#a855f7;border-radius:16px 16px 0 0;padding:48px 48px 40px;text-align:center;">
+              <div style="margin-bottom:28px;">
+                <img src="https://www.e9studija.lv/logo-512.png" alt="" width="96" style="display:block;margin:0 auto;max-width:96px;border:0;outline:none;text-decoration:none;border-radius:18px;">
+              </div>
+              <p style="margin:0;font-size:14px;font-weight:600;color:#4c1d95;letter-spacing:2px;text-transform:uppercase;">Jūs esat reģistrēts</p>
+              <h1 style="margin:10px 0 0;font-size:26px;font-weight:700;color:#26215C;line-height:1.3;">{{course_title}}</h1>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background:#ffffff;padding:48px 48px 40px;">
+              <p style="margin:0 0 8px;font-size:22px;font-weight:600;color:#26215C;">Sveiki, {{student_name}}!</p>
+              <p style="margin:0 0 28px;font-size:16px;color:#6b7280;line-height:1.6;">
+                Paldies, ka pievienojāties kursam. Jūsu piekļuve ir gatava, un jūs varat sākt mācīties jau tagad.
+              </p>
+
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:36px;">
+                <tr>
+                  <td align="center">
+                    <a href="{{course_access_link}}" style="display:inline-block;background:linear-gradient(135deg,#e879f9,#a855f7);background-color:#a855f7;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:16px 40px;border-radius:50px;letter-spacing:0.3px;">
+                      Sākt mācības &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">
+                <tr>
+                  <td style="border-top:1px solid #f0eeff;font-size:0;">&nbsp;</td>
+                </tr>
+              </table>
+
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf5ff;border-left:4px solid #a855f7;border-radius:0 10px 10px 0;margin-bottom:36px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#7c3aed;text-transform:uppercase;letter-spacing:1px;">Tiešsaistes nodarbības</p>
+                    <p style="margin:0;font-size:15px;color:#4b5563;line-height:1.6;">
+                      Ja kursā ir tiešsaistes nodarbības, nodarbību informāciju un Zoom saiti atradīsiet kursa materiālos.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 14px;font-size:14px;font-weight:600;color:#26215C;text-transform:uppercase;letter-spacing:1px;">Ko darīt tālāk</p>
+
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:36px;">
+                <tr>
+                  <td style="padding:0 0 14px;">
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="width:32px;height:32px;background:#f0eeff;border-radius:50%;text-align:center;font-size:13px;font-weight:700;color:#7c3aed;vertical-align:middle;">1</td>
+                        <td style="padding-left:14px;font-size:15px;color:#374151;">Atveriet kursu un apskatiet pirmās nodarbības materiālus.</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 14px;">
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="width:32px;height:32px;background:#f0eeff;border-radius:50%;text-align:center;font-size:13px;font-weight:700;color:#7c3aed;vertical-align:middle;">2</td>
+                        <td style="padding-left:14px;font-size:15px;color:#374151;">Sagatavojiet ideju vai jautājumu, ko vēlaties paņemt līdzi uz pirmo nodarbību.</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="width:32px;height:32px;background:#f0eeff;border-radius:50%;text-align:center;font-size:13px;font-weight:700;color:#7c3aed;vertical-align:middle;">3</td>
+                        <td style="padding-left:14px;font-size:15px;color:#374151;">Atbildiet uz šo e-pastu, ja pirms sākuma ir kādi jautājumi.</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0;font-size:15px;color:#374151;line-height:1.6;">
+                Uz tikšanos pirmajā nodarbībā,<br>
+                <strong style="color:#26215C;">{{teacher_name}}</strong>
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background:#f5f3ff;border-radius:0 0 16px 16px;padding:28px 48px;text-align:center;">
+              <p style="margin:0 0 8px;font-size:12px;color:#9ca3af;">
+                Jūs saņēmāt šo e-pastu, jo reģistrējāties kursam E9 Studija platformā.
+              </p>
+              <p style="margin:0;font-size:12px;color:#c4b5fd;">
+                &copy; 2026 E9 Studija · <a href="https://www.e9studija.lv" style="color:#a855f7;text-decoration:none;">e9studija.lv</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

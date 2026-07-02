@@ -93,16 +93,36 @@ function getSiteUrl() {
   return (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv').replace(/\/$/, '');
 }
 
-function wrapEmailHtml(content: string, preheader = '') {
+function wrapEmailHtml(content: string, courseTitle: string, preheader = '') {
   const siteUrl = getSiteUrl();
+  const safeCourseTitle = escapeHtml(courseTitle);
   return `
-    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#18181b;max-width:560px;margin:0 auto;padding:24px;">
-      ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>` : ''}
-      <div style="margin:0 0 24px;">
-        <img src="${siteUrl}/logo-512.png" width="48" height="48" alt="E9 Studija" style="display:block;border:0;outline:none;text-decoration:none;border-radius:10px;" />
-      </div>
-      ${content}
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f3ff;padding:40px 0;font-family:'Segoe UI',Arial,sans-serif;">
+      <tr>
+        <td align="center">
+          ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>` : ''}
+          <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+            <tr>
+              <td style="background:linear-gradient(135deg,#f0eeff 0%,#e879f9 60%,#a855f7 100%);background-color:#a855f7;border-radius:16px 16px 0 0;padding:44px 48px 38px;text-align:center;">
+                <img src="${siteUrl}/logo-512.png" width="96" height="96" alt="" style="display:block;margin:0 auto 24px;max-width:96px;border:0;outline:none;text-decoration:none;border-radius:18px;" />
+                <h1 style="margin:0;font-size:26px;font-weight:700;color:#26215C;line-height:1.3;">${safeCourseTitle}</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#ffffff;padding:48px 48px 40px;color:#18181b;line-height:1.6;">
+                ${content}
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#f5f3ff;border-radius:0 0 16px 16px;padding:28px 48px;text-align:center;">
+                <p style="margin:0 0 8px;font-size:12px;color:#9ca3af;">You received this email because you enrolled in a course on E9 Studija.</p>
+                <p style="margin:0;font-size:12px;color:#c4b5fd;">&copy; 2026 E9 Studija · <a href="${siteUrl}" style="color:#a855f7;text-decoration:none;">e9studija.lv</a></p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   `;
 }
 
@@ -165,17 +185,22 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
     subject,
     ...(input.template?.reply_to_email ? { replyTo: input.template.reply_to_email } : {}),
     text: customHtml && !input.template?.body_text ? stripHtml(customHtml) : text,
-    html: customHtml ? wrapEmailHtml(customHtml, preheader) : wrapEmailHtml(`
-        <h1 style="font-size:24px;margin:0 0 16px;">${input.purchaseLanguage === 'lv' ? 'Reģistrācija apstiprināta' : 'Enrollment confirmed'}</h1>
-        <p>${input.purchaseLanguage === 'lv' ? (safeStudentName ? `Sveiki, ${safeStudentName}!` : 'Sveiki!') : (safeStudentName ? `Hi ${safeStudentName},` : 'Hi,')}</p>
-        <p>${input.purchaseLanguage === 'lv' ? `Jūsu reģistrācija kursam <strong>${safeCourseTitle}</strong> ir apstiprināta.` : `Your enrollment in <strong>${safeCourseTitle}</strong> is confirmed.`}</p>
-        <p><strong>${input.purchaseLanguage === 'lv' ? 'Maksājums' : 'Payment'}:</strong> ${escapeHtml(price)}</p>
-        <p style="margin:28px 0;">
-          <a href="${safeCourseUrl}" style="background:#7c3aed;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;display:inline-block;">${input.purchaseLanguage === 'lv' ? 'Sākt mācības' : 'Start learning'}</a>
+    html: customHtml ? wrapEmailHtml(customHtml, input.courseTitle, preheader) : wrapEmailHtml(`
+        <p style="margin:0 0 8px;font-size:22px;font-weight:600;color:#26215C;">${input.purchaseLanguage === 'lv' ? (safeStudentName ? `Sveiki, ${safeStudentName}!` : 'Sveiki!') : (safeStudentName ? `Hello, ${safeStudentName}` : 'Hello')}</p>
+        <p style="margin:0 0 28px;font-size:16px;color:#6b7280;line-height:1.6;">${input.purchaseLanguage === 'lv' ? 'Paldies, ka pievienojāties kursam. Jūsu piekļuve ir gatava, un jūs varat sākt mācīties jau tagad.' : 'Thank you for joining the course. Your access is ready and you can start learning now.'}</p>
+        <p style="margin:28px 0;text-align:center;">
+          <a href="${safeCourseUrl}" style="display:inline-block;background:linear-gradient(135deg,#e879f9,#a855f7);background-color:#a855f7;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:16px 40px;border-radius:50px;letter-spacing:0.3px;">${input.purchaseLanguage === 'lv' ? 'Sākt mācības &rarr;' : 'Start learning &rarr;'}</a>
         </p>
-        <p style="font-size:13px;color:#71717a;">${input.purchaseLanguage === 'lv' ? 'Ja poga nedarbojas, atveriet šo saiti' : 'If the button does not work, open this link'}: ${safeCourseUrl}</p>
-        <p style="margin-top:28px;">E9 Studija</p>
-    `, preheader),
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf5ff;border-left:4px solid #a855f7;border-radius:0 10px 10px 0;margin:0 0 32px;">
+          <tr>
+            <td style="padding:18px 20px;">
+              <p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#7c3aed;text-transform:uppercase;letter-spacing:1px;">${input.purchaseLanguage === 'lv' ? 'Tiešsaistes nodarbības' : 'Live sessions'}</p>
+              <p style="margin:0;font-size:15px;color:#4b5563;line-height:1.6;">${input.purchaseLanguage === 'lv' ? 'Ja kursā ir tiešsaistes nodarbības, nodarbību informāciju un Zoom saiti atradīsiet kursa materiālos.' : 'If this course includes live classes, you can find session details and the Zoom link inside the course materials.'}</p>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:0;font-size:15px;color:#374151;line-height:1.6;">${input.purchaseLanguage === 'lv' ? 'Uz tikšanos pirmajā nodarbībā,' : 'See you in the first session,'}<br><strong style="color:#26215C;">${escapeHtml(input.teacherName ?? 'E9 Studija')}</strong></p>
+    `, input.courseTitle, preheader),
   });
 
   if (result.error) throw result.error;
