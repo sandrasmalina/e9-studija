@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
-import { sendAdminEnrollmentNotification, sendCourseEnrollmentEmail } from '@/lib/email';
+import { sendAdminEnrollmentNotification, sendCourseEnrollmentEmail, sendCourseInvoiceEmail } from '@/lib/email';
 import { supabaseAdmin } from '@/lib/supabase';
 
 interface EmailDeliveryResult {
@@ -31,7 +31,7 @@ async function getLeadTeacherName(courseId: string, fallback?: string | null) {
 
 async function enrollStudent(courseId: string, userId: string, amountPaid: number, currency: string, accessDurationMonths: number | null, stripeSubscriptionId: string | null, stripeCustomerId: string | null) {
   const expiresAt = accessDurationMonths ? addMonths(new Date(), accessDurationMonths).toISOString() : null;
-  const { error } = await supabaseAdmin.from('enrollments').upsert(
+  const { data, error } = await supabaseAdmin.from('enrollments').upsert(
     {
       user_id: userId,
       course_id: courseId,
@@ -43,11 +43,86 @@ async function enrollStudent(courseId: string, userId: string, amountPaid: numbe
       stripe_customer_id: stripeCustomerId,
     },
     { onConflict: 'user_id,course_id' }
-  );
+  ).select('id').single();
   if (error) {
     console.error('[webhook] enrollment upsert failed:', error);
     throw error;
   }
+  return data.id as string;
+}
+
+function unixToIso(value?: number | null) {
+  return value ? new Date(value * 1000).toISOString() : null;
+}
+
+function invoiceSubscriptionId(invoice: Stripe.Invoice) {
+  const value = (invoice as unknown as { subscription?: string | { id: string } | null }).subscription;
+  return typeof value === 'string' ? value : value?.id ?? null;
+}
+
+async function getStripeInvoiceFromSession(stripe: Stripe, session: Stripe.Checkout.Session) {
+  if (!session.invoice) return null;
+  const invoiceId = typeof session.invoice === 'string' ? session.invoice : session.invoice.id;
+  return stripe.invoices.retrieve(invoiceId);
+}
+
+async function invoicePdfAttachment(invoice: Stripe.Invoice) {
+  if (!invoice.invoice_pdf) return null;
+  try {
+    const response = await fetch(invoice.invoice_pdf);
+    if (!response.ok) throw new Error(`Invoice PDF fetch failed with ${response.status}`);
+    const content = Buffer.from(await response.arrayBuffer());
+    return {
+      filename: `${invoice.number ?? invoice.id}.pdf`,
+      content,
+      contentType: 'application/pdf',
+    };
+  } catch (error) {
+    console.error('[webhook] could not fetch invoice PDF:', error);
+    return null;
+  }
+}
+
+async function storeCourseInvoice(invoice: Stripe.Invoice, input: { userId: string; courseId?: string | null; enrollmentId?: string | null; checkoutSessionId?: string | null; subscriptionId?: string | null }) {
+  const firstLine = invoice.lines.data[0];
+  const metadata = {
+    ...(invoice.metadata ?? {}),
+    stripe_customer_id: typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id ?? null,
+  };
+  const { error } = await supabaseAdmin.from('course_invoices').upsert({
+    user_id: input.userId,
+    course_id: input.courseId ?? null,
+    enrollment_id: input.enrollmentId ?? null,
+    stripe_invoice_id: invoice.id,
+    stripe_checkout_session_id: input.checkoutSessionId ?? null,
+    stripe_subscription_id: input.subscriptionId ?? invoiceSubscriptionId(invoice),
+    invoice_number: invoice.number,
+    billing_reason: invoice.billing_reason,
+    status: invoice.status,
+    currency: invoice.currency,
+    amount_due: (invoice.amount_due ?? 0) / 100,
+    amount_paid: (invoice.amount_paid ?? 0) / 100,
+    hosted_invoice_url: invoice.hosted_invoice_url,
+    invoice_pdf_url: invoice.invoice_pdf,
+    period_start: unixToIso(firstLine?.period?.start),
+    period_end: unixToIso(firstLine?.period?.end),
+    issued_at: unixToIso(invoice.created),
+    due_at: unixToIso(invoice.due_date),
+    paid_at: unixToIso(invoice.status_transitions?.paid_at),
+    metadata,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'stripe_invoice_id' });
+
+  if (error) {
+    console.error('[webhook] invoice upsert failed:', error);
+    throw error;
+  }
+}
+
+async function subscriptionMetadata(stripe: Stripe, subscriptionId: string | null) {
+  if (!subscriptionId) return {} as Record<string, string>;
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  return subscription.metadata ?? {};
 }
 
 export async function POST(req: NextRequest) {
@@ -133,7 +208,7 @@ export async function POST(req: NextRequest) {
       const stripeSubscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id ?? null;
       const stripeCustomerId = typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null;
 
-      await enrollStudent(course_id, resolvedUserId, amountPaid, currency, course?.access_duration_months ?? null, stripeSubscriptionId, stripeCustomerId);
+      const enrollmentId = await enrollStudent(course_id, resolvedUserId, amountPaid, currency, course?.access_duration_months ?? null, stripeSubscriptionId, stripeCustomerId);
 
       console.log(`[webhook] enrolled user ${resolvedUserId} in course ${course_slug ?? course_id}`);
 
@@ -147,6 +222,18 @@ export async function POST(req: NextRequest) {
       const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(resolvedUserId);
       const recipientEmail = authUser.user?.email ?? guest_email ?? session.customer_details?.email ?? null;
       const recipientName = authUser.user?.user_metadata?.full_name ?? guest_name ?? session.customer_details?.name ?? null;
+      const stripeInvoice = await getStripeInvoiceFromSession(stripe, session);
+      const invoiceAttachment = stripeInvoice ? await invoicePdfAttachment(stripeInvoice) : null;
+
+      if (stripeInvoice) {
+        await storeCourseInvoice(stripeInvoice, {
+          userId: resolvedUserId,
+          courseId: course_id,
+          enrollmentId,
+          checkoutSessionId: session.id,
+          subscriptionId: stripeSubscriptionId,
+        });
+      }
 
       if (recipientEmail && course) {
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv';
@@ -184,6 +271,7 @@ export async function POST(req: NextRequest) {
           teacherName,
           supportEmail: process.env.E9_SUPPORT_EMAIL ?? process.env.E9_ADMIN_EMAIL ?? null,
           template: template ?? null,
+          attachments: invoiceAttachment ? [invoiceAttachment] : undefined,
         };
 
         const emailResults = await Promise.allSettled([
@@ -218,6 +306,60 @@ export async function POST(req: NextRequest) {
         }
         const adminEmailResult = emailResults[1];
         if (adminEmailResult.status === 'rejected') console.error('[webhook] admin enrollment email failed:', adminEmailResult.reason);
+      }
+    }
+
+    if (event.type === 'invoice.paid') {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subscriptionId = invoiceSubscriptionId(invoice);
+      const metadata = {
+        ...(subscriptionId ? await subscriptionMetadata(stripe, subscriptionId) : {}),
+        ...(invoice.metadata ?? {}),
+      };
+      const { course_id, user_id, purchase_language } = metadata;
+      const { data: enrollment } = subscriptionId
+        ? await supabaseAdmin
+            .from('enrollments')
+            .select('id, user_id, course_id')
+            .eq('stripe_subscription_id', subscriptionId)
+            .maybeSingle()
+        : { data: null };
+      const resolvedUserId = user_id || enrollment?.user_id || null;
+      const resolvedCourseId = course_id || enrollment?.course_id || null;
+
+      if (resolvedUserId) {
+        await storeCourseInvoice(invoice, {
+          userId: resolvedUserId,
+          courseId: resolvedCourseId,
+          enrollmentId: enrollment?.id ?? null,
+          subscriptionId,
+        });
+      }
+
+      if (invoice.billing_reason !== 'subscription_create' && resolvedUserId) {
+        const [{ data: authUser }, { data: profile }, { data: course }] = await Promise.all([
+          supabaseAdmin.auth.admin.getUserById(resolvedUserId),
+          supabaseAdmin.from('profiles').select('full_name').eq('id', resolvedUserId).maybeSingle(),
+          resolvedCourseId
+            ? supabaseAdmin.from('courses').select('title_en, title_lv').eq('id', resolvedCourseId).maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
+        const recipientEmail = authUser.user?.email ?? invoice.customer_email ?? null;
+
+        if (recipientEmail) {
+          const attachment = await invoicePdfAttachment(invoice);
+          await sendCourseInvoiceEmail({
+            to: recipientEmail,
+            studentName: profile?.full_name ?? authUser.user?.user_metadata?.full_name ?? invoice.customer_name ?? null,
+            courseTitle: course?.title_en ?? invoice.lines.data[0]?.description ?? 'E9 Studija',
+            invoiceNumber: invoice.number,
+            invoiceUrl: invoice.hosted_invoice_url,
+            amountPaid: (invoice.amount_paid ?? 0) / 100,
+            currency: invoice.currency,
+            language: purchase_language === 'lv' ? 'lv' : 'en',
+            attachments: attachment ? [attachment] : undefined,
+          });
+        }
       }
     }
 

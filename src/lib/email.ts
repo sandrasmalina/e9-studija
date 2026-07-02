@@ -15,6 +15,13 @@ interface CourseEnrollmentEmailInput {
   supportEmail?: string | null;
   extraVariables?: RenderVariables;
   template?: CourseEmailTemplate | null;
+  attachments?: EmailAttachment[];
+}
+
+interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
 }
 
 export interface CourseEmailTemplate {
@@ -189,6 +196,7 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
     to: input.to,
     subject,
     ...(input.template?.reply_to_email ? { replyTo: input.template.reply_to_email } : {}),
+    ...(input.attachments?.length ? { attachments: input.attachments } : {}),
     text: customHtml && !input.template?.body_text ? stripHtml(customHtml) : text,
     html: customHtml ? wrapEmailHtml(customHtml, emailLanguage, preheader) : wrapEmailHtml(`
         <p style="margin:0 0 8px;font-size:18px;font-weight:600;line-height:1.35;color:#26215C;">${input.purchaseLanguage === 'lv' ? (safeStudentName ? `Sveiki, ${safeStudentName}!` : 'Sveiki!') : (safeStudentName ? `Hello, ${safeStudentName}` : 'Hello')}</p>
@@ -237,4 +245,70 @@ export async function sendAdminEnrollmentNotification(input: CourseEnrollmentEma
   });
 
   if (result.error) throw result.error;
+}
+
+interface CourseInvoiceEmailInput {
+  to: string;
+  studentName?: string | null;
+  courseTitle?: string | null;
+  invoiceNumber?: string | null;
+  invoiceUrl?: string | null;
+  amountPaid: number;
+  currency: string;
+  language?: 'en' | 'lv' | string | null;
+  attachments?: EmailAttachment[];
+}
+
+export async function sendCourseInvoiceEmail(input: CourseInvoiceEmailInput) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+
+  if (!apiKey || !from) {
+    console.warn('[email] RESEND_API_KEY or RESEND_FROM_EMAIL missing; skipping invoice email');
+    return { status: 'skipped' as const };
+  }
+
+  const resend = new Resend(apiKey);
+  const isLatvian = input.language === 'lv';
+  const safeStudentName = input.studentName ? escapeHtml(input.studentName) : null;
+  const courseTitle = input.courseTitle ?? 'E9 Studija';
+  const safeCourseTitle = escapeHtml(courseTitle);
+  const safeInvoiceUrl = input.invoiceUrl ? escapeHtml(input.invoiceUrl) : null;
+  const invoiceNumber = input.invoiceNumber ? escapeHtml(input.invoiceNumber) : null;
+  const amount = new Intl.NumberFormat('en-GB', { style: 'currency', currency: input.currency.toUpperCase() }).format(input.amountPaid);
+  const subject = isLatvian
+    ? `Rēķins${input.invoiceNumber ? ` ${input.invoiceNumber}` : ''} par ${courseTitle}`
+    : `Invoice${input.invoiceNumber ? ` ${input.invoiceNumber}` : ''} for ${courseTitle}`;
+  const greeting = isLatvian ? (safeStudentName ? `Sveiki, ${safeStudentName}!` : 'Sveiki!') : (safeStudentName ? `Hello, ${safeStudentName}` : 'Hello');
+  const intro = isLatvian
+    ? `Pievienojam rēķinu par <strong>${safeCourseTitle}</strong>.`
+    : `Your invoice for <strong>${safeCourseTitle}</strong> is attached.`;
+  const linkText = isLatvian ? 'Atvērt rēķinu' : 'Open invoice';
+  const html = wrapEmailHtml(`
+    <p style="margin:0 0 8px;font-size:18px;font-weight:600;line-height:1.35;color:#26215C;">${greeting}</p>
+    <p style="margin:0 0 20px;font-size:16px;color:#6b7280;line-height:1.6;">${intro}</p>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf5ff;border-left:4px solid #a855f7;border-radius:0 10px 10px 0;margin:0 0 28px;"><tr><td style="padding:18px 20px;"><p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#7c3aed;text-transform:uppercase;letter-spacing:1px;">${invoiceNumber ?? (isLatvian ? 'Rēķins' : 'Invoice')}</p><p style="margin:0;font-size:15px;color:#4b5563;line-height:1.6;">${amount}</p></td></tr></table>
+    ${safeInvoiceUrl ? `<p style="margin:28px 0;text-align:center;"><a href="${safeInvoiceUrl}" style="display:inline-block;background:linear-gradient(135deg,#e879f9,#a855f7);background-color:#a855f7;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:50px;">${linkText}</a></p>` : ''}
+  `, input.language, isLatvian ? 'Jūsu E9 Studija rēķins.' : 'Your E9 Studija invoice.');
+
+  const text = [
+    greeting,
+    '',
+    isLatvian ? `Rēķins par ${input.courseTitle ?? 'E9 Studija'}.` : `Invoice for ${input.courseTitle ?? 'E9 Studija'}.`,
+    invoiceNumber ? `${isLatvian ? 'Rēķins' : 'Invoice'}: ${invoiceNumber}` : '',
+    `${isLatvian ? 'Summa' : 'Amount'}: ${amount}`,
+    input.invoiceUrl ?? '',
+  ].filter(Boolean).join('\n');
+
+  const result = await resend.emails.send({
+    from,
+    to: input.to,
+    subject,
+    text,
+    html,
+    ...(input.attachments?.length ? { attachments: input.attachments } : {}),
+  });
+
+  if (result.error) throw result.error;
+  return { status: 'sent' as const, id: result.data?.id ?? null, subject };
 }

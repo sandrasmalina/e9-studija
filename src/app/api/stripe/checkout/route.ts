@@ -86,6 +86,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const checkoutMetadata = {
+      course_id: course.id,
+      course_slug: course.slug,
+      instructor_id: course.instructor_id ?? '',
+      platform_fee_pct: String(platformFeePct),
+      billing_type: isSubscription ? 'subscription' : 'one_time',
+      subscription_interval: isSubscription ? (course.subscription_interval ?? 'month') : '',
+      purchase_language: purchaseLanguage,
+      connect_account_id: stripeAccountId ?? '',
+      transfer_status: isAdminCourse ? 'platform_income' : paymentIntentData || subscriptionData ? 'automatic' : 'platform_hold',
+      ...(user
+        ? { user_id: user.id }
+        : { guest_email: guestEmail, guest_name: guestName ?? '' }),
+    };
+
     // 4. Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       mode: isSubscription ? 'subscription' : 'payment',
@@ -107,22 +122,10 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      metadata: {
-        course_id: course.id,
-        course_slug: course.slug,
-        instructor_id: course.instructor_id ?? '',
-        platform_fee_pct: String(platformFeePct),
-        billing_type: isSubscription ? 'subscription' : 'one_time',
-        subscription_interval: isSubscription ? (course.subscription_interval ?? 'month') : '',
-        purchase_language: purchaseLanguage,
-        connect_account_id: stripeAccountId ?? '',
-        transfer_status: isAdminCourse ? 'platform_income' : paymentIntentData || subscriptionData ? 'automatic' : 'platform_hold',
-        ...(user
-          ? { user_id: user.id }
-          : { guest_email: guestEmail, guest_name: guestName ?? '' }),
-      },
+      metadata: checkoutMetadata,
       ...(paymentIntentData ? { payment_intent_data: paymentIntentData } : {}),
-      ...(subscriptionData ? { subscription_data: subscriptionData } : {}),
+      ...(isSubscription ? { subscription_data: { ...(subscriptionData ?? {}), metadata: checkoutMetadata } } : {}),
+      ...(!isSubscription ? { invoice_creation: { enabled: true, invoice_data: { metadata: checkoutMetadata } } } : {}),
       success_url: `${origin}/checkout/${course.slug}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/courses/${course.slug}`,
     });
