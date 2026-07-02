@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { Plus, BookOpen, Search, Edit2, Eye, Copy, Trash2 } from 'lucide-react';
+import { Plus, BookOpen, Search, Edit2, Eye, Copy, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface Course {
   id: string;
@@ -15,6 +15,7 @@ interface Course {
   enrollment_count: number;
   rating_avg: number;
   total_lectures: number;
+  sort_order: number;
   created_at: string;
   category: { name_en: string } | null;
 }
@@ -44,12 +45,12 @@ export default function InstructorCoursesPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const courseSelect = 'id, title_en, slug, status, is_free, price, enrollment_count, rating_avg, total_lectures, created_at, category:categories!category_id(name_en)';
+  const courseSelect = 'id, title_en, slug, status, is_free, price, enrollment_count, rating_avg, total_lectures, sort_order, created_at, category:categories!category_id(name_en)';
 
   const mergeCourses = (courseRows: Course[]) => {
     const byId = new Map<string, Course>();
     courseRows.forEach(course => byId.set(course.id, course));
-    return Array.from(byId.values()).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+    return Array.from(byId.values()).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || Date.parse(b.created_at) - Date.parse(a.created_at));
   };
 
   useEffect(() => {
@@ -66,16 +67,17 @@ export default function InstructorCoursesPage() {
         const { data } = await supabase
           .from('courses')
           .select(courseSelect)
+          .order('sort_order', { ascending: true })
           .order('created_at', { ascending: false });
         setCourses((data ?? []) as unknown as Course[]);
       } else {
         const [{ data: ownedCourses }, { data: assignments }] = await Promise.all([
-          supabase.from('courses').select(courseSelect).eq('instructor_id', user.id).order('created_at', { ascending: false }),
+          supabase.from('courses').select(courseSelect).eq('instructor_id', user.id).order('sort_order', { ascending: true }).order('created_at', { ascending: false }),
           supabase.from('course_instructors').select('course_id').eq('instructor_id', user.id),
         ]);
         const assignedIds = Array.from(new Set((assignments ?? []).map(row => row.course_id)));
         const { data: assignedCourses } = assignedIds.length > 0
-          ? await supabase.from('courses').select(courseSelect).in('id', assignedIds).order('created_at', { ascending: false })
+          ? await supabase.from('courses').select(courseSelect).in('id', assignedIds).order('sort_order', { ascending: true }).order('created_at', { ascending: false })
           : { data: [] };
         setCourses(mergeCourses([...(ownedCourses ?? []), ...(assignedCourses ?? [])] as unknown as Course[]));
       }
@@ -110,7 +112,7 @@ export default function InstructorCoursesPage() {
       rating_count: 0,
       stripe_price_id: null,
       stripe_product_id: null,
-    }).select('id, title_en, slug, status, is_free, price, enrollment_count, rating_avg, total_lectures, created_at, category:categories!category_id(name_en)').single();
+    }).select('id, title_en, slug, status, is_free, price, enrollment_count, rating_avg, total_lectures, sort_order, created_at, category:categories!category_id(name_en)').single();
     if (insertError || !newCourse) { alert(insertError?.message || 'Could not duplicate course'); return; }
 
     const { data: sections } = await supabase.from('sections').select('*, lectures(*)').eq('course_id', course.id).order('sort_order');
@@ -159,6 +161,34 @@ export default function InstructorCoursesPage() {
     }).eq('id', course.id);
     if (error) { alert(error.message); return; }
     setCourses(rows => rows.map(row => row.id === course.id ? { ...row, status } : row));
+  };
+
+  const handleMoveCourse = async (courseId: string, direction: 'up' | 'down') => {
+    const index = courses.findIndex(course => course.id === courseId);
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (index < 0 || targetIndex < 0 || targetIndex >= courses.length) return;
+
+    const current = courses[index];
+    const target = courses[targetIndex];
+    const currentOrder = current.sort_order ?? index * 10;
+    const targetOrder = target.sort_order ?? targetIndex * 10;
+
+    const [currentResult, targetResult] = await Promise.all([
+      supabase.from('courses').update({ sort_order: targetOrder }).eq('id', current.id),
+      supabase.from('courses').update({ sort_order: currentOrder }).eq('id', target.id),
+    ]);
+
+    if (currentResult.error || targetResult.error) {
+      alert(currentResult.error?.message || targetResult.error?.message || 'Could not update course order');
+      return;
+    }
+
+    setCourses(rows => {
+      const next = [...rows];
+      next[index] = { ...target, sort_order: currentOrder };
+      next[targetIndex] = { ...current, sort_order: targetOrder };
+      return next;
+    });
   };
 
   const handleDelete = async (course: Course) => {
@@ -226,6 +256,7 @@ export default function InstructorCoursesPage() {
         <div className="rounded-2xl border border-white/[0.06] overflow-hidden">
           <table className="w-full">
             <thead><tr className="border-b border-white/[0.06] bg-white/[0.02]">
+              <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">Order</th>
               <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">Course</th>
               <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden sm:table-cell">Status</th>
               <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden md:table-cell">Price</th>
@@ -234,8 +265,16 @@ export default function InstructorCoursesPage() {
               <th className="text-right px-4 py-3 text-xs text-zinc-500 font-medium">Actions</th>
             </tr></thead>
             <tbody className="divide-y divide-white/[0.04]">
-              {filtered.map(c => (
+              {filtered.map(c => {
+                const courseIndex = courses.findIndex(course => course.id === c.id);
+                return (
                 <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={() => handleMoveCourse(c.id, 'up')} disabled={courseIndex <= 0} className="p-1.5 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all disabled:cursor-not-allowed disabled:opacity-30" title="Move up"><ArrowUp size={13} /></button>
+                      <button type="button" onClick={() => handleMoveCourse(c.id, 'down')} disabled={courseIndex < 0 || courseIndex >= courses.length - 1} className="p-1.5 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all disabled:cursor-not-allowed disabled:opacity-30" title="Move down"><ArrowDown size={13} /></button>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <p className="text-white text-sm font-medium truncate max-w-xs">{c.title_en}</p>
                     {c.category && <p className="text-zinc-600 text-xs mt-0.5">{c.category.name_en}</p>}
@@ -279,7 +318,8 @@ export default function InstructorCoursesPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

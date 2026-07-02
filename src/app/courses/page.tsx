@@ -40,12 +40,13 @@ export default function CoursesPage() {
         short_description_en, short_description_lv,
         thumbnail_url, thumbnail_url_lv, price, discount_price, currency,
         is_free, billing_type, subscription_interval, level, language, total_duration_minutes,
-        total_lectures, enrollment_count, fake_enrollment_count, rating_avg, rating_count,
+        total_lectures, enrollment_count, fake_enrollment_count, rating_avg, rating_count, sort_order,
         instructor:profiles!instructor_id(full_name, avatar_url),
         category:categories!category_id(name_en, name_lv, slug)
       `)
       .eq('status', 'published')
-      .order('enrollment_count', { ascending: false });
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false });
 
     if (categorySlug !== 'all') {
       // Filter by joining category slug

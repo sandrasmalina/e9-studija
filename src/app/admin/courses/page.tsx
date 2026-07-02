@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import {
   Plus, Pencil, Trash2, ExternalLink, Search,
-  BookOpen, Star, Users, ImageIcon, RefreshCw, ChevronDown
+  BookOpen, Star, Users, ImageIcon, RefreshCw, ChevronDown, ArrowUp, ArrowDown
 } from 'lucide-react';
 
 interface Course {
@@ -19,6 +19,7 @@ interface Course {
   enrollment_count: number;
   rating_avg: number;
   rating_count: number;
+  sort_order: number;
   created_at: string;
   instructor: { full_name: string | null } | null;
   category: { name_en: string | null } | null;
@@ -47,10 +48,11 @@ export default function AdminCourses() {
       .from('courses')
       .select(`
         id, title_en, slug, status, price, is_free,
-        thumbnail_url, enrollment_count, rating_avg, rating_count, created_at,
+        thumbnail_url, enrollment_count, rating_avg, rating_count, sort_order, created_at,
         instructor:profiles!courses_instructor_id_fkey(full_name),
         category:categories!courses_category_id_fkey(name_en)
       `)
+      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
     setCourses((data ?? []) as unknown as Course[]);
     setLoading(false);
@@ -72,6 +74,34 @@ export default function AdminCourses() {
     await supabase.from('courses').update({ status: newStatus, ...extra }).eq('id', id);
     setCourses(c => c.map(x => x.id === id ? { ...x, status: newStatus } : x));
     setStatusUpdating(null);
+  };
+
+  const handleMoveCourse = async (courseId: string, direction: 'up' | 'down') => {
+    const index = courses.findIndex(course => course.id === courseId);
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (index < 0 || targetIndex < 0 || targetIndex >= courses.length) return;
+
+    const current = courses[index];
+    const target = courses[targetIndex];
+    const currentOrder = current.sort_order ?? index * 10;
+    const targetOrder = target.sort_order ?? targetIndex * 10;
+
+    const [currentResult, targetResult] = await Promise.all([
+      supabase.from('courses').update({ sort_order: targetOrder }).eq('id', current.id),
+      supabase.from('courses').update({ sort_order: currentOrder }).eq('id', target.id),
+    ]);
+
+    if (currentResult.error || targetResult.error) {
+      alert(currentResult.error?.message || targetResult.error?.message || 'Could not update course order');
+      return;
+    }
+
+    setCourses(rows => {
+      const next = [...rows];
+      next[index] = { ...target, sort_order: currentOrder };
+      next[targetIndex] = { ...current, sort_order: targetOrder };
+      return next;
+    });
   };
 
   const filtered = courses.filter(c => {
@@ -131,6 +161,7 @@ export default function AdminCourses() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800 bg-zinc-900/60">
+                <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">Order</th>
                 <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">Course</th>
                 <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium hidden md:table-cell">Category</th>
                 <th className="text-left px-4 py-3 text-xs text-zinc-500 font-medium">Status</th>
@@ -141,8 +172,16 @@ export default function AdminCourses() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60">
-              {filtered.map(course => (
+              {filtered.map(course => {
+                const courseIndex = courses.findIndex(item => item.id === course.id);
+                return (
                 <tr key={course.id} className="hover:bg-zinc-900/40 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={() => handleMoveCourse(course.id, 'up')} disabled={courseIndex <= 0} className="p-1.5 rounded-lg text-zinc-600 hover:text-white hover:bg-zinc-800 transition-all disabled:cursor-not-allowed disabled:opacity-30" title="Move up"><ArrowUp size={13} /></button>
+                      <button type="button" onClick={() => handleMoveCourse(course.id, 'down')} disabled={courseIndex < 0 || courseIndex >= courses.length - 1} className="p-1.5 rounded-lg text-zinc-600 hover:text-white hover:bg-zinc-800 transition-all disabled:cursor-not-allowed disabled:opacity-30" title="Move down"><ArrowDown size={13} /></button>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-8 rounded-lg bg-zinc-800 flex items-center justify-center overflow-hidden shrink-0">
@@ -185,7 +224,8 @@ export default function AdminCourses() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
