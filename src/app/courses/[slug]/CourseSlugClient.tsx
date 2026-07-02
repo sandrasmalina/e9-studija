@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, BookOpen, Users, Award, ChevronDown, ChevronUp,
-  Play, Lock, CheckCircle, Globe, ArrowLeft, Star, Loader2, X, Mail, Moon, Sun
+  Play, Lock, CheckCircle, Globe, ArrowLeft, Star, Loader2, X, Mail, Moon, Sun, Heart
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
@@ -154,6 +154,8 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
 
   // Auth + enrollment state
   const [enrollState, setEnrollState] = useState<'loading' | 'not-authed' | 'enrolled' | 'not-enrolled'>('loading');
+  const [wishlistState, setWishlistState] = useState<'loading' | 'saved' | 'not-saved'>('loading');
+  const [wishlistSaving, setWishlistSaving] = useState(false);
 
   // Enrollment modal (for unauthenticated users)
   const [showModal, setShowModal] = useState(false);
@@ -176,15 +178,25 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setEnrollState('not-authed'); return; }
+      if (!user) { setEnrollState('not-authed'); setWishlistState('not-saved'); return; }
       setEnrollUserId(user.id);
 
-      const { data: enrollment } = await supabase
-        .from('enrollments')
-        .select('id, status, expires_at')
-        .eq('user_id', user.id)
-        .eq('course_id', course.id)
-        .maybeSingle();
+      const [{ data: enrollment }, { data: wishlistItem }] = await Promise.all([
+        supabase
+          .from('enrollments')
+          .select('id, status, expires_at')
+          .eq('user_id', user.id)
+          .eq('course_id', course.id)
+          .maybeSingle(),
+        supabase
+          .from('wishlists')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('course_id', course.id)
+          .maybeSingle(),
+      ]);
+
+      setWishlistState(wishlistItem ? 'saved' : 'not-saved');
 
       const isExpired = enrollment?.expires_at ? new Date(enrollment.expires_at).getTime() <= Date.now() : false;
       if (enrollment?.status === 'active' && !isExpired) {
@@ -227,6 +239,29 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
     } else {
       setEnrolling(false);
     }
+  };
+
+  const handleToggleWishlist = async () => {
+    if (!enrollUserId) {
+      router.push('/auth/login');
+      return;
+    }
+
+    setWishlistSaving(true);
+    if (wishlistState === 'saved') {
+      const { error } = await supabase
+        .from('wishlists')
+        .delete()
+        .eq('user_id', enrollUserId)
+        .eq('course_id', course.id);
+      if (!error) setWishlistState('not-saved');
+    } else {
+      const { error } = await supabase
+        .from('wishlists')
+        .upsert({ user_id: enrollUserId, course_id: course.id }, { onConflict: 'user_id,course_id' });
+      if (!error) setWishlistState('saved');
+    }
+    setWishlistSaving(false);
   };
 
   // Auto-enroll after email confirmation redirect (?auto_enroll=1)
@@ -508,6 +543,20 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                     </Button>
                   )}
                 </div>
+
+                {!isPreview && (
+                  <button
+                    type="button"
+                    onClick={handleToggleWishlist}
+                    disabled={wishlistSaving || wishlistState === 'loading'}
+                    className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${wishlistState === 'saved' ? 'border-pink-500/30 bg-pink-500/10 text-pink-300 hover:bg-pink-500/15' : 'border-white/10 bg-white/[0.03] text-neutral-300 hover:border-pink-500/30 hover:text-pink-300'}`}
+                  >
+                    {wishlistSaving || wishlistState === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <Heart size={16} fill={wishlistState === 'saved' ? 'currentColor' : 'none'} />}
+                    {wishlistState === 'saved'
+                      ? (language === 'lv' ? 'Saglabāts vēlmju sarakstā' : 'Saved to wishlist')
+                      : (language === 'lv' ? 'Pievienot vēlmju sarakstam' : 'Add to wishlist')}
+                  </button>
+                )}
 
                 {previewLectures.length > 0 && (
                   <p className="text-center text-xs text-neutral-500 mt-3">{t('courses.preview.hint')}</p>
