@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap, Layers, Newspaper, ChevronDown, PenLine, UserCircle, FileText, MessageCircle, LifeBuoy } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap, Layers, Newspaper, ChevronDown, PenLine, UserCircle, FileText, MessageCircle, LifeBuoy, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -51,7 +51,7 @@ const navGroups = [
   },
 ];
 
-export default function AdminNav() {
+export default function AdminNav({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -101,10 +101,12 @@ export default function AdminNav() {
   };
 
   return (
-    <aside className="w-64 min-h-screen bg-zinc-950 border-r border-zinc-900 flex flex-col shrink-0">
+    <>
+      {open && <div onClick={onClose} className="lg:hidden fixed inset-0 z-40 bg-black/60" />}
+      <aside className={`fixed lg:sticky top-0 z-50 h-screen w-72 lg:w-64 bg-zinc-950 border-r border-zinc-900 flex flex-col shrink-0 transition-transform duration-200 ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
 
       {/* Brand */}
-      <div className="px-6 py-6 border-b border-zinc-900">
+      <div className="px-6 py-6 border-b border-zinc-900 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-accent/20 border border-accent/30 flex items-center justify-center text-accent font-bold text-sm">
             E9
@@ -114,6 +116,9 @@ export default function AdminNav() {
             <p className="text-zinc-500 text-xs">{t('admin.nav.panel')}</p>
           </div>
         </div>
+        <button onClick={onClose} className="lg:hidden p-1.5 text-zinc-400 hover:text-white" aria-label="Close menu">
+          <X size={18} />
+        </button>
       </div>
 
       {/* Nav groups */}
@@ -205,5 +210,6 @@ export default function AdminNav() {
         <DashboardLanguageSwitcher />
       </div>
     </aside>
+    </>
   );
 }

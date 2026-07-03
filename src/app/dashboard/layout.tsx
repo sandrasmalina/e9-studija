@@ -8,7 +8,7 @@ import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/Dashboa
 import LegalAcceptanceBanner from '@/components/LegalAcceptanceBanner';
 import EmailConfirmationBanner from '@/components/EmailConfirmationBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle, Home, Moon, Sun, CreditCard, LifeBuoy } from 'lucide-react';
+import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle, Home, Moon, Sun, CreditCard, LifeBuoy, Menu, X } from 'lucide-react';
 
 const NAV = [
   { href: '/dashboard',             icon: LayoutDashboard, labelKey: 'dashboard.space.learner' },
@@ -26,6 +26,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [user, setUser] = useState<{ name: string; email: string; avatar: string | null } | null>(null);
   const [checking, setChecking] = useState(true);
   const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   useEffect(() => {
     const saved = window.localStorage.getItem('e9-admin-theme');
@@ -73,11 +76,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initials = user?.name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() ?? 'S';
 
   return (
-    <div className={`admin-panel admin-theme-${panelTheme} min-h-screen flex bg-[#0b0915]`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#0b0915' }}>
+    <div className={`admin-panel admin-theme-${panelTheme} min-h-screen lg:flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#0b0915' }}>
+      {/* Mobile top bar */}
+      <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-white/[0.06] bg-[#0f0c1e]">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+            <GraduationCap size={14} className="text-purple-400" />
+          </div>
+          <span className="text-white text-sm font-semibold">E9 <span className="text-purple-400">Studija</span></span>
+        </Link>
+        <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-2 text-zinc-300 hover:text-white" aria-label="Open menu">
+          <Menu size={22} />
+        </button>
+      </div>
+
+      {/* Backdrop */}
+      {sidebarOpen && (
+        <div onClick={() => setSidebarOpen(false)} className="lg:hidden fixed inset-0 z-40 bg-black/60" />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-60 shrink-0 flex flex-col bg-[#0f0c1e] border-r border-white/[0.06] sticky top-0 h-screen">
+      <aside className={`fixed lg:sticky top-0 z-50 h-screen w-72 lg:w-60 shrink-0 flex flex-col bg-[#0f0c1e] border-r border-white/[0.06] transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         {/* Logo */}
-        <div className="px-5 h-16 flex items-center border-b border-white/[0.06] shrink-0">
+        <div className="px-5 h-16 flex items-center justify-between border-b border-white/[0.06] shrink-0">
           <Link href="/" className="flex items-center gap-2.5 group">
             <div className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
               <GraduationCap size={14} className="text-purple-400" />
@@ -86,6 +107,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               E9 <span className="text-purple-400">Studija</span>
             </span>
           </Link>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1.5 text-zinc-400 hover:text-white" aria-label="Close menu">
+            <X size={18} />
+          </button>
         </div>
 
         {/* Nav */}
@@ -145,7 +169,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main */}
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-5 sm:p-6 lg:p-8 overflow-y-auto min-w-0">
         {children}
       </main>
       <LegalAcceptanceBanner />

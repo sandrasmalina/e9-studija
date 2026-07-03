@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AdminNav from '@/components/AdminNav';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Menu } from 'lucide-react';
 
 const pageTitles: Record<string, string> = {
   '/admin/dashboard':   'Dashboard',
@@ -31,6 +31,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [checking, setChecking] = useState(true);
   const [email, setEmail] = useState('');
   const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   useEffect(() => {
     const saved = window.localStorage.getItem('e9-admin-theme');
@@ -78,12 +81,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pageTitle = Object.entries(pageTitles).find(([key]) => pathname.startsWith(key))?.[1] ?? 'Admin';
 
   return (
-    <div className={`admin-panel admin-theme-${panelTheme} min-h-screen flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
-      <AdminNav />
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+    <div className={`admin-panel admin-theme-${panelTheme} min-h-screen lg:flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
+      <AdminNav open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="flex-1 flex flex-col min-h-screen overflow-hidden min-w-0">
         {/* Top bar */}
-        <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-8 flex items-center justify-between shrink-0">
-          <h1 className="text-white text-sm font-semibold">{pageTitle}</h1>
+        <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-4 sm:px-8 flex items-center justify-between shrink-0 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-1.5 -ml-1 text-zinc-400 hover:text-white"
+              aria-label="Open menu"
+            >
+              <Menu size={20} />
+            </button>
+            <h1 className="text-white text-sm font-semibold truncate">{pageTitle}</h1>
+          </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -104,7 +117,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
         {/* Page content */}
-        <main className="flex-1 p-8 overflow-auto">{children}</main>
+        <main className="flex-1 p-5 sm:p-6 lg:p-8 overflow-auto">{children}</main>
       </div>
     </div>
   );

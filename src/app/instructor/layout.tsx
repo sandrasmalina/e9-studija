@@ -11,7 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, BookOpen, TrendingUp, Settings, Users,
   ChevronRight, ChevronDown, ArrowLeft, Play, FileText, Paperclip,
-  LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus, Moon, Sun, CreditCard, LifeBuoy,
+  LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus, Moon, Sun, CreditCard, LifeBuoy, Menu,
 } from 'lucide-react';
 
 const NAV = [
@@ -53,6 +53,9 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   const [editingSectionTitle, setEditingSectionTitle] = useState('');
   const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   const courseMatch = COURSE_PATH_RE.exec(pathname);
   const courseId    = courseMatch?.[1] ?? null;
@@ -275,16 +278,32 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
     ];
 
     return (
-      <div className={`admin-panel admin-theme-${panelTheme} min-h-screen flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
-        <aside className="w-96 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-900 sticky top-0 h-screen">
+      <div className={`admin-panel admin-theme-${panelTheme} min-h-screen lg:flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
+        {/* Mobile top bar */}
+        <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-zinc-900 bg-zinc-950">
+          <span className="text-white text-sm font-semibold truncate">{courseTitle || 'Course Editor'}</span>
+          <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-2 text-zinc-300 hover:text-white" aria-label="Open menu">
+            <Menu size={22} />
+          </button>
+        </div>
+
+        {/* Backdrop */}
+        {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="lg:hidden fixed inset-0 z-40 bg-black/60" />}
+
+        <aside className={`fixed lg:sticky top-0 z-50 h-screen w-80 lg:w-96 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-900 transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
 
           {/* Back + brand */}
           <div className="px-5 py-5 border-b border-zinc-900 shrink-0">
-            <Link href="/instructor/courses"
-              className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group mb-4">
-              <ArrowLeft size={16} className="shrink-0" />
-              <span className="text-sm font-medium">My Courses</span>
-            </Link>
+            <div className="flex items-center justify-between mb-4">
+              <Link href="/instructor/courses"
+                className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group">
+                <ArrowLeft size={16} className="shrink-0" />
+                <span className="text-sm font-medium">My Courses</span>
+              </Link>
+              <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1.5 text-zinc-400 hover:text-white" aria-label="Close menu">
+                <X size={18} />
+              </button>
+            </div>
             <p className="text-zinc-500 text-xs uppercase tracking-widest font-semibold mb-1.5">Editing</p>
             <h2 className="text-white font-semibold text-base leading-snug">
               {courseTitle || <span className="text-zinc-600 animate-pulse">Loading…</span>}
@@ -459,14 +478,19 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
           <SidebarFooter />
         </aside>
 
-        <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
-          <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-8 flex items-center justify-between shrink-0">
-            <h1 className="text-white text-sm font-semibold capitalize">
-              {COURSE_NAV.find(n => pathname === n.href)?.label ?? 'Course Editor'}
-            </h1>
+        <div className="flex-1 flex flex-col min-h-screen overflow-hidden min-w-0">
+          <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-4 sm:px-8 flex items-center justify-between shrink-0 gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 -ml-1 text-zinc-400 hover:text-white" aria-label="Open menu">
+                <Menu size={20} />
+              </button>
+              <h1 className="text-white text-sm font-semibold capitalize truncate">
+                {COURSE_NAV.find(n => pathname === n.href)?.label ?? 'Course Editor'}
+              </h1>
+            </div>
             <PanelThemeButton />
           </header>
-          <main className="flex-1 p-8 overflow-y-auto">{children}</main>
+          <main className="flex-1 p-5 sm:p-6 lg:p-8 overflow-y-auto">{children}</main>
         </div>
       </div>
     );
@@ -474,11 +498,22 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
 
   // ── Standard instructor sidebar ──────────────────────────────────────────
   return (
-      <div className={`admin-panel admin-theme-${panelTheme} min-h-screen flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
-      <aside className="w-64 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-900 sticky top-0 h-screen">
+      <div className={`admin-panel admin-theme-${panelTheme} min-h-screen lg:flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
+      {/* Mobile top bar */}
+      <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-zinc-900 bg-zinc-950">
+        <span className="text-white text-sm font-semibold">E9 <span className="text-purple-400">Studija</span></span>
+        <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-2 text-zinc-300 hover:text-white" aria-label="Open menu">
+          <Menu size={22} />
+        </button>
+      </div>
+
+      {/* Backdrop */}
+      {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="lg:hidden fixed inset-0 z-40 bg-black/60" />}
+
+      <aside className={`fixed lg:sticky top-0 z-50 h-screen w-72 lg:w-64 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-900 transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
 
         {/* Brand */}
-        <div className="px-6 py-6 border-b border-zinc-900 shrink-0">
+        <div className="px-6 py-6 border-b border-zinc-900 shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold text-sm">
               E9
@@ -488,6 +523,9 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
               <p className="text-zinc-500 text-xs">{t('instructor.title')}</p>
             </div>
           </div>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1.5 text-zinc-400 hover:text-white" aria-label="Close menu">
+            <X size={18} />
+          </button>
         </div>
 
         {/* Nav */}
@@ -526,14 +564,19 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         <SidebarFooter />
       </aside>
 
-        <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
-        <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-8 flex items-center justify-between shrink-0">
-          <h1 className="text-white text-sm font-semibold">
-            {t(NAV.find(n => pathname === n.href || (n.href !== '/instructor' && pathname.startsWith(n.href)))?.labelKey ?? 'instructor.title')}
-          </h1>
+        <div className="flex-1 flex flex-col min-h-screen overflow-hidden min-w-0">
+        <header className="h-14 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur px-4 sm:px-8 flex items-center justify-between shrink-0 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 -ml-1 text-zinc-400 hover:text-white" aria-label="Open menu">
+              <Menu size={20} />
+            </button>
+            <h1 className="text-white text-sm font-semibold truncate">
+              {t(NAV.find(n => pathname === n.href || (n.href !== '/instructor' && pathname.startsWith(n.href)))?.labelKey ?? 'instructor.title')}
+            </h1>
+          </div>
           <PanelThemeButton />
         </header>
-          <main className="flex-1 p-8 overflow-y-auto">{children}</main>
+          <main className="flex-1 p-5 sm:p-6 lg:p-8 overflow-y-auto">{children}</main>
       </div>
         <LegalAcceptanceBanner />
       <LegalAcceptanceBanner />
