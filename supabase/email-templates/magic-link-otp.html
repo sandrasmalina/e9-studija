@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your sign-in code – E9 Studija</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f3ff;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f3ff;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#f0eeff 0%,#e879f9 60%,#a855f7 100%);background-color:#a855f7;border-radius:16px 16px 0 0;padding:34px 48px 30px;text-align:center;">
+              <img src="{{ .SiteURL }}/logo_e9.png" width="148" alt="E9 Studija" style="display:block;margin:0 auto 16px;max-width:148px;" />
+              <h1 style="margin:0;font-size:21px;font-weight:500;color:#30285f;line-height:1.35;">Your digital world</h1>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="background:#ffffff;padding:48px 48px 40px;color:#18181b;line-height:1.6;text-align:center;">
+              <p style="margin:0 0 8px;font-size:18px;font-weight:600;color:#26215C;">Your verification code</p>
+              <p style="margin:0 0 32px;font-size:15px;color:#6b7280;">
+                Enter this code on the E9 Studija website to continue.
+              </p>
+              <!-- OTP Code -->
+              <div style="display:inline-block;background:#f5f3ff;border:2px solid #a855f7;border-radius:16px;padding:20px 40px;margin:0 0 32px;">
+                <span style="font-size:36px;font-weight:700;letter-spacing:0.3em;color:#26215C;font-family:monospace;">{{ .Token }}</span>
+              </div>
+              <p style="margin:0;font-size:13px;color:#9ca3af;">
+                This code expires in 10 minutes. If you did not request this code, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f5f3ff;border-radius:0 0 16px 16px;padding:28px 48px;text-align:center;">
+              <p style="margin:0 0 8px;font-size:12px;color:#9ca3af;">You received this email because a sign-in or verification was requested for your E9 Studija account.</p>
+              <p style="margin:0;font-size:12px;color:#c4b5fd;">&copy; 2026 E9 Studija &middot; <a href="{{ .SiteURL }}" style="color:#a855f7;text-decoration:none;">e9studija.lv</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

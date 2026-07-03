@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams, useParams } from 'next/navigation';
+import { useSearchParams, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, Loader2, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -13,6 +13,15 @@ export default function CheckoutSuccessPage() {
 
   const [state, setState] = useState<'loading' | 'enrolled' | 'guest' | 'pending' | 'error'>('loading');
   const [courseTitle, setCourseTitle] = useState('');
+  const router = useRouter();
+
+  // Auto-redirect to course when enrollment confirmed
+  useEffect(() => {
+    if (state === 'enrolled') {
+      const t = setTimeout(() => router.replace(`/learn/${params.courseSlug}`), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [state, params.courseSlug, router]);
 
   useEffect(() => {
     if (!sessionId) { setState('error'); return; }
@@ -91,7 +100,8 @@ export default function CheckoutSuccessPage() {
           </>
         )}
 
-        {state === 'enrolled' && (          <>
+        {state === 'enrolled' && (
+          <>
             <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 size={32} className="text-accent" />
             </div>
@@ -103,11 +113,9 @@ export default function CheckoutSuccessPage() {
             )}
             <Link href={`/learn/${params.courseSlug}`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-accent text-white font-medium hover:bg-accent/90 transition-colors">
-              Start Learning →
+              Start Learning &rarr;
             </Link>
-            <p className="mt-4 text-neutral-600 text-xs">
-              A receipt has been sent to your email by Stripe.
-            </p>
+            <p className="mt-4 text-neutral-500 text-xs">Redirecting you automatically&hellip;</p>
           </>
         )}
 

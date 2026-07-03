@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
 import LegalAcceptanceBanner from '@/components/LegalAcceptanceBanner';
+import EmailConfirmationBanner from '@/components/EmailConfirmationBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle, Home, Moon, Sun, CreditCard, LifeBuoy } from 'lucide-react';
 
@@ -148,6 +149,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {children}
       </main>
       <LegalAcceptanceBanner />
+      <EmailConfirmationBanner />
     </div>
   );
 }

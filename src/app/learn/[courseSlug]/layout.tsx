@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { LearnerContext, LearnerCtxValue, SectionMeta, LectureMeta } from '@/contexts/LearnerContext';
 import LegalAcceptanceBanner from '@/components/LegalAcceptanceBanner';
+import EmailConfirmationBanner from '@/components/EmailConfirmationBanner';
 import { CheckCircle2, Circle, ChevronDown, ChevronRight, X, Menu, Moon, Sun } from 'lucide-react';
 
 function fmtSeconds(s: number) {
@@ -370,6 +371,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           </main>
         </div>
         <LegalAcceptanceBanner />
+        <EmailConfirmationBanner />
       </div>
     </LearnerContext.Provider>
   );
