@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { verifyTurnstileToken } from '@/lib/turnstile';
+import { mintSessionForEmail } from '@/lib/auth-session';
 
 export async function POST(req: NextRequest) {
   const { email, password, firstName, lastName, turnstileToken } = await req.json();
@@ -43,17 +44,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Generate a one-time OTP so the client can establish a session WITHOUT triggering
-  // Supabase captcha protection (verifyOtp does not require a captcha token).
-  const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'magiclink',
-    email: cleanEmail,
-  });
-
-  if (linkError || !linkData?.properties?.email_otp) {
-    console.error('[checkout-signup] generateLink failed:', linkError);
+  // Mint a session server-side so the client can sign in without captcha/OTP/signup checks.
+  const { session, error: sessionError } = await mintSessionForEmail(cleanEmail);
+  if (sessionError || !session) {
+    console.error('[checkout-signup] mint session failed:', sessionError);
     return NextResponse.json({ success: true, userId: data.user.id });
   }
 
-  return NextResponse.json({ success: true, userId: data.user.id, emailOtp: linkData.properties.email_otp });
+  return NextResponse.json({ success: true, userId: data.user.id, ...session });
 }

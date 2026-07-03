@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
+import { mintSessionForEmail } from '@/lib/auth-session';
 
 function hashCode(code: string, email: string) {
   const secret = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -40,17 +41,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid code.' }, { status: 400 });
   }
 
-  // Valid — consume it and mint a Supabase session token. generateLink does NOT send an email.
+  // Valid — consume it and mint a Supabase session (no email sent, bypasses signup checks).
   await supabaseAdmin.from('login_codes').update({ consumed: true }).eq('id', row.id);
 
-  const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'magiclink',
-    email: cleanEmail,
-  });
-  if (linkError || !linkData?.properties?.email_otp) {
-    console.error('[login-code/verify] generateLink failed:', linkError);
+  const { session, error: sessionError } = await mintSessionForEmail(cleanEmail);
+  if (sessionError || !session) {
+    console.error('[login-code/verify] mint session failed:', sessionError);
     return NextResponse.json({ error: 'Could not establish session. Please try again.' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, emailOtp: linkData.properties.email_otp });
+  return NextResponse.json({ success: true, ...session });
 }

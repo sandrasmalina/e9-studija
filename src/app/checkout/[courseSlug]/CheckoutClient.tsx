@@ -119,11 +119,14 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
       setTurnstileToken(''); setTurnstileKey(k => k + 1);
       setLoading(false); return;
     }
-    // Establish a session. Prefer the one-time OTP from the server (does NOT require a
-    // captcha token). Fall back to password sign-in only if the OTP is unavailable.
-    if (signupData.emailOtp) {
-      const { error: otpError } = await supabase.auth.verifyOtp({ email: cleanEmail, token: signupData.emailOtp, type: 'email' });
-      if (otpError) { setError(otpError.message); setLoading(false); return; }
+    // Establish a session. Prefer the server-minted session tokens (no captcha/OTP/signup
+    // checks). Fall back to password sign-in only if the tokens are unavailable.
+    if (signupData.access_token && signupData.refresh_token) {
+      const { error: setErr } = await supabase.auth.setSession({
+        access_token: signupData.access_token,
+        refresh_token: signupData.refresh_token,
+      });
+      if (setErr) { setError(setErr.message); setLoading(false); return; }
     } else {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
       if (signInError) { setError(signInError.message); setLoading(false); return; }

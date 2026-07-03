@@ -113,13 +113,12 @@ function LoginForm() {
       body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
     });
     const data = await res.json();
-    if (!res.ok || !data.emailOtp) { setError(data.error ?? 'Invalid code.'); setLoading(false); return; }
-    const { data: session, error: otpError } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token: data.emailOtp,
-      type: 'email',
+    if (!res.ok || !data.access_token) { setError(data.error ?? 'Invalid code.'); setLoading(false); return; }
+    const { data: session, error: setError2 } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
     });
-    if (otpError || !session.user) { setError(otpError?.message ?? 'Could not sign in.'); setLoading(false); return; }
+    if (setError2 || !session.user) { setError(setError2?.message ?? 'Could not sign in.'); setLoading(false); return; }
     const dest = await resolveDestination(session.user.id, redirect);
     window.location.assign(dest);
   };

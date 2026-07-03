@@ -64,13 +64,12 @@ export default function ForgotPasswordPage() {
       body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
     });
     const data = await res.json();
-    if (!res.ok || !data.emailOtp) { setError(data.error ?? 'Invalid code.'); setVerifying(false); return; }
-    const { error: otpError } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token: data.emailOtp,
-      type: 'email',
+    if (!res.ok || !data.access_token) { setError(data.error ?? 'Invalid code.'); setVerifying(false); return; }
+    const { error: setErr } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
     });
-    if (otpError) { setError(otpError.message); setVerifying(false); return; }
+    if (setErr) { setError(setErr.message); setVerifying(false); return; }
     router.replace('/auth/reset-password');
   };
 
