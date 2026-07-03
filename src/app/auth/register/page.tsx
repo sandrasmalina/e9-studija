@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Mail, Lock, User } from 'lucide-react';
 import TurnstileWidget from '@/components/TurnstileWidget';
 
-interface Invitation { email: string; roles: string[] | null; status: string; expires_at: string | null; is_campaign?: boolean; campaign_label?: string | null; }
+interface Invitation { email: string; roles: string[] | null; status: string; expires_at: string | null; is_campaign?: boolean; campaign_label?: string | null; use_count?: number; max_uses?: number | null; }
 
 function RegisterForm() {
   const router = useRouter();
@@ -32,6 +32,13 @@ function RegisterForm() {
     supabase.from('invitations').select('*').eq('token', token).single()
       .then(({ data, error: inviteError }) => {
         if (inviteError || !data) {
+          setInvite(null);
+          setLoading(false);
+          return;
+        }
+        const isExpired = data.expires_at && new Date(data.expires_at) < new Date();
+        const isExhausted = data.is_campaign && data.max_uses != null && (data.use_count ?? 0) >= data.max_uses;
+        if (data.status === 'used' || isExpired || isExhausted) {
           setInvite(null);
           setLoading(false);
           return;

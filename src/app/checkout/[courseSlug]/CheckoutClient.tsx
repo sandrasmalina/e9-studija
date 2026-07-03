@@ -101,25 +101,16 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanFirstName = firstName.trim();
     const cleanLastName = lastName.trim();
-    const fullName = `${cleanFirstName} ${cleanLastName}`.trim();
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password,
-      options: {
-        captchaToken: turnstileToken,
-        emailRedirectTo: `${window.location.origin}/auth/login?confirmed=1`,
-        data: { first_name: cleanFirstName, last_name: cleanLastName, full_name: fullName, checkout_course_slug: course.slug },
-      },
+
+    // Create a confirmed account server-side (no email confirmation step needed)
+    const signupRes = await fetch('/api/auth/checkout-signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: cleanEmail, password, firstName: cleanFirstName, lastName: cleanLastName, turnstileToken }),
     });
+    const signupData = await signupRes.json();
 
-    if (signUpError) {
-      setError(signUpError.message);
-      setTurnstileToken('');
-      setLoading(false);
-      return;
-    }
-
-    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    if (signupData.exists) {
       setMode('signin');
       setAccountNotice('An account with this email already exists. Sign in to continue checkout.');
       setPassword('');
@@ -129,7 +120,22 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
       return;
     }
 
-    await startStripeCheckout({ guestEmail: cleanEmail, guestName: fullName, accountSetupPending: true });
+    if (!signupRes.ok) {
+      setError(signupData.error ?? 'Account creation failed. Please try again.');
+      setTurnstileToken('');
+      setLoading(false);
+      return;
+    }
+
+    // Sign in to get a session, then proceed as authenticated user
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
+    }
+
+    await startStripeCheckout();
   };
 
   const handleSignInAndCheckout = async (event: React.FormEvent) => {
@@ -206,7 +212,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
             ) : mode === 'create' ? (
               <form onSubmit={handleCreateAndCheckout} className="space-y-4">
                 <p className="rounded-xl border border-accent/20 bg-accent/10 px-4 py-3 text-sm text-neutral-300">
-                  Create your course account first. After payment, confirm your email to access your courses.
+                  Create your account to continue. You will have immediate access after payment.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>

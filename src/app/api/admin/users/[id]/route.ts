@@ -9,12 +9,13 @@ async function requireAdmin(req: NextRequest) {
   const authHeader = req.headers.get('authorization') ?? '';
   const token = authHeader.replace('Bearer ', '');
   const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return false;
+  if (error || !user) return null;
   const [{ data: profile }, { data: roles }] = await Promise.all([
     supabaseAdmin.from('profiles').select('role').eq('id', user.id).single(),
     supabaseAdmin.from('user_roles').select('roles(name)').eq('user_id', user.id),
   ]);
-  return profile?.role === 'admin' || (roles ?? []).some((row: any) => row.roles?.name === 'admin');
+  const isAdmin = profile?.role === 'admin' || (roles ?? []).some((row: any) => row.roles?.name === 'admin');
+  return isAdmin ? user : null;
 }
 
 export async function GET(req: NextRequest, { params }: Props) {
@@ -50,4 +51,32 @@ export async function GET(req: NextRequest, { params }: Props) {
     assignedCourses: (assignedCoursesRes.data ?? []).map((row: any) => ({ ...row.course, assignment_role: row.role, assignment_sort_order: row.sort_order })).filter(Boolean),
     enrollments: enrollmentsRes.data ?? [],
   });
+}
+
+export async function DELETE(req: NextRequest, { params }: Props) {
+  const adminUser = await requireAdmin(req);
+  if (!adminUser) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  if (adminUser.id === params.id) {
+    return NextResponse.json({ error: 'You cannot delete your own admin account.' }, { status: 400 });
+  }
+
+  const { data: targetUser } = await supabaseAdmin.auth.admin.getUserById(params.id);
+  if (!targetUser.user) {
+    return NextResponse.json({ error: 'User account not found' }, { status: 404 });
+  }
+
+  await Promise.all([
+    supabaseAdmin.from('reviews').update({ reviewed_by: null }).eq('reviewed_by', params.id),
+    supabaseAdmin.from('invitations').update({ invited_by: null }).eq('invited_by', params.id),
+  ]);
+
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(params.id);
+  if (error) {
+    console.error('[admin/users/delete]', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
