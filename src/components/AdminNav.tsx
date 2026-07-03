@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap, Layers, Newspaper, ChevronDown, PenLine, UserCircle, FileText, MessageCircle, LifeBuoy, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -107,15 +108,9 @@ export default function AdminNav({ open = false, onClose }: { open?: boolean; on
 
       {/* Brand */}
       <div className="px-6 py-6 border-b border-zinc-900 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-accent/20 border border-accent/30 flex items-center justify-center text-accent font-bold text-sm">
-            E9
-          </div>
-          <div>
-            <p className="text-white font-semibold text-sm leading-tight">E9 Studija</p>
-            <p className="text-zinc-500 text-xs">{t('admin.nav.panel')}</p>
-          </div>
-        </div>
+        <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+          <Image src="/logo_e9studija.png" alt="E9 Studija" width={865} height={512} className="h-9 w-auto object-contain" />
+        </Link>
         <button onClick={onClose} className="lg:hidden p-1.5 text-zinc-400 hover:text-white" aria-label="Close menu">
           <X size={18} />
         </button>

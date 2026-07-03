@@ -80,11 +80,8 @@ export default function Navigation() {
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <Image src="/logo-512.png" alt="E9 Studija" width={38} height={38} className="object-contain" priority />
-            <span className="text-white font-semibold text-lg tracking-tight" style={{ fontFamily: 'var(--font-jakarta, sans-serif)' }}>
-              Studija
-            </span>
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+            <Image src="/logo_e9studija.png" alt="E9 Studija" width={865} height={512} className="h-11 w-auto object-contain" priority />
           </Link>
 
           {/* Desktop nav */}
