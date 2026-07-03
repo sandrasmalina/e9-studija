@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 import { supabase } from '@/lib/supabase';
+import { verifyTurnstileToken } from '@/lib/turnstile';
 
 export async function POST(req: NextRequest) {
   try {
     const stripe = getStripe();
-    const { courseSlug, guestEmail, guestName, language, accountSetupPending } = await req.json();
+    const { courseSlug, guestEmail, guestName, language, accountSetupPending, turnstileToken } = await req.json();
     if (!courseSlug) {
       return NextResponse.json({ error: 'courseSlug required' }, { status: 400 });
     }
@@ -20,6 +21,15 @@ export async function POST(req: NextRequest) {
     const isGuest = !user && !!guestEmail;
     if (!user && !guestEmail) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify Turnstile for guest checkouts to prevent spam sessions
+    if (isGuest) {
+      const remoteIp = req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+      const valid = await verifyTurnstileToken(turnstileToken, remoteIp);
+      if (!valid) {
+        return NextResponse.json({ error: 'Security check failed. Please try again.' }, { status: 400 });
+      }
     }
 
     // 2. Fetch course
@@ -99,7 +109,12 @@ export async function POST(req: NextRequest) {
       transfer_status: isAdminCourse ? 'platform_income' : paymentIntentData || subscriptionData ? 'automatic' : 'platform_hold',
       ...(user
         ? { user_id: user.id }
-        : { guest_email: guestEmail, guest_name: guestName ?? '' }),
+        : {
+            guest_email: guestEmail,
+            guest_name: guestName ?? '',
+            guest_first_name: (guestName ?? '').split(' ')[0] ?? '',
+            guest_last_name: (guestName ?? '').split(' ').slice(1).join(' '),
+          }),
     };
 
     // 4. Create Stripe Checkout Session

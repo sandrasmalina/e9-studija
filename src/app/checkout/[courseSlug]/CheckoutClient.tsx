@@ -34,14 +34,11 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileKey, setTurnstileKey] = useState(0);
   const [accountNotice, setAccountNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSignInPassword, setShowSignInPassword] = useState(false);
 
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
@@ -56,7 +53,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
     });
   }, [course.slug, router]);
 
-  const startStripeCheckout = async (input?: { guestEmail?: string; guestName?: string; accountSetupPending?: boolean }) => {
+  const startStripeCheckout = async (input?: { guestEmail?: string; guestName?: string; accountSetupPending?: boolean; turnstileToken?: string }) => {
     setLoading(true);
     setError('');
 
@@ -90,58 +87,19 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
     await startStripeCheckout();
   };
 
-  const handleCreateAndCheckout = async (event: React.FormEvent) => {
+  const handleGuestCheckout = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!firstName.trim()) { setError('First name is required.'); return; }
     if (!lastName.trim()) { setError('Surname is required.'); return; }
     if (!email.trim() || !email.includes('@')) { setError('Valid email is required.'); return; }
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
-    if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
     if (!turnstileToken) { setError('Please complete the security check.'); return; }
-
     setLoading(true);
     setError('');
-    setAccountNotice('');
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanFirstName = firstName.trim();
-    const cleanLastName = lastName.trim();
-
-    // Create a confirmed account server-side (no email confirmation step needed)
-    const signupRes = await fetch('/api/auth/checkout-signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: cleanEmail, password, firstName: cleanFirstName, lastName: cleanLastName, turnstileToken }),
+    await startStripeCheckout({
+      guestEmail: email.trim().toLowerCase(),
+      guestName: `${firstName.trim()} ${lastName.trim()}`,
+      turnstileToken,
     });
-    const signupData = await signupRes.json();
-
-    if (signupData.exists) {
-      setMode('signin');
-      setAccountNotice('An account with this email already exists. Sign in to continue checkout.');
-      setPassword('');
-      setConfirmPassword('');
-      setTurnstileToken('');
-      setTurnstileKey(k => k + 1);
-      setLoading(false);
-      return;
-    }
-
-    if (!signupRes.ok) {
-      setError(signupData.error ?? 'Account creation failed. Please try again.');
-      setTurnstileToken('');
-      setTurnstileKey(k => k + 1);
-      setLoading(false);
-      return;
-    }
-
-    // Sign in to get a session, then proceed as authenticated user
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-    if (signInError) {
-      setError(signInError.message);
-      setLoading(false);
-      return;
-    }
-
-    await startStripeCheckout();
   };
 
   const handleSignInAndCheckout = async (event: React.FormEvent) => {
@@ -216,9 +174,9 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
                 }
               </button>
             ) : mode === 'create' ? (
-              <form onSubmit={handleCreateAndCheckout} className="space-y-4">
+              <form onSubmit={handleGuestCheckout} className="space-y-4">
                 <p className="rounded-xl border border-accent/20 bg-accent/10 px-4 py-3 text-sm text-neutral-300">
-                  Create your account to continue. You will have immediate access after payment.
+                  Enter your details to continue. After successful payment you will receive an email to set your password and access the course.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
@@ -237,24 +195,6 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
                   <label className="block text-neutral-400 text-xs mb-1.5">Email</label>
                   <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" placeholder="you@example.com" />
                 </div>
-                <div>
-                  <label className="block text-neutral-400 text-xs mb-1.5">Password</label>
-                  <div className="relative">
-                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => { setPassword(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl px-4 pr-10 py-2.5 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" placeholder="Min. 8 characters" autoComplete="new-password" />
-                    <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors" tabIndex={-1} aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-neutral-400 text-xs mb-1.5">Confirm password</label>
-                  <div className="relative">
-                    <input type={showConfirmPassword ? 'text' : 'password'} value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl px-4 pr-10 py-2.5 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" placeholder="Repeat password" autoComplete="new-password" />
-                    <button type="button" onClick={() => setShowConfirmPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors" tabIndex={-1} aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}>
-                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
                 <TurnstileWidget
                   key={turnstileKey}
                   onVerify={(token) => { setTurnstileToken(token); setError(''); }}
@@ -262,7 +202,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
                   onError={() => { setTurnstileToken(''); setTurnstileKey(k => k + 1); setError('Security check failed. Please try again.'); }}
                 />
                 <button type="submit" disabled={loading || !turnstileToken} className="w-full py-3.5 rounded-xl bg-accent text-white font-semibold text-base hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
-                  {loading ? <><Loader2 size={18} className="animate-spin" /> Preparing checkout&hellip;</> : <>Create account and pay &rarr;</>}
+                  {loading ? <><Loader2 size={18} className="animate-spin" /> Preparing checkout&hellip;</> : <>Continue to payment &rarr;</>}
                 </button>
                 <p className="text-center text-neutral-600 text-xs">Already have an account? <button type="button" onClick={() => { setMode('signin'); setError(''); setAccountNotice(''); setPassword(''); }} className="text-accent hover:underline">Sign in to continue</button></p>
               </form>

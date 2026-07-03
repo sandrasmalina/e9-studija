@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
       event.type === 'checkout.session.async_payment_succeeded'
     ) {
       const session = event.data.object as Stripe.Checkout.Session;
-      const { course_id, user_id, course_slug, guest_email, guest_name, purchase_language, account_setup_pending } = session.metadata ?? {};
+      const { course_id, user_id, course_slug, guest_email, guest_name, guest_first_name, guest_last_name, purchase_language, account_setup_pending } = session.metadata ?? {};
 
       if (!course_id) {
         console.error('[webhook] missing course_id in metadata', session.metadata);
@@ -181,7 +181,11 @@ export async function POST(req: NextRequest) {
           const { data: inviteData, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
             guest_email,
             {
-              data: { full_name: guest_name ?? '' },
+              data: {
+                full_name: guest_name ?? '',
+                first_name: guest_first_name ?? (guest_name ?? '').split(' ')[0] ?? '',
+                last_name: guest_last_name ?? (guest_name ?? '').split(' ').slice(1).join(' '),
+              },
               redirectTo: `${siteUrl}/auth/reset-password?redirect=/learn/${course_slug ?? ''}`,
             }
           );
