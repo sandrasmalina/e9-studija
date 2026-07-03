@@ -35,6 +35,16 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+function extractVimeoId(url: string): string {
+  const m = url.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
+  return m ? m[1] : url;
+}
+
+function extractYouTubeId(url: string): string {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : url;
+}
+
 interface Lecture {
   id: string;
   title_en: string;
@@ -138,6 +148,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   const [contentTheme, setContentTheme] = useState<'dark' | 'light'>('dark');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set([course.sections[0]?.id]));
   const [groupsOpen, setGroupsOpen] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem('e9-content-theme');
@@ -481,20 +492,47 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="rounded-2xl border border-white/10 bg-[#16122a] overflow-hidden shadow-2xl shadow-black/10 lg:fixed lg:right-6 lg:top-24 lg:z-30 lg:w-[360px] xl:w-[404px] 2xl:right-[calc((100vw-80rem)/2+1.5rem)]">
               {/* Thumbnail / promo */}
-              <div className="relative aspect-video bg-bg-secondary">
-                {thumbnailUrl ? (
-                  <Image src={thumbnailUrl} alt={title} fill className="object-cover" sizes="360px" />
+              <div className="relative aspect-video bg-bg-secondary overflow-hidden">
+                {videoPlaying && course.promo_video_url ? (
+                  course.promo_video_type === 'vimeo' ? (
+                    <iframe
+                      src={`https://player.vimeo.com/video/${extractVimeoId(course.promo_video_url)}?autoplay=1&title=0&byline=0&portrait=0`}
+                      className="absolute inset-0 w-full h-full"
+                      allow="autoplay; fullscreen; picture-in-picture"
+                      allowFullScreen
+                      title={title}
+                    />
+                  ) : (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${extractYouTubeId(course.promo_video_url)}?autoplay=1&rel=0&modestbranding=1`}
+                      className="absolute inset-0 w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={title}
+                    />
+                  )
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-accent/5">
-                    <Play size={40} className="text-accent/40" />
-                  </div>
-                )}
-                {course.promo_video_url && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                    <div className="w-14 h-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors cursor-pointer">
-                      <Play size={22} className="text-white ml-1" />
-                    </div>
-                  </div>
+                  <>
+                    {thumbnailUrl ? (
+                      <Image src={thumbnailUrl} alt={title} fill className="object-cover" sizes="360px" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center bg-accent/5">
+                        <Play size={40} className="text-accent/40" />
+                      </div>
+                    )}
+                    {course.promo_video_url && (
+                      <button
+                        type="button"
+                        onClick={() => setVideoPlaying(true)}
+                        aria-label="Play promo video"
+                        className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/50 transition-colors group"
+                      >
+                        <div className="w-14 h-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                          <Play size={22} className="text-white ml-1" />
+                        </div>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
 
