@@ -41,6 +41,13 @@ function extractVimeoId(url: string): string {
   return m ? m[1] : url;
 }
 
+function extractVimeoHash(url: string): string | null {
+  const hParam = url.match(/[?&]h=([a-zA-Z0-9]+)/);
+  if (hParam) return hParam[1];
+  const pathHash = url.match(/vimeo\.com\/\d+\/([a-zA-Z0-9]+)/);
+  return pathHash ? pathHash[1] : null;
+}
+
 function extractYouTubeId(url: string): string {
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : url;
@@ -968,7 +975,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
               <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-2xl">
                 {course.promo_video_type === 'vimeo' ? (
                   <iframe
-                    src={`https://player.vimeo.com/video/${extractVimeoId(course.promo_video_url)}?autoplay=1&title=0&byline=0&portrait=0`}
+                    src={`https://player.vimeo.com/video/${extractVimeoId(course.promo_video_url)}?${extractVimeoHash(course.promo_video_url) ? `h=${extractVimeoHash(course.promo_video_url)}&` : ''}autoplay=1&title=0&byline=0&portrait=0`}
                     className="absolute inset-0 w-full h-full"
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen

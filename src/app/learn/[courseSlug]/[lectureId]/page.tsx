@@ -31,6 +31,14 @@ function extractVimeoId(url: string): string {
   return m ? m[1] : url;
 }
 
+function extractVimeoHash(url: string): string | null {
+  // Unlisted Vimeo URLs: vimeo.com/123456789/HASH or player.vimeo.com/video/123456789?h=HASH
+  const hParam = url.match(/[?&]h=([a-zA-Z0-9]+)/);
+  if (hParam) return hParam[1];
+  const pathHash = url.match(/vimeo\.com\/\d+\/([a-zA-Z0-9]+)/);
+  return pathHash ? pathHash[1] : null;
+}
+
 function extractYouTubeId(url: string): string {
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : url;
@@ -118,10 +126,11 @@ export default function LecturePage() {
     if (!lecture.video_url) return null;
     if (lecture.video_type === 'vimeo') {
       const id = extractVimeoId(lecture.video_url);
+      const hash = extractVimeoHash(lecture.video_url);
       return (
         <div className="aspect-video w-full bg-black">
           <iframe
-            src={`https://player.vimeo.com/video/${id}?title=0&byline=0&portrait=0&autoplay=0`}
+            src={`https://player.vimeo.com/video/${id}?${hash ? `h=${hash}&` : ''}title=0&byline=0&portrait=0&autoplay=0`}
             className="w-full h-full"
             allow="autoplay; fullscreen; picture-in-picture"
             allowFullScreen
