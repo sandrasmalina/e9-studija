@@ -86,6 +86,7 @@ export default function Footer() {
     { label: t('nav.courses'), href: '/courses' },
     { label: t('nav.team'), href: '/team' },
     { label: t('nav.contact'), href: '/contact' },
+    { label: t('nav.support'), href: '/support' },
   ];
 
   const legalLinks = [

@@ -13,6 +13,7 @@ const pageTitles: Record<string, string> = {
   '/admin/projects':    'Projects',
   '/admin/team':        'Team Members',
   '/admin/contacts':    'Contacts',
+  '/admin/support':     'Support Tickets',
   '/admin/social':      'Social Links',
   '/admin/testimonials':'Testimonials',
   '/admin/courses':     'Courses',
