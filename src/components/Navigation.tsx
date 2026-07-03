@@ -93,10 +93,10 @@ export default function Navigation() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`text-sm transition-colors relative ${
+                className={`text-sm relative inline-block origin-center transition-all duration-200 hover:scale-110 hover:text-accent ${
                   pathname === item.href
                     ? 'text-white font-medium'
-                    : 'text-neutral-400 hover:text-white'
+                    : 'text-neutral-400'
                 }`}
               >
                 {item.label}
