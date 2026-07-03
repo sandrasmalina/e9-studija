@@ -109,7 +109,7 @@ export default function AdminNav({ open = false, onClose }: { open?: boolean; on
       {/* Brand */}
       <div className="px-6 py-6 border-b border-zinc-900 flex items-center justify-between">
         <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-          <Image src="/logo_e9studija.png" alt="E9 Studija" width={865} height={512} className="h-9 w-auto object-contain" />
+          <Image src="/logo_e9studija.png" alt="E9 Studija" width={865} height={512} className="h-12 w-auto object-contain" />
         </Link>
         <button onClick={onClose} className="lg:hidden p-1.5 text-zinc-400 hover:text-white" aria-label="Close menu">
           <X size={18} />

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
@@ -501,7 +502,9 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
       <div className={`admin-panel admin-theme-${panelTheme} min-h-screen lg:flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
       {/* Mobile top bar */}
       <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-zinc-900 bg-zinc-950">
-        <span className="text-white text-sm font-semibold">E9 <span className="text-purple-400">Studija</span></span>
+        <Link href="/" className="flex items-center">
+          <Image src="/logo_e9studija.png" alt="E9 Studija" width={865} height={512} className="h-8 w-auto object-contain" />
+        </Link>
         <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-2 text-zinc-300 hover:text-white" aria-label="Open menu">
           <Menu size={22} />
         </button>
@@ -513,16 +516,10 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
       <aside className={`fixed lg:sticky top-0 z-50 h-screen w-72 lg:w-64 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-900 transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
 
         {/* Brand */}
-        <div className="px-6 py-6 border-b border-zinc-900 shrink-0 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold text-sm">
-              E9
-            </div>
-            <div>
-              <p className="text-white font-semibold text-sm leading-tight">E9 Studija</p>
-              <p className="text-zinc-500 text-xs">{t('instructor.title')}</p>
-            </div>
-          </div>
+        <div className="px-6 py-5 border-b border-zinc-900 shrink-0 flex items-center justify-between">
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+            <Image src="/logo_e9studija.png" alt="E9 Studija" width={865} height={512} className="h-11 w-auto object-contain" />
+          </Link>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1.5 text-zinc-400 hover:text-white" aria-label="Close menu">
             <X size={18} />
           </button>

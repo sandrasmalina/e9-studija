@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
 import LegalAcceptanceBanner from '@/components/LegalAcceptanceBanner';
 import EmailConfirmationBanner from '@/components/EmailConfirmationBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle, Home, Moon, Sun, CreditCard, LifeBuoy, Menu, X } from 'lucide-react';
+import { BookOpen, Heart, Award, LogOut, LayoutDashboard, ChevronRight, UserCircle, Home, Moon, Sun, CreditCard, LifeBuoy, Menu, X } from 'lucide-react';
 
 const NAV = [
   { href: '/dashboard',             icon: LayoutDashboard, labelKey: 'dashboard.space.learner' },
@@ -79,11 +80,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className={`admin-panel admin-theme-${panelTheme} min-h-screen lg:flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#0b0915' }}>
       {/* Mobile top bar */}
       <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-white/[0.06] bg-[#0f0c1e]">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-            <GraduationCap size={14} className="text-purple-400" />
-          </div>
-          <span className="text-white text-sm font-semibold">E9 <span className="text-purple-400">Studija</span></span>
+        <Link href="/" className="flex items-center">
+          <Image src="/logo_e9studija.png" alt="E9 Studija" width={865} height={512} className="h-8 w-auto object-contain" />
         </Link>
         <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-2 text-zinc-300 hover:text-white" aria-label="Open menu">
           <Menu size={22} />
@@ -99,13 +97,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className={`fixed lg:sticky top-0 z-50 h-screen w-72 lg:w-60 shrink-0 flex flex-col bg-[#0f0c1e] border-r border-white/[0.06] transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         {/* Logo */}
         <div className="px-5 h-16 flex items-center justify-between border-b border-white/[0.06] shrink-0">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-              <GraduationCap size={14} className="text-purple-400" />
-            </div>
-            <span className="text-white text-sm font-semibold tracking-tight group-hover:text-purple-300 transition-colors">
-              E9 <span className="text-purple-400">Studija</span>
-            </span>
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+            <Image src="/logo_e9studija.png" alt="E9 Studija" width={865} height={512} className="h-11 w-auto object-contain" />
           </Link>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1.5 text-zinc-400 hover:text-white" aria-label="Close menu">
             <X size={18} />

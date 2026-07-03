@@ -81,7 +81,7 @@ export default function Navigation() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-            <Image src="/logo_e9studija.png" alt="E9 Studija" width={865} height={512} className="h-11 w-auto object-contain" priority />
+            <Image src="/logo_e9studija.png" alt="E9 Studija" width={865} height={512} className="h-16 sm:h-20 w-auto object-contain" priority />
           </Link>
 
           {/* Desktop nav */}
