@@ -4,7 +4,7 @@ import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 
@@ -26,7 +26,6 @@ function ResetPasswordForm() {
     if (password !== confirm) { setError(t('auth.error.password.mismatch')); return; }
     setLoading(true);
     setError('');
-    const supabase = createClient();
     const { error: authError } = await supabase.auth.updateUser({ password });
     if (authError) { setError(authError.message); setLoading(false); return; }
     router.replace(redirect?.startsWith('/') ? redirect : '/auth/login?reset=1');

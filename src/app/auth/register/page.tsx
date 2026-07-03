@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { Mail, Lock, User } from 'lucide-react';
 import TurnstileWidget from '@/components/TurnstileWidget';
 
@@ -28,7 +28,6 @@ function RegisterForm() {
 
   useEffect(() => {
     if (!token) { router.replace('/courses'); return; }
-    const supabase = createClient();
     supabase.from('invitations').select('*').eq('token', token).single()
       .then(({ data, error: inviteError }) => {
         if (inviteError || !data) {
@@ -64,7 +63,6 @@ function RegisterForm() {
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     if (!turnstileToken) { setError('Please complete the security check.'); return; }
     setSaving(true); setError('');
-    const supabase = createClient();
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),

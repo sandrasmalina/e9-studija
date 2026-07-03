@@ -1,51 +1,12 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// NOTE: Authentication sessions are stored client-side (localStorage) via the
+// @supabase/supabase-js client used across the app. The server-side middleware
+// cannot read that session, so route protection is enforced client-side inside
+// each protected layout (dashboard, learn, instructor), which redirect to
+// /auth/login when there is no session. This middleware is a pass-through to
+// avoid falsely redirecting authenticated users whose session lives in
+// localStorage rather than cookies.
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll(); },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // Protected routes — must be authenticated
-  const protectedPrefixes = ['/dashboard', '/learn', '/instructor'];
-  const isProtected = protectedPrefixes.some(p => request.nextUrl.pathname.startsWith(p));
-
-  if (isProtected && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/auth/login';
-    url.searchParams.set('redirect', request.nextUrl.pathname);
-    return NextResponse.redirect(url);
-  }
-
-  // Instructor-only routes
-  if (request.nextUrl.pathname.startsWith('/instructor') && user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile && profile.role !== 'instructor' && profile.role !== 'admin') {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-  }
-
-  return supabaseResponse;
+  return NextResponse.next({ request });
 }

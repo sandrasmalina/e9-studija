@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Mail, KeyRound } from 'lucide-react';
 import TurnstileWidget from '@/components/TurnstileWidget';
@@ -29,7 +29,6 @@ export default function ForgotPasswordPage() {
     if (!turnstileToken) { setError(t('turnstile.error.required')); return; }
     setLoading(true);
     setError('');
-    const supabase = createClient();
     const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
       redirectTo: `${window.location.origin}/auth/reset-password`,
       captchaToken: turnstileToken,
@@ -44,7 +43,6 @@ export default function ForgotPasswordPage() {
     if (!turnstileToken) { setError(t('turnstile.error.required')); return; }
     setLoading(true);
     setError('');
-    const supabase = createClient();
     const { error: authError } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: { shouldCreateUser: false, captchaToken: turnstileToken },
@@ -58,7 +56,6 @@ export default function ForgotPasswordPage() {
     if (code.trim().length < 6) { setError('Enter the 6-digit code from your email.'); return; }
     setVerifying(true);
     setError('');
-    const supabase = createClient();
     const { error: authError } = await supabase.auth.verifyOtp({
       email: email.trim().toLowerCase(),
       token: code.trim(),
