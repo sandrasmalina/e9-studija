@@ -21,9 +21,10 @@ export async function POST(req: NextRequest) {
   }
 
   const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+  const cleanEmail = email.trim().toLowerCase();
 
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
-    email: email.trim().toLowerCase(),
+    email: cleanEmail,
     password,
     email_confirm: true,
     user_metadata: {
@@ -42,5 +43,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, userId: data.user.id });
+  // Generate a one-time OTP so the client can establish a session WITHOUT triggering
+  // Supabase captcha protection (verifyOtp does not require a captcha token).
+  const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'magiclink',
+    email: cleanEmail,
+  });
+
+  if (linkError || !linkData?.properties?.email_otp) {
+    console.error('[checkout-signup] generateLink failed:', linkError);
+    return NextResponse.json({ success: true, userId: data.user.id });
+  }
+
+  return NextResponse.json({ success: true, userId: data.user.id, emailOtp: linkData.properties.email_otp });
 }

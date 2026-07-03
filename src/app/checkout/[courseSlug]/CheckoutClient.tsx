@@ -119,20 +119,33 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
       setTurnstileToken(''); setTurnstileKey(k => k + 1);
       setLoading(false); return;
     }
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-    if (signInError) { setError(signInError.message); setLoading(false); return; }
+    // Establish a session. Prefer the one-time OTP from the server (does NOT require a
+    // captcha token). Fall back to password sign-in only if the OTP is unavailable.
+    if (signupData.emailOtp) {
+      const { error: otpError } = await supabase.auth.verifyOtp({ email: cleanEmail, token: signupData.emailOtp, type: 'email' });
+      if (otpError) { setError(otpError.message); setLoading(false); return; }
+    } else {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+      if (signInError) { setError(signInError.message); setLoading(false); return; }
+    }
     await startStripeCheckout();
   };
 
   const handleSignInAndCheckout = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!email.trim() || !password.trim()) { setError('Email and password are required.'); return; }
+    if (!turnstileToken) { setError('Please complete the security check.'); return; }
     setLoading(true);
     setError('');
     setAccountNotice('');
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+      options: { captchaToken: turnstileToken },
+    });
     if (signInError) {
       setError(signInError.message);
+      setTurnstileToken(''); setTurnstileKey(k => k + 1);
       setLoading(false);
       return;
     }
@@ -244,7 +257,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
                 <button type="submit" disabled={loading || !turnstileToken} className="w-full py-3.5 rounded-xl bg-accent text-white font-semibold text-base hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
                   {loading ? <><Loader2 size={18} className="animate-spin" /> Preparing checkout&hellip;</> : <>Create account and pay &rarr;</>}
                 </button>
-                <p className="text-center text-neutral-600 text-xs">Already have an account? <button type="button" onClick={() => { setMode('signin'); setError(''); setAccountNotice(''); setPassword(''); }} className="text-accent hover:underline">Sign in to continue</button></p>
+                <p className="text-center text-neutral-600 text-xs">Already have an account? <button type="button" onClick={() => { setMode('signin'); setError(''); setAccountNotice(''); setPassword(''); setConfirmPassword(''); setTurnstileToken(''); setTurnstileKey(k => k + 1); }} className="text-accent hover:underline">Sign in to continue</button></p>
               </form>
             ) : (
               <form onSubmit={handleSignInAndCheckout} className="space-y-4">
@@ -262,11 +275,17 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
                     </button>
                   </div>
                 </div>
-                <button type="submit" disabled={loading} className="w-full py-3.5 rounded-xl bg-accent text-white font-semibold text-base hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+                <TurnstileWidget
+                  key={turnstileKey}
+                  onVerify={(token) => { setTurnstileToken(token); setError(''); }}
+                  onExpire={() => { setTurnstileToken(''); setTurnstileKey(k => k + 1); }}
+                  onError={() => { setTurnstileToken(''); setTurnstileKey(k => k + 1); setError('Security check failed. Please try again.'); }}
+                />
+                <button type="submit" disabled={loading || !turnstileToken} className="w-full py-3.5 rounded-xl bg-accent text-white font-semibold text-base hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
                   {loading ? <><Loader2 size={18} className="animate-spin" /> Signing in&hellip;</> : <>Sign in and pay &rarr;</>}
                 </button>
                 <div className="flex justify-between text-xs">
-                  <button type="button" onClick={() => { setMode('create'); setError(''); setAccountNotice(''); setPassword(''); }} className="text-neutral-500 hover:text-accent">Create new account</button>
+                  <button type="button" onClick={() => { setMode('create'); setError(''); setAccountNotice(''); setPassword(''); setTurnstileToken(''); setTurnstileKey(k => k + 1); }} className="text-neutral-500 hover:text-accent">Create new account</button>
                   <Link href="/auth/forgot-password" className="text-neutral-500 hover:text-accent">Forgot password?</Link>
                 </div>
               </form>
