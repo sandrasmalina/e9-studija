@@ -166,6 +166,7 @@ export async function POST(req: NextRequest) {
 
       // Resolve userId: logged-in user OR guest (find/create by email)
       let resolvedUserId = user_id ?? null;
+      let isNewGuestUser = false;
 
       if (!resolvedUserId && guest_email) {
         // Find existing user by email, or invite them (creates account + sends welcome email)
@@ -194,6 +195,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
           }
           resolvedUserId = inviteData.user.id;
+          isNewGuestUser = true;
           console.log(`[webhook] created new user ${resolvedUserId} for guest email ${guest_email}`);
         }
       }
@@ -276,7 +278,7 @@ export async function POST(req: NextRequest) {
           supportEmail: process.env.E9_SUPPORT_EMAIL ?? process.env.E9_ADMIN_EMAIL ?? null,
           template: template ?? null,
           attachments: invoiceAttachment ? [invoiceAttachment] : undefined,
-          accountConfirmationRequired: account_setup_pending === 'true',
+          accountConfirmationRequired: isNewGuestUser || account_setup_pending === 'true',
         };
 
         const emailResults = await Promise.allSettled([
