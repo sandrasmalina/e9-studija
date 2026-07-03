@@ -493,46 +493,24 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
               className="rounded-2xl border border-white/10 bg-[#16122a] overflow-hidden shadow-2xl shadow-black/10 lg:fixed lg:right-6 lg:top-24 lg:z-30 lg:w-[360px] xl:w-[404px] 2xl:right-[calc((100vw-80rem)/2+1.5rem)]">
               {/* Thumbnail / promo */}
               <div className="relative aspect-video bg-bg-secondary overflow-hidden">
-                {videoPlaying && course.promo_video_url ? (
-                  course.promo_video_type === 'vimeo' ? (
-                    <iframe
-                      src={`https://player.vimeo.com/video/${extractVimeoId(course.promo_video_url)}?autoplay=1&title=0&byline=0&portrait=0`}
-                      className="absolute inset-0 w-full h-full"
-                      allow="autoplay; fullscreen; picture-in-picture"
-                      allowFullScreen
-                      title={title}
-                    />
-                  ) : (
-                    <iframe
-                      src={`https://www.youtube.com/embed/${extractYouTubeId(course.promo_video_url)}?autoplay=1&rel=0&modestbranding=1`}
-                      className="absolute inset-0 w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      title={title}
-                    />
-                  )
+                {thumbnailUrl ? (
+                  <Image src={thumbnailUrl} alt={title} fill className="object-cover" sizes="360px" />
                 ) : (
-                  <>
-                    {thumbnailUrl ? (
-                      <Image src={thumbnailUrl} alt={title} fill className="object-cover" sizes="360px" />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-accent/5">
-                        <Play size={40} className="text-accent/40" />
-                      </div>
-                    )}
-                    {course.promo_video_url && (
-                      <button
-                        type="button"
-                        onClick={() => setVideoPlaying(true)}
-                        aria-label="Play promo video"
-                        className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/50 transition-colors group"
-                      >
-                        <div className="w-14 h-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                          <Play size={22} className="text-white ml-1" />
-                        </div>
-                      </button>
-                    )}
-                  </>
+                  <div className="absolute inset-0 flex items-center justify-center bg-accent/5">
+                    <Play size={40} className="text-accent/40" />
+                  </div>
+                )}
+                {course.promo_video_url && (
+                  <button
+                    type="button"
+                    onClick={() => setVideoPlaying(true)}
+                    aria-label="Play promo video"
+                    className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/50 transition-colors group"
+                  >
+                    <div className="w-16 h-16 rounded-full bg-white/15 border-2 border-white/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-white/25 transition-all duration-200 shadow-2xl">
+                      <Play size={26} className="text-white ml-1.5" />
+                    </div>
+                  </button>
                 )}
               </div>
 
@@ -957,6 +935,57 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
           </div>
         </div>
       )}
+
+      {/* Promo video modal */}
+      <AnimatePresence>
+        {videoPlaying && course.promo_video_url && (
+          <motion.div
+            key="promo-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-8 bg-black/85 backdrop-blur-sm"
+            onClick={() => setVideoPlaying(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="relative w-full max-w-5xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setVideoPlaying(false)}
+                className="absolute -top-10 right-0 flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors"
+              >
+                <X size={18} /> Close
+              </button>
+              <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-2xl">
+                {course.promo_video_type === 'vimeo' ? (
+                  <iframe
+                    src={`https://player.vimeo.com/video/${extractVimeoId(course.promo_video_url)}?autoplay=1&title=0&byline=0&portrait=0`}
+                    className="absolute inset-0 w-full h-full"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                    title={title}
+                  />
+                ) : (
+                  <iframe
+                    src={`https://www.youtube.com/embed/${extractYouTubeId(course.promo_video_url)}?autoplay=1&rel=0&modestbranding=1`}
+                    className="absolute inset-0 w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={title}
+                  />
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
