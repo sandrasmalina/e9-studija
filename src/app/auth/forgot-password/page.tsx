@@ -9,7 +9,7 @@ import { Mail, KeyRound } from 'lucide-react';
 import TurnstileWidget from '@/components/TurnstileWidget';
 
 export default function ForgotPasswordPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const [method, setMethod] = useState<'link' | 'code'>('link');
   const [email, setEmail] = useState('');
@@ -43,11 +43,13 @@ export default function ForgotPasswordPage() {
     if (!turnstileToken) { setError(t('turnstile.error.required')); return; }
     setLoading(true);
     setError('');
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-      options: { shouldCreateUser: false, captchaToken: turnstileToken },
+    const res = await fetch('/api/auth/login-code/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), turnstileToken, language }),
     });
-    if (authError) { setError(authError.message); resetTurnstile(); setLoading(false); return; }
+    const data = await res.json();
+    if (!res.ok) { setError(data.error ?? 'Could not send code.'); resetTurnstile(); setLoading(false); return; }
     setSent(true);
   };
 
@@ -56,12 +58,19 @@ export default function ForgotPasswordPage() {
     if (code.trim().length < 6) { setError('Enter the 6-digit code from your email.'); return; }
     setVerifying(true);
     setError('');
-    const { error: authError } = await supabase.auth.verifyOtp({
+    const res = await fetch('/api/auth/login-code/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.emailOtp) { setError(data.error ?? 'Invalid code.'); setVerifying(false); return; }
+    const { error: otpError } = await supabase.auth.verifyOtp({
       email: email.trim().toLowerCase(),
-      token: code.trim(),
+      token: data.emailOtp,
       type: 'email',
     });
-    if (authError) { setError(authError.message); setVerifying(false); return; }
+    if (otpError) { setError(otpError.message); setVerifying(false); return; }
     router.replace('/auth/reset-password');
   };
 

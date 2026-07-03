@@ -149,6 +149,43 @@ function getFromAddress(template?: CourseEmailTemplate | null) {
   return `${template.sender_name.trim()} <${emailAddress}>`;
 }
 
+// Sends a 6-digit sign-in code via Resend (bypasses Supabase Auth email limits).
+export async function sendLoginCodeEmail(input: { to: string; code: string; language?: 'en' | 'lv' | string | null }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !from) {
+    console.warn('[email] RESEND_API_KEY or RESEND_FROM_EMAIL missing; cannot send login code');
+    return { status: 'skipped' as const };
+  }
+  const isLv = input.language === 'lv';
+  const subject = isLv ? `Jūsu pieslēgšanās kods: ${input.code}` : `Your sign-in code: ${input.code}`;
+  const heading = isLv ? 'Jūsu pieslēgšanās kods' : 'Your sign-in code';
+  const sub = isLv ? 'Ievadiet šo kodu E9 Studija vietnē, lai turpinātu.' : 'Enter this code on the E9 Studija website to continue.';
+  const expiry = isLv
+    ? 'Šis kods ir derīgs 10 minūtes. Ja jūs to nepieprasījāt, ignorējiet šo e-pastu.'
+    : 'This code expires in 10 minutes. If you did not request it, you can safely ignore this email.';
+  const content = `
+    <div style="text-align:center;">
+      <p style="margin:0 0 8px;font-size:18px;font-weight:600;color:#26215C;">${heading}</p>
+      <p style="margin:0 0 32px;font-size:15px;color:#6b7280;">${sub}</p>
+      <div style="display:inline-block;background:#f5f3ff;border:2px solid #a855f7;border-radius:16px;padding:20px 40px;margin:0 0 32px;">
+        <span style="font-size:36px;font-weight:700;letter-spacing:0.3em;color:#26215C;font-family:monospace;">${escapeHtml(input.code)}</span>
+      </div>
+      <p style="margin:0;font-size:13px;color:#9ca3af;">${expiry}</p>
+    </div>
+  `;
+  const resend = new Resend(apiKey);
+  const result = await resend.emails.send({
+    from,
+    to: input.to,
+    subject,
+    text: `${heading}: ${input.code}\n${expiry}`,
+    html: wrapEmailHtml(content, isLv ? 'lv' : 'en', subject),
+  });
+  if (result.error) throw result.error;
+  return { status: 'sent' as const, id: result.data?.id ?? null };
+}
+
 function buildCourseVariables(input: CourseEnrollmentEmailInput, price: string): RenderVariables {
   return {
     student_name: input.studentName ?? '',

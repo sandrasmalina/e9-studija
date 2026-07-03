@@ -29,7 +29,7 @@ async function resolveDestination(userId: string, redirect: string) {
 }
 
 function LoginForm() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';
   const confirmed = searchParams.get('confirmed');
@@ -91,11 +91,13 @@ function LoginForm() {
     if (!turnstileToken) { setError(t('turnstile.error.required')); return; }
     setLoading(true);
     setError('');
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-      options: { shouldCreateUser: false, captchaToken: turnstileToken },
+    const res = await fetch('/api/auth/login-code/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), turnstileToken, language }),
     });
-    if (authError) { setError(authError.message); resetTurnstile(); setLoading(false); return; }
+    const data = await res.json();
+    if (!res.ok) { setError(data.error ?? 'Could not send code.'); resetTurnstile(); setLoading(false); return; }
     setCodeSent(true);
     setLoading(false);
   };
@@ -105,13 +107,20 @@ function LoginForm() {
     if (code.trim().length < 6) { setError('Enter the 6-digit code from your email.'); return; }
     setLoading(true);
     setError('');
-    const { data, error: authError } = await supabase.auth.verifyOtp({
+    const res = await fetch('/api/auth/login-code/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.emailOtp) { setError(data.error ?? 'Invalid code.'); setLoading(false); return; }
+    const { data: session, error: otpError } = await supabase.auth.verifyOtp({
       email: email.trim().toLowerCase(),
-      token: code.trim(),
+      token: data.emailOtp,
       type: 'email',
     });
-    if (authError || !data.user) { setError(authError?.message ?? 'Invalid code.'); setLoading(false); return; }
-    const dest = await resolveDestination(data.user.id, redirect);
+    if (otpError || !session.user) { setError(otpError?.message ?? 'Could not sign in.'); setLoading(false); return; }
+    const dest = await resolveDestination(session.user.id, redirect);
     window.location.assign(dest);
   };
 
