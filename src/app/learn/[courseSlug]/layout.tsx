@@ -251,9 +251,9 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
 
   const Sidebar = () => (
     <div className="h-full flex flex-col bg-[#0f0c1e]">
-      <div className="px-4 py-3 border-b border-white/[0.06] shrink-0">
-        <p className="text-zinc-500 text-[11px] font-medium uppercase tracking-wider">Course Content</p>
-        <p className="text-zinc-600 text-xs mt-0.5">{isPreview ? 'Student preview mode' : `${completedCount}/${totalLectures} · ${progressPct}% complete`}</p>
+      <div className="px-4 py-4 border-b border-white/[0.06] shrink-0">
+        <p className="text-zinc-400 text-xs font-semibold uppercase tracking-wider">Course Content</p>
+        <p className="text-zinc-500 text-xs mt-1">{isPreview ? 'Student preview mode' : `${completedCount}/${totalLectures} · ${progressPct}% complete`}</p>
       </div>
       <div className="flex-1 overflow-y-auto py-1">
         {sections.map(section => {
@@ -262,14 +262,14 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           return (
             <div key={section.id}>
               <button onClick={() => toggleSection(section.id)}
-                className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-white/[0.03] transition-colors text-left">
+                className="w-full flex items-center gap-2 px-4 py-3.5 hover:bg-white/[0.03] transition-colors text-left">
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-xs font-medium leading-snug truncate">{section.title_en}</p>
-                  <p className="text-zinc-600 text-[11px] mt-0.5">{secDone}/{section.lectures.length} lectures</p>
+                  <p className="text-white text-sm font-semibold leading-snug">{section.title_en}</p>
+                  <p className="text-zinc-500 text-xs mt-0.5">{secDone}/{section.lectures.length} lectures</p>
                 </div>
                 {isOpen
-                  ? <ChevronDown size={13} className="text-zinc-600 shrink-0" />
-                  : <ChevronRight size={13} className="text-zinc-600 shrink-0" />}
+                  ? <ChevronDown size={15} className="text-zinc-500 shrink-0" />
+                  : <ChevronRight size={15} className="text-zinc-500 shrink-0" />}
               </button>
               {isOpen && (
                 <div>
@@ -280,20 +280,20 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
                       <Link key={lecture.id}
                         href={`/learn/${courseSlug}/${lecture.id}${isPreview ? '?preview=1' : ''}`}
                         onClick={() => setSidebarOpen(false)}
-                        className={`flex items-start gap-2.5 px-4 py-2.5 text-xs transition-all border-l-2 ${
+                        className={`flex items-start gap-3 px-5 py-3 text-sm transition-all border-l-2 ${
                           isActive
                             ? 'bg-purple-500/10 border-purple-500 text-white'
-                            : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.03]'
+                            : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]'
                         }`}>
-                        <div className="mt-px shrink-0">
+                        <div className="mt-0.5 shrink-0">
                           {isDone
-                            ? <CheckCircle2 size={13} className="text-green-400" />
-                            : <Circle size={13} className={isActive ? 'text-purple-400' : 'text-zinc-700'} />}
+                            ? <CheckCircle2 size={15} className="text-green-400" />
+                            : <Circle size={15} className={isActive ? 'text-purple-400' : 'text-zinc-600'} />}
                         </div>
                         <div className="min-w-0">
                           <p className="leading-snug">{lecture.title_en}</p>
                           {lecture.video_duration_seconds > 0 && (
-                            <p className="text-zinc-700 mt-0.5 text-[11px]">{fmtSeconds(lecture.video_duration_seconds)}</p>
+                            <p className="text-zinc-500 mt-0.5 text-xs">{fmtSeconds(lecture.video_duration_seconds)}</p>
                           )}
                         </div>
                       </Link>
@@ -350,7 +350,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
         {/* Body */}
         <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 3.5rem)' }}>
           {/* Desktop sidebar */}
-          <aside className="w-72 shrink-0 border-r border-white/[0.06] overflow-y-auto hidden md:block">
+          <aside className="w-96 shrink-0 border-r border-white/[0.06] overflow-y-auto hidden md:block">
             <Sidebar />
           </aside>
 
@@ -358,7 +358,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           {sidebarOpen && (
             <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSidebarOpen(false)}>
               <div className="absolute inset-0 bg-black/60" />
-              <aside className="absolute top-14 right-0 bottom-0 w-[min(18rem,calc(100vw-1rem))] max-w-full border-l border-white/[0.06] overflow-y-auto z-50" onClick={e => e.stopPropagation()}>
+              <aside className="absolute top-14 right-0 bottom-0 w-[min(22rem,calc(100vw-1rem))] max-w-full border-l border-white/[0.06] overflow-y-auto z-50" onClick={e => e.stopPropagation()}>
                 <Sidebar />
               </aside>
             </div>

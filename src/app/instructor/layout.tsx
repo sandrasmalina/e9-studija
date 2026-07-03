@@ -276,7 +276,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
 
     return (
       <div className={`admin-panel admin-theme-${panelTheme} min-h-screen flex`} style={{ background: panelTheme === 'light' ? '#f6f4ef' : '#09090b' }}>
-        <aside className="w-72 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-900 sticky top-0 h-screen">
+        <aside className="w-96 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-900 sticky top-0 h-screen">
 
           {/* Back + brand */}
           <div className="px-5 py-5 border-b border-zinc-900 shrink-0">
@@ -340,29 +340,29 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                                     }`}>
 
                                     {/* Section row */}
-                                    <div className="flex items-center gap-1 px-1.5 py-1.5 group">
+                                    <div className="flex items-center gap-1.5 px-2 py-2.5 group">
                                       <div {...(drag.dragHandleProps ?? {})} className="text-zinc-700 hover:text-zinc-500 cursor-grab p-0.5 shrink-0">
                                         <GripVertical size={11} />
                                       </div>
 
                                       {editingSectionId === section.id ? (
-                                        <div className="flex-1 flex items-center gap-1">
+                                        <div className="flex-1 flex items-center gap-1.5">
                                           <input autoFocus value={editingSectionTitle}
                                             onChange={e => setEditingSectionTitle(e.target.value)}
                                             onKeyDown={e => { if (e.key === 'Enter') lSaveSection(section.id); if (e.key === 'Escape') setEditingSectionId(null); }}
-                                            className="flex-1 px-2 py-0.5 bg-zinc-900 border border-purple-500/40 rounded text-white text-xs focus:outline-none" />
-                                          <button onClick={() => lSaveSection(section.id)} className="p-1 text-purple-400 hover:text-purple-300"><Check size={10} /></button>
-                                          <button onClick={() => setEditingSectionId(null)} className="p-1 text-zinc-600 hover:text-white"><X size={10} /></button>
+                                            className="flex-1 px-2.5 py-1 bg-zinc-900 border border-purple-500/40 rounded text-white text-sm focus:outline-none" />
+                                          <button onClick={() => lSaveSection(section.id)} className="p-1 text-purple-400 hover:text-purple-300"><Check size={13} /></button>
+                                          <button onClick={() => setEditingSectionId(null)} className="p-1 text-zinc-600 hover:text-white"><X size={13} /></button>
                                         </div>
                                       ) : (
-                                        <span className="flex-1 text-zinc-300 text-xs font-medium truncate">{section.title_en}</span>
+                                        <span className="flex-1 text-zinc-200 text-sm font-medium truncate">{section.title_en}</span>
                                       )}
 
                                       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                         <button onClick={() => { setEditingSectionId(section.id); setEditingSectionTitle(section.title_en); }}
-                                          className="p-1 text-zinc-700 hover:text-white transition-colors"><Edit2 size={10} /></button>
+                                          className="p-1 text-zinc-600 hover:text-white transition-colors"><Edit2 size={13} /></button>
                                         <button onClick={() => lDeleteSection(section.id)}
-                                          className="p-1 text-zinc-700 hover:text-red-400 transition-colors"><Trash2 size={10} /></button>
+                                          className="p-1 text-zinc-600 hover:text-red-400 transition-colors"><Trash2 size={13} /></button>
                                       </div>
                                     </div>
 
@@ -378,26 +378,26 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                                               <Draggable key={lecture.id} draggableId={lecture.id} index={lIdx}>
                                                 {(lDrag, lDragSnap) => (
                                                   <div ref={lDrag.innerRef} {...lDrag.draggableProps}
-                                                    className={`flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 border-t border-white/[0.04] group transition-colors ${
+                                                    className={`flex items-center gap-2 pl-4 pr-2 py-2 border-t border-white/[0.04] group transition-colors ${
                                                       lDragSnap.isDragging ? 'bg-zinc-900 rounded shadow-md' :
                                                       isActive ? 'bg-purple-500/10' : 'hover:bg-zinc-900/50'
                                                     }`}>
-                                                    <div {...(lDrag.dragHandleProps ?? {})} className="text-zinc-700 cursor-grab shrink-0">
-                                                      <GripVertical size={10} />
+                                                    <div {...(lDrag.dragHandleProps ?? {})} className="text-zinc-600 cursor-grab shrink-0">
+                                                      <GripVertical size={13} />
                                                     </div>
-                                                    <span className={`shrink-0 ${isActive ? 'text-purple-400' : 'text-zinc-600'}`}>
-                                                      {lecture.content_type === 'video' ? <Play size={10} /> : lecture.content_type === 'material' ? <Paperclip size={10} /> : <FileText size={10} />}
+                                                    <span className={`shrink-0 ${isActive ? 'text-purple-400' : 'text-zinc-500'}`}>
+                                                      {lecture.content_type === 'video' ? <Play size={13} /> : lecture.content_type === 'material' ? <Paperclip size={13} /> : <FileText size={13} />}
                                                     </span>
                                                     <button
                                                       onClick={() => router.push(`/instructor/courses/${courseId}/curriculum?section=${section.id}&lecture=${lecture.id}`)}
-                                                      className={`flex-1 min-w-0 text-left text-xs truncate transition-colors ${
-                                                        isActive ? 'text-purple-300' : 'text-zinc-500 hover:text-white'
+                                                      className={`flex-1 min-w-0 text-left text-sm truncate transition-colors ${
+                                                        isActive ? 'text-purple-300' : 'text-zinc-400 hover:text-white'
                                                       }`}>
                                                       {lecture.title_en}
                                                     </button>
                                                     <button onClick={() => lDeleteLecture(section.id, lecture.id)}
-                                                      className="p-0.5 text-zinc-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                                                      <Trash2 size={10} />
+                                                      className="p-1 text-zinc-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                                                      <Trash2 size={13} />
                                                     </button>
                                                   </div>
                                                 )}
@@ -407,8 +407,8 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                                           {lProv.placeholder}
                                           <button
                                             onClick={() => router.push(`/instructor/courses/${courseId}/curriculum?section=${section.id}&new=1`)}
-                                            className="flex items-center gap-1 w-full pl-6 pr-2 py-1.5 text-zinc-600 hover:text-purple-400 hover:bg-purple-500/5 text-xs transition-all border-t border-white/[0.04]">
-                                            <Plus size={10} /> Add Lecture
+                                            className="flex items-center gap-1.5 w-full pl-8 pr-2 py-2 text-zinc-500 hover:text-purple-400 hover:bg-purple-500/5 text-sm transition-all border-t border-white/[0.04]">
+                                            <Plus size={13} /> Add Lecture
                                           </button>
                                         </div>
                                       )}
@@ -426,18 +426,18 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
 
                   {/* Add Section */}
                   {addingSection ? (
-                    <div className="flex gap-1 mt-2 px-1">
+                    <div className="flex gap-1.5 mt-2 px-1">
                       <input autoFocus value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') lAddSection(); if (e.key === 'Escape') { setAddingSection(false); setNewSectionTitle(''); } }}
                         placeholder="Section title…"
-                        className="flex-1 px-2 py-1 bg-zinc-900 border border-white/10 rounded-lg text-white text-xs focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
-                      <button onClick={lAddSection} className="px-2 py-1 rounded-lg bg-purple-500 text-white text-xs hover:bg-purple-600">Add</button>
-                      <button onClick={() => { setAddingSection(false); setNewSectionTitle(''); }} className="px-1.5 text-zinc-600 hover:text-white"><X size={11} /></button>
+                        className="flex-1 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/40 placeholder-zinc-600" />
+                      <button onClick={lAddSection} className="px-3 py-1.5 rounded-lg bg-purple-500 text-white text-sm hover:bg-purple-600">Add</button>
+                      <button onClick={() => { setAddingSection(false); setNewSectionTitle(''); }} className="px-1.5 text-zinc-600 hover:text-white"><X size={13} /></button>
                     </div>
                   ) : (
                     <button onClick={() => setAddingSection(true)}
-                      className="flex items-center gap-1.5 w-full px-3 py-2 mt-1 text-zinc-600 hover:text-white text-xs border border-dashed border-white/[0.08] hover:border-white/20 rounded-lg transition-all">
-                      <Plus size={11} /> Add Section
+                      className="flex items-center gap-2 w-full px-3 py-2.5 mt-2 text-zinc-500 hover:text-white text-sm border border-dashed border-white/[0.08] hover:border-white/20 rounded-lg transition-all">
+                      <Plus size={13} /> Add Section
                     </button>
                   )}
                 </div>
