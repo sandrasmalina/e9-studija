@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
 import LegalAcceptanceBanner from '@/components/LegalAcceptanceBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle, Home, Moon, Sun, CreditCard } from 'lucide-react';
+import { BookOpen, Heart, Award, LogOut, GraduationCap, LayoutDashboard, ChevronRight, UserCircle, Home, Moon, Sun, CreditCard, LifeBuoy } from 'lucide-react';
 
 const NAV = [
   { href: '/dashboard',             icon: LayoutDashboard, labelKey: 'dashboard.space.learner' },
@@ -15,6 +15,7 @@ const NAV = [
   { href: '/dashboard/billing',     icon: CreditCard,      labelKey: 'dashboard.nav.billing' },
   { href: '/dashboard/wishlist',    icon: Heart,           labelKey: 'dashboard.nav.wishlist' },
   { href: '/dashboard/certificates',icon: Award,           labelKey: 'dashboard.nav.certificates' },
+  { href: '/support',               icon: LifeBuoy,        labelKey: 'nav.support' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

@@ -193,11 +193,38 @@ export default function Navigation() {
                   </Link>
                 ))}
               </nav>
-              <div className="mt-auto flex items-center gap-3 pt-8 border-t border-white/8">
-                <Globe size={14} className="text-neutral-500" />
-                <button onClick={() => setLanguage('en')} className={`text-sm font-semibold ${language === 'en' ? 'text-accent' : 'text-neutral-500'}`}>EN</button>
-                <span className="text-neutral-700">|</span>
-                <button onClick={() => setLanguage('lv')} className={`text-sm font-semibold ${language === 'lv' ? 'text-accent' : 'text-neutral-500'}`}>LV</button>
+              <div className="mt-auto pt-8 border-t border-white/8 flex flex-col gap-4">
+                {isSignedIn ? (
+                  <Link
+                    href={accountHref}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 text-accent text-sm font-medium hover:text-white transition-colors"
+                  >
+                    <LayoutDashboard size={16} />
+                    Account
+                  </Link>
+                ) : (
+                  <Link
+                    href="/auth/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm transition-colors"
+                  >
+                    <Lock size={16} />
+                    Sign in
+                  </Link>
+                )}
+                <div className="flex items-center gap-3">
+                  <Globe size={14} className="text-neutral-500" />
+                  <button
+                    onClick={() => setLanguage('en')}
+                    className={`text-sm font-semibold ${language === 'en' ? 'text-accent' : 'text-neutral-500'}`}
+                  >EN</button>
+                  <span className="text-neutral-700">|</span>
+                  <button
+                    onClick={() => setLanguage('lv')}
+                    className={`text-sm font-semibold ${language === 'lv' ? 'text-accent' : 'text-neutral-500'}`}
+                  >LV</button>
+                </div>
               </div>
             </motion.div>
           </>

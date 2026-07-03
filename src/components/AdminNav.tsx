@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap, Layers, Newspaper, ChevronDown, PenLine, UserCircle, FileText, MessageCircle } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap, Layers, Newspaper, ChevronDown, PenLine, UserCircle, FileText, MessageCircle, LifeBuoy } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -44,6 +44,7 @@ const navGroups = [
       { href: '/admin/invitations', icon: Send, labelKey: 'admin.nav.invitations', roles: ['admin'] },
       { href: '/admin/contacts', icon: Mail,     labelKey: 'admin.nav.contacts', roles: ['admin'] },
       { href: '/admin/support', icon: MessageCircle, labelKey: 'admin.nav.support', roles: ['admin'] },
+      { href: '/support',        icon: LifeBuoy,       labelKey: 'nav.support',       roles: ['author'] },
       { href: '/admin/social',   icon: Share2,   labelKey: 'admin.nav.social', roles: ['admin'] },
       { href: '/admin/legal',    icon: FileText, labelKey: 'admin.nav.legal', roles: ['admin'] },
     ],

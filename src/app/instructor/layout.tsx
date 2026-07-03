@@ -11,7 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, BookOpen, TrendingUp, Settings, Users,
   ChevronRight, ChevronDown, ArrowLeft, Play, FileText, Paperclip,
-  LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus, Moon, Sun, CreditCard,
+  LogOut, Home, GripVertical, Trash2, Edit2, Check, X, Plus, Moon, Sun, CreditCard, LifeBuoy,
 } from 'lucide-react';
 
 const NAV = [
@@ -19,6 +19,7 @@ const NAV = [
   { href: '/instructor/courses',  icon: BookOpen,        labelKey: 'instructor.nav.myCourses' },
   { href: '/instructor/students', icon: Users,           labelKey: 'instructor.nav.students' },
   { href: '/instructor/earnings', icon: TrendingUp,      labelKey: 'instructor.nav.earnings' },
+  { href: '/support',             icon: LifeBuoy,        labelKey: 'nav.support' },
 ];
 
 const COURSE_PATH_RE = /^\/instructor\/courses\/([0-9a-f-]{36})(\/.*)?$/;
