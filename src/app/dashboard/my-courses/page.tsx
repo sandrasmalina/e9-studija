@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, PlayCircle, Search, CheckCircle2, XCircle } from 'lucide-react';
+import CourseThumbnailImage from '@/components/courses/CourseThumbnailImage';
 
 interface Enrollment {
   id: string;
@@ -20,6 +21,8 @@ interface Enrollment {
     title_lv: string | null;
     thumbnail_url: string | null;
     thumbnail_url_lv: string | null;
+    promo_video_url: string | null;
+    promo_video_type: string | null;
     language: string | null;
     billing_type: string | null;
     subscription_interval: string | null;
@@ -53,7 +56,7 @@ export default function MyCoursesPage() {
       if (!user) return;
       const { data } = await supabase
         .from('enrollments')
-        .select('id, progress_pct, enrolled_at, expires_at, completed_at, last_accessed_at, status, course:courses(id, title_en, title_lv, thumbnail_url, thumbnail_url_lv, language, billing_type, subscription_interval, slug, instructor:profiles!courses_instructor_id_fkey(full_name))')
+        .select('id, progress_pct, enrolled_at, expires_at, completed_at, last_accessed_at, status, course:courses(id, title_en, title_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, language, billing_type, subscription_interval, slug, instructor:profiles!courses_instructor_id_fkey(full_name))')
         .eq('user_id', user.id)
         .neq('status', 'canceled')
         .order('last_accessed_at', { ascending: false, nullsFirst: false });
@@ -156,13 +159,13 @@ export default function MyCoursesPage() {
                 {/* Thumbnail */}
                 <Link href={`/learn/${course.slug}`} className="block">
                   <div className="aspect-video bg-[#16122a] relative overflow-hidden">
-                    {thumbnailUrl ? (
-                      <img src={thumbnailUrl} alt={title} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <PlayCircle size={32} className="text-zinc-700" />
-                      </div>
-                    )}
+                    <CourseThumbnailImage
+                      thumbnailUrl={thumbnailUrl}
+                      promoVideoUrl={course.promo_video_url}
+                      promoVideoType={course.promo_video_type}
+                      language={course.language}
+                      alt={title}
+                    />
                     {completed_at && (
                       <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 bg-green-900/80 text-green-400 text-xs font-medium px-2.5 py-1 rounded-lg backdrop-blur">
                         <CheckCircle2 size={12} /> Completed

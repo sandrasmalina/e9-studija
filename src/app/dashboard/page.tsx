@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, Award, Heart, ArrowRight, Clock, PlayCircle } from 'lucide-react';
+import CourseThumbnailImage from '@/components/courses/CourseThumbnailImage';
 
 interface EnrolledCourse {
   id: string;
@@ -14,6 +15,8 @@ interface EnrolledCourse {
     title_lv: string | null;
     thumbnail_url: string | null;
     thumbnail_url_lv: string | null;
+    promo_video_url: string | null;
+    promo_video_type: string | null;
     language: string | null;
     slug: string;
   };
@@ -43,7 +46,7 @@ export default function DashboardPage() {
 
       const [profileRes, enrollRes, wishRes] = await Promise.all([
         supabase.from('profiles').select('full_name').eq('id', user.id).single(),
-        supabase.from('enrollments').select('id, progress_pct, completed_at, last_accessed_at, course:courses(id, title_en, title_lv, thumbnail_url, thumbnail_url_lv, language, slug)').eq('user_id', user.id).order('last_accessed_at', { ascending: false }),
+        supabase.from('enrollments').select('id, progress_pct, completed_at, last_accessed_at, course:courses(id, title_en, title_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, language, slug)').eq('user_id', user.id).order('last_accessed_at', { ascending: false }),
         supabase.from('wishlists').select('id', { count: 'exact' }).eq('user_id', user.id),
       ]);
 
@@ -123,13 +126,14 @@ export default function DashboardPage() {
                   className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-purple-500/30 transition-all overflow-hidden">
                   {/* Thumbnail */}
                   <div className="aspect-video bg-[#16122a] relative overflow-hidden">
-                    {thumbnailUrl ? (
-                      <img src={thumbnailUrl} alt={title} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <PlayCircle size={32} className="text-zinc-700" />
-                      </div>
-                    )}
+                    <CourseThumbnailImage
+                      thumbnailUrl={course.thumbnail_url}
+                      thumbnailUrlLv={course.thumbnail_url_lv}
+                      promoVideoUrl={course.promo_video_url}
+                      promoVideoType={course.promo_video_type}
+                      language={course.language}
+                      alt={title}
+                    />
                     {/* Progress overlay */}
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
                       <div className="h-full bg-purple-500 transition-all" style={{ width: `${progress_pct ?? 0}%` }} />

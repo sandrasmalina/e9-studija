@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import CourseThumbnailImage from '@/components/courses/CourseThumbnailImage';
 import {
   Clock, BookOpen, Users, Award, ChevronDown, ChevronUp,
   Play, Lock, CheckCircle, Globe, ArrowLeft, Star, Loader2, X, Mail, Moon, Sun, Heart
@@ -493,21 +494,22 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
               className="rounded-2xl border border-white/10 bg-[#16122a] overflow-hidden shadow-2xl shadow-black/10 lg:fixed lg:right-6 lg:top-24 lg:z-30 lg:w-[360px] xl:w-[404px] 2xl:right-[calc((100vw-80rem)/2+1.5rem)]">
               {/* Thumbnail / promo */}
               <div className="relative aspect-video bg-bg-secondary overflow-hidden">
-                {thumbnailUrl ? (
-                  <Image src={thumbnailUrl} alt={title} fill className="object-cover" sizes="360px" />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-accent/5">
-                    <Play size={40} className="text-accent/40" />
-                  </div>
-                )}
+                <CourseThumbnailImage
+                  thumbnailUrl={course.thumbnail_url}
+                  thumbnailUrlLv={course.thumbnail_url_lv}
+                  promoVideoUrl={course.promo_video_url}
+                  promoVideoType={course.promo_video_type}
+                  language={language}
+                  alt={title}
+                />
                 {course.promo_video_url && (
                   <button
                     type="button"
                     onClick={() => setVideoPlaying(true)}
                     aria-label="Play promo video"
-                    className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/50 transition-colors group"
+                    className="absolute inset-0 flex items-center justify-center bg-black/25 hover:bg-black/45 transition-colors group"
                   >
-                    <div className="w-16 h-16 rounded-full bg-white/15 border-2 border-white/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-white/25 transition-all duration-200 shadow-2xl">
+                    <div className="w-16 h-16 rounded-full bg-black/55 border-2 border-white/70 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-600/80 transition-all duration-200 shadow-2xl">
                       <Play size={26} className="text-white ml-1.5" />
                     </div>
                   </button>
