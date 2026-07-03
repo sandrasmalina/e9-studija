@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
       event.type === 'checkout.session.async_payment_succeeded'
     ) {
       const session = event.data.object as Stripe.Checkout.Session;
-      const { course_id, user_id, course_slug, guest_email, guest_name, purchase_language } = session.metadata ?? {};
+      const { course_id, user_id, course_slug, guest_email, guest_name, purchase_language, account_setup_pending } = session.metadata ?? {};
 
       if (!course_id) {
         console.error('[webhook] missing course_id in metadata', session.metadata);
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
             guest_email,
             {
               data: { full_name: guest_name ?? '' },
-              redirectTo: `${siteUrl}/learn/${course_slug ?? ''}`,
+              redirectTo: `${siteUrl}/auth/reset-password?redirect=/learn/${course_slug ?? ''}`,
             }
           );
           if (inviteErr || !inviteData?.user) {
@@ -272,6 +272,7 @@ export async function POST(req: NextRequest) {
           supportEmail: process.env.E9_SUPPORT_EMAIL ?? process.env.E9_ADMIN_EMAIL ?? null,
           template: template ?? null,
           attachments: invoiceAttachment ? [invoiceAttachment] : undefined,
+          accountConfirmationRequired: account_setup_pending === 'true',
         };
 
         const emailResults = await Promise.allSettled([

@@ -537,10 +537,15 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                       <Button className="w-full text-base py-3">{course.billing_type === 'subscription' ? (language === 'lv' ? 'Abonēt kursu' : 'Subscribe') : (t('courses.enroll.paid') || 'Buy Course')}</Button>
                     </Link>
                   )}
-                  {!isPreview && enrollState === 'not-authed' && (
+                  {!isPreview && enrollState === 'not-authed' && (course.is_free || course.price === 0) && (
                     <Button className="w-full text-base py-3" onClick={() => setShowModal(true)}>
-                      {course.is_free || course.price === 0 ? (t('courses.enroll.free') || 'Enroll for Free') : (t('courses.enroll.paid') || 'Buy Course')}
+                      {t('courses.enroll.free') || 'Enroll for Free'}
                     </Button>
+                  )}
+                  {!isPreview && enrollState === 'not-authed' && !course.is_free && course.price > 0 && (
+                    <Link href={`/checkout/${course.slug}`}>
+                      <Button className="w-full text-base py-3">{course.billing_type === 'subscription' ? (language === 'lv' ? 'Abonēt kursu' : 'Subscribe') : (t('courses.enroll.paid') || 'Buy Course')}</Button>
+                    </Link>
                   )}
                 </div>
 

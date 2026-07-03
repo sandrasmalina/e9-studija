@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Lock, Loader2, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Lock, Loader2, ShieldCheck, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 interface CourseSummary {
   id: string;
@@ -28,6 +29,14 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
   const router = useRouter();
   const { language } = useLanguage();
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [mode, setMode] = useState<'create' | 'signin'>('create');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [accountNotice, setAccountNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,31 +48,23 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        router.replace(`/auth/login?redirect=/checkout/${course.slug}`);
-      } else {
-        setAuthed(true);
-      }
+      setAuthed(Boolean(user));
     });
   }, [course.slug, router]);
 
-  const handleCheckout = async () => {
+  const startStripeCheckout = async (input?: { guestEmail?: string; guestName?: string; accountSetupPending?: boolean }) => {
     setLoading(true);
     setError('');
 
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.replace(`/auth/login?redirect=/checkout/${course.slug}`);
-      return;
-    }
 
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
+        ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
       },
-      body: JSON.stringify({ courseSlug: course.slug, language }),
+      body: JSON.stringify({ courseSlug: course.slug, language, ...input }),
     });
 
     const data = await res.json();
@@ -81,7 +82,73 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
     window.location.href = data.url;
   };
 
-  if (!authed) return null;
+  const handleAuthenticatedCheckout = async () => {
+    await startStripeCheckout();
+  };
+
+  const handleCreateAndCheckout = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!firstName.trim()) { setError('First name is required.'); return; }
+    if (!lastName.trim()) { setError('Surname is required.'); return; }
+    if (!email.trim() || !email.includes('@')) { setError('Valid email is required.'); return; }
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
+    if (!turnstileToken) { setError('Please complete the security check.'); return; }
+
+    setLoading(true);
+    setError('');
+    setAccountNotice('');
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanFirstName = firstName.trim();
+    const cleanLastName = lastName.trim();
+    const fullName = `${cleanFirstName} ${cleanLastName}`.trim();
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password,
+      options: {
+        captchaToken: turnstileToken,
+        emailRedirectTo: `${window.location.origin}/auth/login?confirmed=1`,
+        data: { first_name: cleanFirstName, last_name: cleanLastName, full_name: fullName, checkout_course_slug: course.slug },
+      },
+    });
+
+    if (signUpError) {
+      setError(signUpError.message);
+      setTurnstileToken('');
+      setLoading(false);
+      return;
+    }
+
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setMode('signin');
+      setAccountNotice('An account with this email already exists. Sign in to continue checkout.');
+      setPassword('');
+      setConfirmPassword('');
+      setTurnstileToken('');
+      setLoading(false);
+      return;
+    }
+
+    await startStripeCheckout({ guestEmail: cleanEmail, guestName: fullName, accountSetupPending: true });
+  };
+
+  const handleSignInAndCheckout = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!email.trim() || !password.trim()) { setError('Email and password are required.'); return; }
+    setLoading(true);
+    setError('');
+    setAccountNotice('');
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
+    }
+    setAuthed(true);
+    await startStripeCheckout();
+  };
+
+  if (authed === null) return null;
 
   return (
     <div className="min-h-screen bg-[#0b0915] pt-24 pb-16 px-6">
@@ -125,16 +192,77 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
               </p>
             )}
 
-            <button
-              onClick={handleCheckout}
-              disabled={loading}
-              className="w-full py-3.5 rounded-xl bg-accent text-white font-semibold text-base hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-            >
-              {loading
-                ? <><Loader2 size={18} className="animate-spin" /> Redirecting to payment&hellip;</>
-                : <>Pay {displayPrice} {course.currency.toUpperCase()} &rarr;</>
-              }
-            </button>
+            {authed ? (
+              <button
+                onClick={handleAuthenticatedCheckout}
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-accent text-white font-semibold text-base hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+              >
+                {loading
+                  ? <><Loader2 size={18} className="animate-spin" /> Redirecting to payment&hellip;</>
+                  : <>Pay {displayPrice} {course.currency.toUpperCase()} &rarr;</>
+                }
+              </button>
+            ) : mode === 'create' ? (
+              <form onSubmit={handleCreateAndCheckout} className="space-y-4">
+                <p className="rounded-xl border border-accent/20 bg-accent/10 px-4 py-3 text-sm text-neutral-300">
+                  Create your course account first. After payment, confirm your email to access your courses.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-neutral-400 text-xs mb-1.5">First name</label>
+                    <div className="relative">
+                      <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-600" />
+                      <input value={firstName} onChange={e => { setFirstName(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" placeholder="Name" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-neutral-400 text-xs mb-1.5">Surname</label>
+                    <input value={lastName} onChange={e => { setLastName(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" placeholder="Surname" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-neutral-400 text-xs mb-1.5">Email</label>
+                  <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" placeholder="you@example.com" />
+                </div>
+                <div>
+                  <label className="block text-neutral-400 text-xs mb-1.5">Password</label>
+                  <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" placeholder="Min. 8 characters" autoComplete="new-password" />
+                </div>
+                <div>
+                  <label className="block text-neutral-400 text-xs mb-1.5">Confirm password</label>
+                  <input type="password" value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" placeholder="Repeat password" autoComplete="new-password" />
+                </div>
+                <TurnstileWidget
+                  onVerify={(token) => { setTurnstileToken(token); setError(''); }}
+                  onExpire={() => setTurnstileToken('')}
+                  onError={() => { setTurnstileToken(''); setError('Security check failed. Please try again.'); }}
+                />
+                <button type="submit" disabled={loading || !turnstileToken} className="w-full py-3.5 rounded-xl bg-accent text-white font-semibold text-base hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+                  {loading ? <><Loader2 size={18} className="animate-spin" /> Preparing checkout&hellip;</> : <>Create account and pay &rarr;</>}
+                </button>
+                <p className="text-center text-neutral-600 text-xs">Already have an account? <button type="button" onClick={() => { setMode('signin'); setError(''); setAccountNotice(''); setPassword(''); }} className="text-accent hover:underline">Sign in to continue</button></p>
+              </form>
+            ) : (
+              <form onSubmit={handleSignInAndCheckout} className="space-y-4">
+                {accountNotice && <p className="rounded-xl border border-accent/20 bg-accent/10 px-4 py-3 text-sm text-neutral-300">{accountNotice}</p>}
+                <div>
+                  <label className="block text-neutral-400 text-xs mb-1.5">Email</label>
+                  <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" placeholder="you@example.com" autoComplete="email" />
+                </div>
+                <div>
+                  <label className="block text-neutral-400 text-xs mb-1.5">Password</label>
+                  <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(''); }} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" placeholder="Your password" autoComplete="current-password" />
+                </div>
+                <button type="submit" disabled={loading} className="w-full py-3.5 rounded-xl bg-accent text-white font-semibold text-base hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+                  {loading ? <><Loader2 size={18} className="animate-spin" /> Signing in&hellip;</> : <>Sign in and pay &rarr;</>}
+                </button>
+                <div className="flex justify-between text-xs">
+                  <button type="button" onClick={() => { setMode('create'); setError(''); setAccountNotice(''); setPassword(''); }} className="text-neutral-500 hover:text-accent">Create new account</button>
+                  <Link href="/auth/forgot-password" className="text-neutral-500 hover:text-accent">Forgot password?</Link>
+                </div>
+              </form>
+            )}
 
             <div className="flex items-center justify-center gap-4 mt-5 text-neutral-600 text-xs">
               <span className="flex items-center gap-1"><ShieldCheck size={11} /> SSL encrypted</span>

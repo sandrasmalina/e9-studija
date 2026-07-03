@@ -16,6 +16,7 @@ interface CourseEnrollmentEmailInput {
   extraVariables?: RenderVariables;
   template?: CourseEmailTemplate | null;
   attachments?: EmailAttachment[];
+  accountConfirmationRequired?: boolean;
 }
 
 interface EmailAttachment {
@@ -190,17 +191,17 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
     : defaultText(input, price);
   const customHtml = input.template?.body_html ? renderTemplate(input.template.body_html, variables) : null;
   const preheader = input.template?.preheader ? renderTemplate(input.template.preheader, variables) : '';
-
-  const result = await resend.emails.send({
-    from,
-    to: input.to,
-    subject,
-    ...(input.template?.reply_to_email ? { replyTo: input.template.reply_to_email } : {}),
-    ...(input.attachments?.length ? { attachments: input.attachments } : {}),
-    text: customHtml && !input.template?.body_text ? stripHtml(customHtml) : text,
-    html: customHtml ? wrapEmailHtml(customHtml, emailLanguage, preheader) : wrapEmailHtml(`
+  const accountConfirmationNote = input.accountConfirmationRequired
+    ? (emailLanguage === 'lv'
+      ? '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff7ed;border-left:4px solid #f59e0b;border-radius:0 10px 10px 0;margin:0 0 28px;"><tr><td style="padding:16px 18px;"><p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#b45309;text-transform:uppercase;letter-spacing:1px;">Apstipriniet kontu</p><p style="margin:0;font-size:14px;color:#6b4e16;line-height:1.6;">Ja konts tika izveidots šī pirkuma laikā, lūdzu atrodiet e-pastu no E9 Studija/Supabase un apstipriniet savu e-pasta adresi. Pēc apstiprināšanas varēsiet pieslēgties ar tikko izveidoto paroli.</p></td></tr></table>'
+      : '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff7ed;border-left:4px solid #f59e0b;border-radius:0 10px 10px 0;margin:0 0 28px;"><tr><td style="padding:16px 18px;"><p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#b45309;text-transform:uppercase;letter-spacing:1px;">Confirm your account</p><p style="margin:0;font-size:14px;color:#6b4e16;line-height:1.6;">If your account was created during this purchase, please find the email from E9 Studija/Supabase and confirm your email address. After confirmation, log in with the password you created during checkout.</p></td></tr></table>')
+    : '';
+  const emailHtml = customHtml
+    ? `${customHtml}\n${accountConfirmationNote}`
+    : `
         <p style="margin:0 0 8px;font-size:18px;font-weight:600;line-height:1.35;color:#26215C;">${input.purchaseLanguage === 'lv' ? (safeStudentName ? `Sveiki, ${safeStudentName}!` : 'Sveiki!') : (safeStudentName ? `Hello, ${safeStudentName}` : 'Hello')}</p>
         <p style="margin:0 0 28px;font-size:16px;color:#6b7280;line-height:1.6;">${input.purchaseLanguage === 'lv' ? `Paldies, ka pievienojāties kursam <strong>${escapeHtml(input.courseTitle)}</strong>. Jūsu piekļuve ir gatava, un jūs varat sākt mācīties jau tagad.` : `Thank you for joining <strong>${escapeHtml(input.courseTitle)}</strong>. Your access is ready and you can start learning now.`}</p>
+        ${accountConfirmationNote}
         <p style="margin:28px 0;text-align:center;">
           <a href="${safeCourseUrl}" style="display:inline-block;background:linear-gradient(135deg,#e879f9,#a855f7);background-color:#a855f7;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:16px 40px;border-radius:50px;letter-spacing:0.3px;">${input.purchaseLanguage === 'lv' ? 'Sākt mācības &rarr;' : 'Start learning &rarr;'}</a>
         </p>
@@ -213,7 +214,16 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
           </tr>
         </table>
         <p style="margin:0;font-size:15px;color:#374151;line-height:1.6;">${input.purchaseLanguage === 'lv' ? 'Uz tikšanos pirmajā nodarbībā,' : 'See you in the first session,'}<br><strong style="color:#26215C;">${escapeHtml(input.teacherName ?? 'E9 Studija')}</strong></p>
-    `, emailLanguage, preheader),
+    `;
+
+  const result = await resend.emails.send({
+    from,
+    to: input.to,
+    subject,
+    ...(input.template?.reply_to_email ? { replyTo: input.template.reply_to_email } : {}),
+    ...(input.attachments?.length ? { attachments: input.attachments } : {}),
+    text: customHtml && !input.template?.body_text ? stripHtml(customHtml) : text,
+    html: wrapEmailHtml(emailHtml, emailLanguage, preheader),
   });
 
   if (result.error) throw result.error;

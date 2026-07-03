@@ -1,15 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const { t } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +29,7 @@ export default function ResetPasswordPage() {
     const supabase = createClient();
     const { error: authError } = await supabase.auth.updateUser({ password });
     if (authError) { setError(authError.message); setLoading(false); return; }
-    router.replace('/auth/login?reset=1');
+    router.replace(redirect?.startsWith('/') ? redirect : '/auth/login?reset=1');
   };
 
   return (
@@ -79,5 +82,13 @@ export default function ResetPasswordPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }

@@ -81,8 +81,8 @@ export default function CheckoutSuccessPage() {
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">Payment successful!</h1>
             <p className="text-neutral-400 text-sm mb-6 leading-relaxed">
-              Your enrollment is confirmed. We&apos;ve sent you an email with a link to set your password and
-              access <span className="text-white font-medium">{params.courseSlug.replace(/-/g, ' ')}</span>.
+              Your enrollment is confirmed. If this is your first purchase, please confirm your account from the email we sent,
+              then sign in with the password you created during checkout to access <span className="text-white font-medium">{params.courseSlug.replace(/-/g, ' ')}</span>.
             </p>
             <p className="text-neutral-600 text-xs">
               Didn&apos;t receive it? Check your spam folder or contact{' '}

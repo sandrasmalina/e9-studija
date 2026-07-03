@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 export async function POST(req: NextRequest) {
   try {
     const stripe = getStripe();
-    const { courseSlug, guestEmail, guestName, language } = await req.json();
+    const { courseSlug, guestEmail, guestName, language, accountSetupPending } = await req.json();
     if (!courseSlug) {
       return NextResponse.json({ error: 'courseSlug required' }, { status: 400 });
     }
@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
       billing_type: isSubscription ? 'subscription' : 'one_time',
       subscription_interval: isSubscription ? (course.subscription_interval ?? 'month') : '',
       purchase_language: purchaseLanguage,
+      account_setup_pending: accountSetupPending ? 'true' : '',
       connect_account_id: stripeAccountId ?? '',
       transfer_status: isAdminCourse ? 'platform_income' : paymentIntentData || subscriptionData ? 'automatic' : 'platform_hold',
       ...(user
