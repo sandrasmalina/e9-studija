@@ -36,6 +36,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileKey, setTurnstileKey] = useState(0);
   const [accountNotice, setAccountNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -119,6 +120,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
       setPassword('');
       setConfirmPassword('');
       setTurnstileToken('');
+      setTurnstileKey(k => k + 1);
       setLoading(false);
       return;
     }
@@ -126,6 +128,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
     if (!signupRes.ok) {
       setError(signupData.error ?? 'Account creation failed. Please try again.');
       setTurnstileToken('');
+      setTurnstileKey(k => k + 1);
       setLoading(false);
       return;
     }
@@ -253,9 +256,10 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
                   </div>
                 </div>
                 <TurnstileWidget
+                  key={turnstileKey}
                   onVerify={(token) => { setTurnstileToken(token); setError(''); }}
-                  onExpire={() => setTurnstileToken('')}
-                  onError={() => { setTurnstileToken(''); setError('Security check failed. Please try again.'); }}
+                  onExpire={() => { setTurnstileToken(''); setTurnstileKey(k => k + 1); }}
+                  onError={() => { setTurnstileToken(''); setTurnstileKey(k => k + 1); setError('Security check failed. Please try again.'); }}
                 />
                 <button type="submit" disabled={loading || !turnstileToken} className="w-full py-3.5 rounded-xl bg-accent text-white font-semibold text-base hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
                   {loading ? <><Loader2 size={18} className="animate-spin" /> Preparing checkout&hellip;</> : <>Create account and pay &rarr;</>}
