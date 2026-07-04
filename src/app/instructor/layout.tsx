@@ -20,6 +20,7 @@ const NAV = [
   { href: '/instructor/courses',  icon: BookOpen,        labelKey: 'instructor.nav.myCourses' },
   { href: '/instructor/students', icon: Users,           labelKey: 'instructor.nav.students' },
   { href: '/instructor/earnings', icon: TrendingUp,      labelKey: 'instructor.nav.earnings' },
+  { href: '/instructor/stripe-connect', icon: CreditCard, labelKey: 'instructor.nav.stripeConnect' },
   { href: '/support',             icon: LifeBuoy,        labelKey: 'nav.support' },
 ];
 
@@ -30,13 +31,6 @@ interface Section {
   title_en: string;
   sort_order: number;
   lectures: { id: string; title_en: string; content_type: string; sort_order: number }[];
-}
-
-interface StripeConnectStatus {
-  connected: boolean;
-  hasAccount: boolean;
-  mode?: 'test' | 'live';
-  message?: string;
 }
 
 export default function InstructorLayout({ children }: { children: React.ReactNode }) {
@@ -53,7 +47,6 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   const [editingSectionId, setEditingSectionId]   = useState<string | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState('');
   const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
-  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
@@ -107,21 +100,6 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         email: authUser.email ?? '',
         isAdmin: roleNames.has('admin'),
       });
-      const isAdmin = roleNames.has('admin');
-      if (isAdmin) {
-        setStripeStatus({
-          connected: true,
-          hasAccount: false,
-          message: 'Admin payments go to the platform Stripe account.',
-        });
-      }
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!isAdmin && session?.access_token) {
-        fetch('/api/stripe/connect/status', { headers: { Authorization: `Bearer ${session.access_token}` } })
-          .then(res => res.ok ? res.json() : null)
-          .then(data => { if (data) setStripeStatus(data); })
-          .catch(() => setStripeStatus(null));
-      }
       setChecking(false);
     })();
   }, [router]);
@@ -241,16 +219,6 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   // ── Shared sidebar footer ────────────────────────────────────────────────
   const SidebarFooter = () => (
     <div className="px-3 py-3 border-t border-zinc-900 space-y-0.5 shrink-0">
-      <Link href="/instructor/earnings"
-        className={`mb-2 flex items-start gap-3 rounded-xl border px-3 py-3 transition-all ${stripeStatus?.connected ? 'border-green-500/25 bg-green-500/10 text-green-300 hover:bg-green-500/15' : 'border-red-500/25 bg-red-500/10 text-red-300 hover:bg-red-500/15'}`}>
-        <CreditCard size={16} className="mt-0.5 shrink-0" />
-        <span className="min-w-0">
-          <span className="block text-sm font-semibold">{user?.isAdmin ? 'Platform Payments' : 'Stripe Connect'}</span>
-          <span className="block text-xs opacity-80">
-            {user?.isAdmin ? 'Admin receives 100%' : stripeStatus?.connected ? 'Connected' : stripeStatus?.hasAccount ? 'Setup incomplete' : 'Not connected'}{stripeStatus?.mode === 'test' ? ' · Test mode' : ''}
-          </span>
-        </span>
-      </Link>
       <button onClick={handleLogout}
         className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-red-400 hover:bg-red-950/20 transition-all group">
         <LogOut size={16} className="group-hover:text-red-400 transition-colors" />
