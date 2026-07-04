@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { TrendingUp, DollarSign, Users, BookOpen, CreditCard, ExternalLink, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, BookOpen, CreditCard, ExternalLink, AlertCircle } from 'lucide-react';
 
 interface Enrollment {
   id: string;
@@ -31,6 +31,7 @@ export default function EarningsPage() {
   const [revenueShare, setRevenueShare] = useState(70);
   const [stripeAccountId, setStripeAccountId] = useState('');
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
+  const [stripeStatusLoading, setStripeStatusLoading] = useState(true);
   const [connectingStripe, setConnectingStripe] = useState(false);
   const [connectError, setConnectError] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -40,7 +41,11 @@ export default function EarningsPage() {
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setStripeStatusLoading(false);
+        setLoading(false);
+        return;
+      }
 
       // Get profile for revenue share %
       const { data: profile } = await supabase.from('profiles')
@@ -54,6 +59,7 @@ export default function EarningsPage() {
           hasAccount: false,
           message: 'Admin revenue is paid to the platform Stripe account.',
         });
+        setStripeStatusLoading(false);
       } else if (profile?.revenue_share_pct) {
         setRevenueShare(profile.revenue_share_pct);
       }
@@ -61,10 +67,17 @@ export default function EarningsPage() {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!adminAccount && session?.access_token) {
-        fetch('/api/stripe/connect/status', { headers: { Authorization: `Bearer ${session.access_token}` } })
-          .then(res => res.ok ? res.json() : null)
-          .then(data => { if (data) setStripeStatus(data); })
-          .catch(() => setStripeStatus(null));
+        try {
+          const res = await fetch('/api/stripe/connect/status', { headers: { Authorization: `Bearer ${session.access_token}` } });
+          const data = res.ok ? await res.json() : null;
+          if (data) setStripeStatus(data);
+        } catch {
+          setStripeStatus(null);
+        } finally {
+          setStripeStatusLoading(false);
+        }
+      } else if (!adminAccount) {
+        setStripeStatusLoading(false);
       }
 
       // Admin: platform income is the platform's share across ALL course sales
@@ -127,6 +140,7 @@ export default function EarningsPage() {
   const myEarnings = isAdmin ? platformIncome : (totalRevenue * revenueShare) / 100;
   const enrollmentCount = isAdmin ? adminEnrollmentCount : enrollments.length;
   const isStripeConnected = Boolean(stripeStatus?.connected);
+  const showStripeConnectBanner = !isAdmin && !stripeStatusLoading && (!isStripeConnected || Boolean(connectError));
 
   const statCards = [
     { icon: DollarSign, label: 'Total Revenue', value: `€${totalRevenue.toFixed(2)}`, sub: 'Gross sales' },
@@ -151,20 +165,16 @@ export default function EarningsPage() {
         )}
       </div>
 
-      <div className={`mb-8 rounded-2xl border p-5 ${isStripeConnected ? 'border-green-500/25 bg-green-500/10' : 'border-red-500/25 bg-red-500/10'}`}>
+      {showStripeConnectBanner && <div className="mb-8 rounded-2xl border border-red-500/25 bg-red-500/10 p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
-            {isStripeConnected ? <CheckCircle2 size={22} className="mt-0.5 shrink-0 text-green-400" /> : <AlertCircle size={22} className="mt-0.5 shrink-0 text-red-400" />}
+            <AlertCircle size={22} className="mt-0.5 shrink-0 text-red-400" />
             <div>
-              <p className={`text-sm font-semibold ${isStripeConnected ? 'text-green-300' : 'text-red-300'}`}>
-                {isAdmin ? 'Platform Stripe account receives admin revenue' : isStripeConnected ? 'Stripe Connect is connected' : stripeStatus?.hasAccount ? 'Stripe Connect setup is incomplete' : 'Stripe Connect is not connected'}
+              <p className="text-sm font-semibold text-red-300">
+                {stripeStatus?.hasAccount ? 'Stripe Connect setup is incomplete' : 'Stripe Connect is not connected'}
               </p>
               <p className="mt-1 text-sm text-zinc-400">
-                {isAdmin
-                  ? 'No Stripe Connect setup is needed for admins. Course sales are paid directly to the platform account.'
-                  : isStripeConnected
-                  ? 'Automatic instructor payouts are enabled for eligible course sales.'
-                  : 'Finish onboarding before payouts can go directly to this instructor.'}
+                Finish onboarding before payouts can go directly to this instructor.
                 {stripeStatus?.mode === 'test' ? ' You are currently using Stripe test mode.' : ''}
               </p>
             </div>
@@ -184,7 +194,7 @@ export default function EarningsPage() {
         {connectError && (
           <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{connectError}</p>
         )}
-      </div>
+      </div>}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 mb-8 sm:grid-cols-4">
