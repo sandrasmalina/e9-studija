@@ -42,9 +42,9 @@ export async function POST(req: NextRequest) {
     }
 
     const stripe = getStripe();
-    let accountId = profile.stripe_account_id as string | null;
+    const origin = req.headers.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
-    if (!accountId) {
+    const createConnectedAccount = async () => {
       const account = await stripe.accounts.create({
         type: 'express',
         country: process.env.STRIPE_CONNECT_COUNTRY ?? 'LV',
@@ -56,17 +56,32 @@ export async function POST(req: NextRequest) {
         },
         metadata: { user_id: user.id },
       });
-      accountId = account.id;
-      await supabaseAdmin.from('profiles').update({ stripe_account_id: accountId }).eq('id', user.id);
-    }
+      await supabaseAdmin.from('profiles').update({ stripe_account_id: account.id }).eq('id', user.id);
+      return account.id;
+    };
 
-    const origin = req.headers.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
-    const accountLink = await stripe.accountLinks.create({
-      account: accountId,
+    const createAccountLink = (connectedAccountId: string) => stripe.accountLinks.create({
+      account: connectedAccountId,
       refresh_url: `${origin}/instructor/earnings?stripe=refresh`,
       return_url: `${origin}/instructor/earnings?stripe=connected`,
       type: 'account_onboarding',
     });
+
+    let accountId = (profile.stripe_account_id as string | null) ?? await createConnectedAccount();
+    let accountLink;
+
+    try {
+      accountLink = await createAccountLink(accountId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      const isModeMismatch = message.includes('account link for an account that was created in test mode')
+        || message.includes('account link for an account that was created in live mode');
+
+      if (!isModeMismatch) throw error;
+
+      accountId = await createConnectedAccount();
+      accountLink = await createAccountLink(accountId);
+    }
 
     return NextResponse.json({ url: accountLink.url });
   } catch (error) {
