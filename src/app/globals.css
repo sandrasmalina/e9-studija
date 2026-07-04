@@ -116,6 +116,36 @@
     background: transparent !important;
   }
 
+  /* Neutralize hard-coded black/white inline text colors (from the editor's fixed color
+     swatches or pasted content) so content stays readable in both light and dark themes.
+     Intentional accent colors (purple, blue, green, etc.) are preserved. */
+  .course-description-content [style*="color:#18181b"],
+  .course-description-content [style*="color: #18181b"],
+  .course-description-content [style*="color:#000"],
+  .course-description-content [style*="color: #000"],
+  .course-description-content [style*="color:#fff"],
+  .course-description-content [style*="color: #fff"],
+  .course-description-content [style*="color:#f8fafc"],
+  .course-description-content [style*="color: #f8fafc"],
+  .course-description-content [style*="color:rgb(0, 0, 0)"],
+  .course-description-content [style*="color:rgb(0,0,0)"],
+  .course-description-content [style*="color:rgb(255, 255, 255)"],
+  .course-description-content [style*="color:rgb(255,255,255)"],
+  .lecture-content [style*="color:#18181b"],
+  .lecture-content [style*="color: #18181b"],
+  .lecture-content [style*="color:#000"],
+  .lecture-content [style*="color: #000"],
+  .lecture-content [style*="color:#fff"],
+  .lecture-content [style*="color: #fff"],
+  .lecture-content [style*="color:#f8fafc"],
+  .lecture-content [style*="color: #f8fafc"],
+  .lecture-content [style*="color:rgb(0, 0, 0)"],
+  .lecture-content [style*="color:rgb(0,0,0)"],
+  .lecture-content [style*="color:rgb(255, 255, 255)"],
+  .lecture-content [style*="color:rgb(255,255,255)"] {
+    color: var(--tw-prose-body) !important;
+  }
+
   .admin-panel.admin-theme-light {
     color: #4b5563;
   }
