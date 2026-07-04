@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: accountLink.url });
   } catch (error) {
     console.error('[stripe/connect]', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: `Stripe Connect error: ${message}` }, { status: 500 });
   }
 }
