@@ -33,6 +33,8 @@ export default function EarningsPage() {
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
   const [connectingStripe, setConnectingStripe] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [platformIncome, setPlatformIncome] = useState(0);
+  const [adminEnrollmentCount, setAdminEnrollmentCount] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -62,6 +64,24 @@ export default function EarningsPage() {
           .then(res => res.ok ? res.json() : null)
           .then(data => { if (data) setStripeStatus(data); })
           .catch(() => setStripeStatus(null));
+      }
+
+      // Admin: platform income is the platform's share across ALL course sales
+      // (100% of admin courses + the platform cut of every instructor course).
+      if (adminAccount) {
+        if (session?.access_token) {
+          try {
+            const res = await fetch('/api/admin/earnings', { headers: { Authorization: `Bearer ${session.access_token}` } });
+            if (res.ok) {
+              const d = await res.json();
+              setTotalRevenue(d.totalRevenue ?? 0);
+              setPlatformIncome(d.platformIncome ?? 0);
+              setAdminEnrollmentCount(d.totalEnrollments ?? 0);
+            }
+          } catch { /* ignore */ }
+        }
+        setLoading(false);
+        return;
       }
 
       // Get instructor's courses
@@ -101,14 +121,15 @@ export default function EarningsPage() {
     if (data.url) window.location.href = data.url;
   };
 
-  const myEarnings = (totalRevenue * revenueShare) / 100;
+  const myEarnings = isAdmin ? platformIncome : (totalRevenue * revenueShare) / 100;
+  const enrollmentCount = isAdmin ? adminEnrollmentCount : enrollments.length;
   const isStripeConnected = Boolean(stripeStatus?.connected);
 
   const statCards = [
     { icon: DollarSign, label: 'Total Revenue', value: `€${totalRevenue.toFixed(2)}`, sub: 'Gross sales' },
-    { icon: TrendingUp, label: isAdmin ? 'Platform Income' : 'Your Earnings', value: `€${myEarnings.toFixed(2)}`, sub: isAdmin ? 'Admin receives 100%' : `${revenueShare}% share` },
-    { icon: Users, label: 'Total Enrollments', value: enrollments.length.toString(), sub: 'Paid enrollments' },
-    { icon: BookOpen, label: 'Avg per Sale', value: enrollments.length > 0 ? `€${(totalRevenue / enrollments.length).toFixed(2)}` : '—', sub: 'Average order value' },
+    { icon: TrendingUp, label: isAdmin ? 'Platform Income' : 'Your Earnings', value: `€${myEarnings.toFixed(2)}`, sub: isAdmin ? 'Platform share of all sales' : `${revenueShare}% share` },
+    { icon: Users, label: 'Total Enrollments', value: enrollmentCount.toString(), sub: 'Paid enrollments' },
+    { icon: BookOpen, label: 'Avg per Sale', value: enrollmentCount > 0 ? `€${(totalRevenue / enrollmentCount).toFixed(2)}` : '—', sub: 'Average order value' },
   ];
 
   return (

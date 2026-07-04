@@ -82,7 +82,7 @@ export default function AdminUsers() {
     }) as UserProfile[];
     setUsers(mappedUsers);
     const drafts: Record<string, string> = {};
-    (profileData ?? []).forEach((profile: any) => { drafts[profile.id] = String(100 - (profile.revenue_share_pct ?? 70)); });
+    (profileData ?? []).forEach((profile: any) => { drafts[profile.id] = String(profile.revenue_share_pct ?? 70); });
     setPayoutDrafts(drafts);
     if (session?.access_token) {
       const instructors = mappedUsers.filter(user => user.roles.includes('instructor') && !user.roles.includes('admin'));
@@ -125,11 +125,11 @@ export default function AdminUsers() {
   };
 
   const handlePayoutSave = async (user: UserProfile) => {
-    const rawFee = Number(payoutDrafts[user.id]);
-    if (!Number.isFinite(rawFee) || rawFee < 0 || rawFee > 100) return;
+    const rawShare = Number(payoutDrafts[user.id]);
+    if (!Number.isFinite(rawShare) || rawShare < 0 || rawShare > 100) return;
     setUpdating(user.id);
-    const platformFee = Math.round(rawFee);
-    const revenueShare = 100 - platformFee;
+    const revenueShare = Math.round(rawShare);
+    const platformFee = 100 - revenueShare;
     const { error } = await supabase.from('profiles').update({ platform_fee_pct: platformFee, revenue_share_pct: revenueShare }).eq('id', user.id);
     if (!error) {
       setUsers(current => current.map(item => item.id === user.id ? { ...item, platform_fee_pct: platformFee, revenue_share_pct: revenueShare } : item));
@@ -302,7 +302,8 @@ export default function AdminUsers() {
                         })}
                       </div>
                       {u.roles.includes('instructor') && !u.roles.includes('admin') && (
-                        <div className="mt-2 flex justify-end gap-1.5">
+                        <div className="mt-2 flex items-center justify-end gap-1.5">
+                          <span className="text-[11px] text-zinc-500">Teacher share</span>
                           <div className="relative w-24">
                             <Percent size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-600" />
                             <input
@@ -312,7 +313,7 @@ export default function AdminUsers() {
                               min="0"
                               max="100"
                               className="w-full rounded-lg border border-zinc-800 bg-zinc-900 py-1 pl-7 pr-2 text-xs text-white focus:border-accent/50 focus:outline-none"
-                              title="Platform fee percentage"
+                              title="Instructor revenue share % (0 = platform keeps all, 40 = platform keeps 60%)"
                             />
                           </div>
                           <button
