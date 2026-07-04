@@ -12,21 +12,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('id,full_name,role,stripe_account_id')
-      .eq('id', user.id)
-      .single();
+    const [{ data: profile, error: profileError }, { data: assignedRoles }] = await Promise.all([
+      supabaseAdmin
+        .from('profiles')
+        .select('id,full_name,role,stripe_account_id')
+        .eq('id', user.id)
+        .single(),
+      supabaseAdmin.from('user_roles').select('roles(name)').eq('user_id', user.id),
+    ]);
 
     if (profileError || !profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    if (profile.role === 'admin') {
+    // Collect roles from both the profiles.role column and the user_roles table.
+    const roleNames = new Set<string>();
+    if (profile.role) roleNames.add(profile.role);
+    (assignedRoles ?? []).forEach((row: { roles?: { name?: string } | { name?: string }[] }) => {
+      const r = Array.isArray(row.roles) ? row.roles[0] : row.roles;
+      if (r?.name) roleNames.add(r.name);
+    });
+
+    if (roleNames.has('admin')) {
       return NextResponse.json({ error: 'Admins receive payments through the platform Stripe account and do not need Stripe Connect.' }, { status: 403 });
     }
 
-    if (profile.role !== 'instructor') {
+    if (!roleNames.has('instructor')) {
       return NextResponse.json({ error: 'Teacher account required' }, { status: 403 });
     }
 

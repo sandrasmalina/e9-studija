@@ -13,13 +13,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: viewerProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    const [{ data: viewerProfile }, { data: viewerRoles }] = await Promise.all([
+      supabaseAdmin.from('profiles').select('role').eq('id', user.id).single(),
+      supabaseAdmin.from('user_roles').select('roles(name)').eq('user_id', user.id),
+    ]);
+    const viewerIsAdmin = viewerProfile?.role === 'admin' || (viewerRoles ?? []).some((row: { roles?: { name?: string } | { name?: string }[] }) => {
+      const r = Array.isArray(row.roles) ? row.roles[0] : row.roles;
+      return r?.name === 'admin';
+    });
 
-    if (targetUserId && targetUserId !== user.id && viewerProfile?.role !== 'admin') {
+    if (targetUserId && targetUserId !== user.id && !viewerIsAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

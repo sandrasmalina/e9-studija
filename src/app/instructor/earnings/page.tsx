@@ -32,6 +32,7 @@ export default function EarningsPage() {
   const [stripeAccountId, setStripeAccountId] = useState('');
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
   const [connectingStripe, setConnectingStripe] = useState(false);
+  const [connectError, setConnectError] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [platformIncome, setPlatformIncome] = useState(0);
   const [adminEnrollmentCount, setAdminEnrollmentCount] = useState(0);
@@ -111,14 +112,16 @@ export default function EarningsPage() {
 
   const connectStripe = async () => {
     setConnectingStripe(true);
+    setConnectError('');
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch('/api/stripe/connect', {
       method: 'POST',
       headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setConnectingStripe(false);
-    if (data.url) window.location.href = data.url;
+    if (res.ok && data.url) { window.location.href = data.url; return; }
+    setConnectError(data.error ?? 'Could not start Stripe Connect. Please try again.');
   };
 
   const myEarnings = isAdmin ? platformIncome : (totalRevenue * revenueShare) / 100;
@@ -177,6 +180,9 @@ export default function EarningsPage() {
             <span className={stripeStatus.chargesEnabled ? 'text-green-300' : 'text-red-300'}>Charges: {stripeStatus.chargesEnabled ? 'enabled' : 'not enabled'}</span>
             <span className={stripeStatus.payoutsEnabled ? 'text-green-300' : 'text-red-300'}>Payouts: {stripeStatus.payoutsEnabled ? 'enabled' : 'not enabled'}</span>
           </div>
+        )}
+        {connectError && (
+          <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{connectError}</p>
         )}
       </div>
 
