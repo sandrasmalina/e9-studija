@@ -524,16 +524,24 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
               </div>
 
               <div className="p-5">
-                <PriceBadge
-                  price={Number(course.price)}
-                  discountPrice={course.discount_price ? Number(course.discount_price) : null}
-                  discountStartsAt={course.discount_starts_at}
-                  discountEndsAt={course.discount_ends_at}
-                  currency={course.currency}
-                  isFree={course.is_free}
-                  billingType={course.billing_type}
-                  subscriptionInterval={course.subscription_interval}
-                />
+                {enrollState !== 'enrolled' && (
+                  <PriceBadge
+                    price={Number(course.price)}
+                    discountPrice={course.discount_price ? Number(course.discount_price) : null}
+                    discountStartsAt={course.discount_starts_at}
+                    discountEndsAt={course.discount_ends_at}
+                    currency={course.currency}
+                    isFree={course.is_free}
+                    billingType={course.billing_type}
+                    subscriptionInterval={course.subscription_interval}
+                  />
+                )}
+                {enrollState === 'enrolled' && (
+                  <div className="flex items-center gap-2 rounded-xl border border-green-500/25 bg-green-500/10 px-4 py-3 text-sm font-medium text-green-300">
+                    <Award size={16} className="shrink-0" />
+                    {language === 'lv' ? 'Tev ir piekļuve šim kursam' : 'You have access to this course'}
+                  </div>
+                )}
 
                 {/* Enrollment CTA — dynamic based on auth + enrollment state */}
                 <div className="mt-4">
@@ -549,7 +557,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                   )}
                   {!isPreview && enrollState === 'enrolled' && (
                     <Link href={`/learn/${course.slug}`}>
-                      <Button className="w-full text-base py-3">{t('courses.cta.continue') || 'Continue Learning →'}</Button>
+                      <Button className="w-full text-base py-3">{language === 'lv' ? 'Turpināt mācības →' : 'Continue Learning →'}</Button>
                     </Link>
                   )}
                   {!isPreview && enrollState === 'not-enrolled' && (course.is_free || course.price === 0) && (
