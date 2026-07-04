@@ -116,34 +116,17 @@
     background: transparent !important;
   }
 
-  /* Neutralize hard-coded black/white inline text colors (from the editor's fixed color
-     swatches or pasted content) so content stays readable in both light and dark themes.
-     Intentional accent colors (purple, blue, green, etc.) are preserved. */
-  .course-description-content [style*="color:#18181b"],
-  .course-description-content [style*="color: #18181b"],
-  .course-description-content [style*="color:#000"],
-  .course-description-content [style*="color: #000"],
-  .course-description-content [style*="color:#fff"],
-  .course-description-content [style*="color: #fff"],
-  .course-description-content [style*="color:#f8fafc"],
-  .course-description-content [style*="color: #f8fafc"],
-  .course-description-content [style*="color:rgb(0, 0, 0)"],
-  .course-description-content [style*="color:rgb(0,0,0)"],
-  .course-description-content [style*="color:rgb(255, 255, 255)"],
-  .course-description-content [style*="color:rgb(255,255,255)"],
-  .lecture-content [style*="color:#18181b"],
-  .lecture-content [style*="color: #18181b"],
-  .lecture-content [style*="color:#000"],
-  .lecture-content [style*="color: #000"],
-  .lecture-content [style*="color:#fff"],
-  .lecture-content [style*="color: #fff"],
-  .lecture-content [style*="color:#f8fafc"],
-  .lecture-content [style*="color: #f8fafc"],
-  .lecture-content [style*="color:rgb(0, 0, 0)"],
-  .lecture-content [style*="color:rgb(0,0,0)"],
-  .lecture-content [style*="color:rgb(255, 255, 255)"],
-  .lecture-content [style*="color:rgb(255,255,255)"] {
+  /* Any inline text color stored in the rich-text HTML (from the editor's color swatches or
+     pasted content) is neutralized so the theme's own prose colors always control readability
+     in both light and dark mode. Without this, black/dark text becomes invisible on dark bg. */
+  .course-description-content [style*="color:"],
+  .lecture-content [style*="color:"] {
     color: var(--tw-prose-body) !important;
+  }
+  /* Keep links and bold looking like accents even if they carry an inline color. */
+  .course-description-content a[style*="color:"],
+  .lecture-content a[style*="color:"] {
+    color: var(--tw-prose-links) !important;
   }
 
   .admin-panel.admin-theme-light {
