@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -36,6 +36,7 @@ interface Section {
 export default function InstructorLayout({ children }: { children: React.ReactNode }) {
   const router    = useRouter();
   const pathname  = usePathname();
+  const searchParams = useSearchParams();
   const { t } = useLanguage();
   const [user,      setUser]      = useState<{ name: string; email: string; isAdmin: boolean } | null>(null);
   const [checking,  setChecking]  = useState(true);
@@ -46,6 +47,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   const [newSectionTitle, setNewSectionTitle]     = useState('');
   const [editingSectionId, setEditingSectionId]   = useState<string | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState('');
+  const [collapsedSectionIds, setCollapsedSectionIds] = useState<Record<string, boolean>>({});
   const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -114,11 +116,11 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
         .eq('id', courseId).maybeSingle();
       if (!data) return;
       setCourseTitle(data.title_en ?? '');
-      setSections(
-        ((data.sections ?? []) as Section[])
+      const nextSections = ((data.sections ?? []) as Section[])
           .sort((a, b) => a.sort_order - b.sort_order)
-          .map(s => ({ ...s, lectures: (s.lectures ?? []).sort((a, b) => a.sort_order - b.sort_order) }))
-      );
+          .map(s => ({ ...s, lectures: (s.lectures ?? []).sort((a, b) => a.sort_order - b.sort_order) }));
+      setSections(nextSections);
+      setCollapsedSectionIds(prev => Object.fromEntries(Object.entries(prev).filter(([sectionId]) => nextSections.some(s => s.id === sectionId))));
     };
     loadOutline();
     window.addEventListener('curriculum-changed', loadOutline);
@@ -153,7 +155,16 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
     if (!confirm('Delete this section and all its lectures?')) return;
     await supabase.from('sections').delete().eq('id', sectionId);
     setSections(prev => prev.filter(s => s.id !== sectionId));
+    setCollapsedSectionIds(prev => {
+      const next = { ...prev };
+      delete next[sectionId];
+      return next;
+    });
     notifyCurriculum();
+  };
+
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSectionIds(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
   };
 
   const lDeleteLecture = async (sectionId: string, lectureId: string) => {
@@ -242,8 +253,8 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   if (courseId) {
     const COURSE_NAV = [
       { href: `/instructor/courses/${courseId}/edit`,       label: 'Course Info' },
-      { href: `/instructor/courses/${courseId}/curriculum`, label: 'Curriculum'  },
       { href: `/instructor/courses/${courseId}/settings`,   label: 'Settings'    },
+      { href: `/instructor/courses/${courseId}/curriculum`, label: 'Curriculum'  },
     ];
 
     return (
@@ -294,10 +305,28 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
               Course Info
             </Link>
 
+            {/* Settings */}
+            <Link href={`/instructor/courses/${courseId}/settings`}
+              className={`flex items-center mt-0.5 px-3 py-2.5 rounded-xl text-sm transition-all relative ${
+                pathname === `/instructor/courses/${courseId}/settings`
+                  ? 'bg-accent/10 text-accent font-medium'
+                  : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+              }`}>
+              {pathname === `/instructor/courses/${courseId}/settings` && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />}
+              Settings
+            </Link>
+
             {/* Curriculum — collapsible */}
             <div className="mt-0.5">
               <button
-                onClick={() => { router.push(`/instructor/courses/${courseId}/curriculum`); setCurriculumOpen(o => !o); }}
+                onClick={() => {
+                  if (!pathname.includes('/curriculum')) {
+                    router.push(`/instructor/courses/${courseId}/curriculum`);
+                    setCurriculumOpen(true);
+                    return;
+                  }
+                  setCurriculumOpen(o => !o);
+                }}
                 className={`flex items-center w-full px-3 py-2.5 rounded-xl text-sm transition-all relative ${
                   pathname.includes('/curriculum')
                     ? 'bg-accent/10 text-accent font-medium'
@@ -319,9 +348,11 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                       <Droppable droppableId="sections" type="section">
                         {(prov) => (
                           <div {...prov.droppableProps} ref={prov.innerRef} className="space-y-1">
-                            {sections.map((section, sIdx) => (
-                              <Draggable key={section.id} draggableId={section.id} index={sIdx}>
-                                {(drag, dragSnap) => (
+                            {sections.map((section, sIdx) => {
+                              const sectionCollapsed = Boolean(collapsedSectionIds[section.id]);
+                              return (
+                                <Draggable key={section.id} draggableId={section.id} index={sIdx}>
+                                  {(drag, dragSnap) => (
                                   <div ref={drag.innerRef} {...drag.draggableProps}
                                     className={`rounded-lg overflow-hidden border ${
                                       dragSnap.isDragging ? 'border-purple-500/30 bg-zinc-900 shadow-lg' : 'border-white/[0.05] bg-white/[0.02]'
@@ -333,6 +364,10 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                                         <GripVertical size={11} />
                                       </div>
 
+                                      <button type="button" onClick={() => toggleSection(section.id)} className="p-0.5 text-zinc-500 hover:text-white shrink-0" aria-label={sectionCollapsed ? 'Open section lectures' : 'Collapse section lectures'}>
+                                        {sectionCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                                      </button>
+
                                       {editingSectionId === section.id ? (
                                         <div className="flex-1 flex items-center gap-1.5">
                                           <input autoFocus value={editingSectionTitle}
@@ -343,7 +378,9 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                                           <button onClick={() => setEditingSectionId(null)} className="p-1 text-zinc-600 hover:text-white"><X size={13} /></button>
                                         </div>
                                       ) : (
-                                        <span className="flex-1 text-zinc-200 text-sm font-medium truncate">{section.title_en}</span>
+                                        <button type="button" onClick={() => toggleSection(section.id)} className="flex-1 min-w-0 text-left text-zinc-200 text-sm font-medium truncate hover:text-white transition-colors">
+                                          {section.title_en}
+                                        </button>
                                       )}
 
                                       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
@@ -355,13 +392,13 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                                     </div>
 
                                     {/* Lectures */}
-                                    <Droppable droppableId={section.id} type="lecture">
+                                    {!sectionCollapsed && <Droppable droppableId={section.id} type="lecture">
                                       {(lProv, lSnap) => (
                                         <div {...lProv.droppableProps} ref={lProv.innerRef}
                                           className={`min-h-[4px] ${lSnap.isDraggingOver ? 'bg-purple-500/5' : ''}`}>
                                           {section.lectures.map((lecture, lIdx) => {
                                             const isActive = pathname.includes('/curriculum') &&
-                                              new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('lecture') === lecture.id;
+                                              searchParams.get('lecture') === lecture.id;
                                             return (
                                               <Draggable key={lecture.id} draggableId={lecture.id} index={lIdx}>
                                                 {(lDrag, lDragSnap) => (
@@ -400,11 +437,12 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                                           </button>
                                         </div>
                                       )}
-                                    </Droppable>
+                                    </Droppable>}
                                   </div>
-                                )}
-                              </Draggable>
-                            ))}
+                                  )}
+                                </Draggable>
+                              );
+                            })}
                             {prov.placeholder}
                           </div>
                         )}
@@ -432,16 +470,6 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
               )}
             </div>
 
-            {/* Settings */}
-            <Link href={`/instructor/courses/${courseId}/settings`}
-              className={`flex items-center mt-0.5 px-3 py-2.5 rounded-xl text-sm transition-all relative ${
-                pathname === `/instructor/courses/${courseId}/settings`
-                  ? 'bg-accent/10 text-accent font-medium'
-                  : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
-              }`}>
-              {pathname === `/instructor/courses/${courseId}/settings` && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />}
-              Settings
-            </Link>
           </nav>
 
           <SidebarFooter />
