@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -36,7 +36,6 @@ interface Section {
 export default function InstructorLayout({ children }: { children: React.ReactNode }) {
   const router    = useRouter();
   const pathname  = usePathname();
-  const searchParams = useSearchParams();
   const { t } = useLanguage();
   const [user,      setUser]      = useState<{ name: string; email: string; isAdmin: boolean } | null>(null);
   const [checking,  setChecking]  = useState(true);
@@ -48,6 +47,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   const [editingSectionId, setEditingSectionId]   = useState<string | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState('');
   const [collapsedSectionIds, setCollapsedSectionIds] = useState<Record<string, boolean>>({});
+  const [activeLectureId, setActiveLectureId] = useState<string | null>(null);
   const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -129,6 +129,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
 
   useEffect(() => {
     if (pathname.includes('/curriculum')) setCurriculumOpen(true);
+    setActiveLectureId(typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('lecture'));
   }, [pathname]);
 
   // ── Sidebar section / lecture CRUD ────────────────────────────────────────
@@ -398,7 +399,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                                           className={`min-h-[4px] ${lSnap.isDraggingOver ? 'bg-purple-500/5' : ''}`}>
                                           {section.lectures.map((lecture, lIdx) => {
                                             const isActive = pathname.includes('/curriculum') &&
-                                              searchParams.get('lecture') === lecture.id;
+                                              activeLectureId === lecture.id;
                                             return (
                                               <Draggable key={lecture.id} draggableId={lecture.id} index={lIdx}>
                                                 {(lDrag, lDragSnap) => (
@@ -414,7 +415,10 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                                                       {lecture.content_type === 'video' ? <Play size={13} /> : lecture.content_type === 'material' ? <Paperclip size={13} /> : <FileText size={13} />}
                                                     </span>
                                                     <button
-                                                      onClick={() => router.push(`/instructor/courses/${courseId}/curriculum?section=${section.id}&lecture=${lecture.id}`)}
+                                                      onClick={() => {
+                                                        setActiveLectureId(lecture.id);
+                                                        router.push(`/instructor/courses/${courseId}/curriculum?section=${section.id}&lecture=${lecture.id}`);
+                                                      }}
                                                       className={`flex-1 min-w-0 text-left text-sm truncate transition-colors ${
                                                         isActive ? 'text-purple-300' : 'text-zinc-400 hover:text-white'
                                                       }`}>
@@ -431,7 +435,10 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                                           })}
                                           {lProv.placeholder}
                                           <button
-                                            onClick={() => router.push(`/instructor/courses/${courseId}/curriculum?section=${section.id}&new=1`)}
+                                            onClick={() => {
+                                              setActiveLectureId(null);
+                                              router.push(`/instructor/courses/${courseId}/curriculum?section=${section.id}&new=1`);
+                                            }}
                                             className="flex items-center gap-1.5 w-full pl-8 pr-2 py-2 text-zinc-500 hover:text-purple-400 hover:bg-purple-500/5 text-sm transition-all border-t border-white/[0.04]">
                                             <Plus size={13} /> Add Lecture
                                           </button>
