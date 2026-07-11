@@ -1,5 +1,8 @@
 import { Resend } from 'resend';
 
+const DEFAULT_RESEND_FROM_EMAIL = 'E9 Studija <noreply@inbound.e9studija.lv>';
+const ROOT_DOMAIN_FROM_ADDRESS_PATTERN = /@e9studija\.lv(?=>|$)/i;
+
 interface CourseEnrollmentEmailInput {
   to: string;
   studentName?: string | null;
@@ -139,9 +142,9 @@ function wrapEmailHtml(content: string, language: string | null | undefined, pre
   `;
 }
 
-function getFromAddress(template?: CourseEmailTemplate | null) {
-  const from = process.env.RESEND_FROM_EMAIL;
-  if (!from) return null;
+export function getResendFromAddress(template?: CourseEmailTemplate | null) {
+  const from = (process.env.RESEND_FROM_EMAIL?.trim() || DEFAULT_RESEND_FROM_EMAIL)
+    .replace(ROOT_DOMAIN_FROM_ADDRESS_PATTERN, '@inbound.e9studija.lv');
   if (!template?.sender_name?.trim()) return from;
 
   const addressMatch = from.match(/<([^>]+)>/);
@@ -152,9 +155,9 @@ function getFromAddress(template?: CourseEmailTemplate | null) {
 // Sends a 6-digit sign-in code via Resend (bypasses Supabase Auth email limits).
 export async function sendLoginCodeEmail(input: { to: string; code: string; language?: 'en' | 'lv' | string | null }) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL;
-  if (!apiKey || !from) {
-    console.warn('[email] RESEND_API_KEY or RESEND_FROM_EMAIL missing; cannot send login code');
+  const from = getResendFromAddress();
+  if (!apiKey) {
+    console.warn('[email] RESEND_API_KEY missing; cannot send login code');
     return { status: 'skipped' as const };
   }
   const isLv = input.language === 'lv';
@@ -209,10 +212,10 @@ function buildCourseVariables(input: CourseEnrollmentEmailInput, price: string):
 
 export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInput) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = getFromAddress(input.template);
+  const from = getResendFromAddress(input.template);
 
-  if (!apiKey || !from) {
-    console.warn('[email] RESEND_API_KEY or RESEND_FROM_EMAIL missing; skipping enrollment email');
+  if (!apiKey) {
+    console.warn('[email] RESEND_API_KEY missing; skipping enrollment email');
     return { status: 'skipped' as const };
   }
 
@@ -271,9 +274,9 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
 export async function sendAdminEnrollmentNotification(input: CourseEnrollmentEmailInput) {
   const adminEmail = process.env.E9_ADMIN_EMAIL || process.env.ADMIN_NOTIFICATION_EMAIL;
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL;
+  const from = getResendFromAddress();
 
-  if (!adminEmail || !apiKey || !from) return;
+  if (!adminEmail || !apiKey) return;
 
   const resend = new Resend(apiKey);
   const price = formatPrice(input.amountPaid, input.currency, input.billingType, input.subscriptionInterval);
@@ -308,10 +311,10 @@ interface CourseInvoiceEmailInput {
 
 export async function sendCourseInvoiceEmail(input: CourseInvoiceEmailInput) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL;
+  const from = getResendFromAddress();
 
-  if (!apiKey || !from) {
-    console.warn('[email] RESEND_API_KEY or RESEND_FROM_EMAIL missing; skipping invoice email');
+  if (!apiKey) {
+    console.warn('[email] RESEND_API_KEY missing; skipping invoice email');
     return { status: 'skipped' as const };
   }
 

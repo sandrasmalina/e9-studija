@@ -455,7 +455,7 @@ STRIPE_WEBHOOK_SECRET=
 
 # Phase 8 — Resend (email)
 RESEND_API_KEY=
-RESEND_FROM_EMAIL=noreply@e9studija.lv
+RESEND_FROM_EMAIL="E9 Studija <noreply@inbound.e9studija.lv>"
 
 # Phase 9 — optional
 VIMEO_ACCESS_TOKEN=              # for private video duration

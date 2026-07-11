@@ -265,13 +265,13 @@ Required:
 * Use sender address like:
 
 ```text
-E9 Studija <info@e9studija.lv>
+E9 Studija <noreply@inbound.e9studija.lv>
 ```
 
 or course-specific:
 
 ```text
-Sandra from E9 Studija <info@e9studija.lv>
+Sandra from E9 Studija <noreply@inbound.e9studija.lv>
 ```
 
 Do not allow unverified instructor emails as direct sender addresses. Use instructor email as reply-to instead.

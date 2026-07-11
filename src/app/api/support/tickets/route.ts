@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { getResendFromAddress } from '@/lib/email';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 
@@ -10,10 +11,6 @@ interface SupportTicketPayload {
   subject?: string;
   message?: string;
   turnstileToken?: string;
-}
-
-function getFromAddress() {
-  return process.env.RESEND_FROM_EMAIL ?? null;
 }
 
 function escapeHtml(value: string) {
@@ -46,8 +43,8 @@ function ticketEmailHtml(input: { name: string; ticketNumber: string; subject: s
 
 async function sendSupportEmails(input: { ticketNumber: string; name: string; email: string; phone?: string | null; subject: string; message: string }) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = getFromAddress();
-  if (!apiKey || !from) return;
+  const from = getResendFromAddress();
+  if (!apiKey) return;
 
   const adminEmail = process.env.SUPPORT_ADMIN_EMAIL ?? process.env.E9_ADMIN_EMAIL ?? 'e9studija@gmail.com';
   const resend = new Resend(apiKey);
