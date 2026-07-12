@@ -13,6 +13,7 @@ const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ss
 interface CourseForm {
   title_en: string;
   title_lv: string;
+  slug: string;
   short_description_en: string;
   short_description_lv: string;
   description_en: string;
@@ -59,7 +60,7 @@ interface CourseForm {
 }
 
 const EMPTY: CourseForm = {
-  title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
+  title_en: '', title_lv: '', slug: '', short_description_en: '', short_description_lv: '',
   description_en: '', description_lv: '', learning_schedule_en: '', learning_schedule_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '', target_audience_lv: '',
   price: '0', discount_price: '', discount_ends_at: '', billing_type: 'one_time', subscription_interval: 'month', is_free: false, access_duration_months: '', starts_at: '', ends_at: '',
@@ -139,9 +140,18 @@ export default function AdminCourseNewPage() {
     if (!form.title_en.trim()) { setErr('Title (English) is required'); return; }
     setSaving(true); setErr('');
 
-    // Generate a unique slug
-    const baseSlug = toSlug(form.title_en);
-    const slug = `${baseSlug}-${Date.now().toString(36)}`;
+    const slug = toSlug(form.slug || form.title_en);
+    if (!slug) { setSaving(false); setErr('Course URL slug is required'); return; }
+
+    const [{ data: existingCourse }, { data: existingRedirect }] = await Promise.all([
+      supabase.from('courses').select('id').eq('slug', slug).maybeSingle(),
+      supabase.from('course_slug_redirects').select('old_slug').eq('old_slug', slug).maybeSingle(),
+    ]);
+    if (existingCourse || existingRedirect) {
+      setSaving(false);
+      setErr('This course URL slug is already used. Choose a different one.');
+      return;
+    }
 
     const { data, error } = await supabase.from('courses').insert({
       title_en: form.title_en.trim(),
@@ -236,10 +246,26 @@ export default function AdminCourseNewPage() {
             <input
               type="text"
               value={form.title_en}
-              onChange={e => set('title_en', e.target.value)}
+              onChange={e => setForm(current => ({
+                ...current,
+                title_en: e.target.value,
+                slug: !current.slug || current.slug === toSlug(current.title_en) ? toSlug(e.target.value) : current.slug,
+              }))}
               placeholder="e.g. Complete Web Development Bootcamp"
               className={inputCls}
             />
+          </Field>
+          <Field label="Course URL slug" hint="Short readable ending for the course link. Example: ai-web-app-2-weeks">
+            <div className="flex overflow-hidden rounded-xl border border-zinc-700/50 bg-zinc-900 focus-within:border-zinc-500">
+              <span className="flex items-center border-r border-zinc-700/50 px-3 text-xs text-zinc-500">/courses/</span>
+              <input
+                type="text"
+                value={form.slug}
+                onChange={e => set('slug', toSlug(e.target.value))}
+                placeholder="ai-web-app-2-weeks"
+                className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none"
+              />
+            </div>
           </Field>
           <Field label="Title (Latvian)" hint="Optional">
             <input type="text" value={form.title_lv} onChange={e => set('title_lv', e.target.value)} placeholder="Latviešu nosaukums" className={inputCls} />

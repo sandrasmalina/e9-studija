@@ -14,6 +14,7 @@ const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ss
 interface CourseForm {
   title_en: string;
   title_lv: string;
+  slug: string;
   short_description_en: string;
   short_description_lv: string;
   description_en: string;
@@ -60,7 +61,7 @@ interface CourseForm {
 }
 
 const EMPTY: CourseForm = {
-  title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
+  title_en: '', title_lv: '', slug: '', short_description_en: '', short_description_lv: '',
   description_en: '', description_lv: '', learning_schedule_en: '', learning_schedule_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '', target_audience_lv: '',
   price: '0', discount_price: '', discount_ends_at: '', billing_type: 'one_time', subscription_interval: 'month', is_free: false, access_duration_months: '', starts_at: '', ends_at: '',
@@ -78,6 +79,15 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
       {children}
     </div>
   );
+}
+
+function toSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 export default function AdminCourseEditPage() {
@@ -113,6 +123,7 @@ export default function AdminCourseEditPage() {
         const nextForm: CourseForm = {
           title_en: course.title_en ?? '',
           title_lv: course.title_lv ?? '',
+          slug: course.slug ?? '',
           short_description_en: course.short_description_en ?? '',
           short_description_lv: course.short_description_lv ?? '',
           description_en: course.description_en ?? '',
@@ -196,10 +207,25 @@ export default function AdminCourseEditPage() {
   const handleSave = async () => {
     if (!form.title_en.trim()) { setErr('Title is required'); return; }
     setSaving(true); setErr(''); setSaved(false);
+    const nextSlug = toSlug(form.slug || form.title_en);
+    if (!nextSlug) { setSaving(false); setErr('Course URL slug is required'); return; }
+
+    if (nextSlug !== courseSlug) {
+      const [{ data: existingCourse }, { data: existingRedirect }] = await Promise.all([
+        supabase.from('courses').select('id').eq('slug', nextSlug).neq('id', id).maybeSingle(),
+        supabase.from('course_slug_redirects').select('old_slug').eq('old_slug', nextSlug).maybeSingle(),
+      ]);
+      if (existingCourse || existingRedirect) {
+        setSaving(false);
+        setErr('This course URL slug is already used. Choose a different one.');
+        return;
+      }
+    }
 
     const { error } = await supabase.from('courses').update({
       title_en: form.title_en.trim(),
       title_lv: form.title_lv.trim() || null,
+      slug: nextSlug,
       short_description_en: form.short_description_en.trim() || null,
       short_description_lv: form.short_description_lv.trim() || null,
       description_en: form.description_en.trim() || null,
@@ -231,7 +257,7 @@ export default function AdminCourseEditPage() {
       og_title: form.og_title.trim() || form.meta_title.trim() || form.title_en.trim(),
       og_description: form.og_description.trim() || form.meta_description.trim() || form.short_description_en.trim() || null,
       og_image: form.og_image.trim() || form.thumbnail_url.trim() || null,
-      canonical_url: form.canonical_url.trim() || (courseSlug ? `/courses/${courseSlug}` : null),
+      canonical_url: form.canonical_url.trim() || `/courses/${nextSlug}`,
       no_index: form.no_index,
       ai_summary: form.ai_summary.trim() || null,
       key_takeaways: form.key_takeaways.trim() || null,
@@ -247,11 +273,26 @@ export default function AdminCourseEditPage() {
       ...(form.status === 'published' ? { published_at: new Date().toISOString() } : {}),
     }).eq('id', id);
 
+    if (error) { setSaving(false); setErr(error.message); return; }
+
+    if (courseSlug && nextSlug !== courseSlug) {
+      const { error: redirectInsertError } = await supabase
+        .from('course_slug_redirects')
+        .upsert({ old_slug: courseSlug, course_id: id }, { onConflict: 'old_slug' });
+      if (redirectInsertError) {
+        setSaving(false);
+        setErr(redirectInsertError.message);
+        return;
+      }
+    }
+
+    const savedForm = { ...form, slug: nextSlug };
     setSaving(false);
-    if (error) { setErr(error.message); return; }
     setSaved(true);
     setCourseTitle(form.title_en);
-    setSavedSnapshot(JSON.stringify(form));
+    setCourseSlug(nextSlug);
+    setForm(savedForm);
+    setSavedSnapshot(JSON.stringify(savedForm));
     setTimeout(() => setSaved(false), 3000);
   };
 
@@ -278,8 +319,8 @@ export default function AdminCourseEditPage() {
             className="flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-500 text-sm transition-colors">
             <BookOpen size={14} /> Curriculum
           </Link>
-          {courseSlug && (
-            <a href={`/courses/${courseSlug}?preview=1`} target="_blank" rel="noopener noreferrer"
+          {form.slug && (
+            <a href={`/courses/${form.slug}?preview=1`} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-500 text-sm transition-colors">
               <ExternalLink size={14} /> Preview
             </a>
@@ -306,6 +347,18 @@ export default function AdminCourseEditPage() {
           <h2 className="text-white font-semibold">Basic Information</h2>
           <Field label="Course Title (English)">
             <input type="text" value={form.title_en} onChange={e => set('title_en', e.target.value)} placeholder="Course title" className={inputCls} />
+          </Field>
+          <Field label="Course URL slug" hint="Short readable ending for the course link. Old public course links will redirect after save.">
+            <div className="flex overflow-hidden rounded-xl border border-zinc-700/50 bg-zinc-900 focus-within:border-zinc-500">
+              <span className="flex items-center border-r border-zinc-700/50 px-3 text-xs text-zinc-500">/courses/</span>
+              <input
+                type="text"
+                value={form.slug}
+                onChange={e => set('slug', toSlug(e.target.value))}
+                placeholder="ai-web-app-2-weeks"
+                className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none"
+              />
+            </div>
           </Field>
           <Field label="Title (Latvian)" hint="Optional">
             <input type="text" value={form.title_lv} onChange={e => set('title_lv', e.target.value)} placeholder="Latviešu nosaukums" className={inputCls} />

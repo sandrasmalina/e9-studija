@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
@@ -62,7 +62,27 @@ export default async function CourseSlugPage({ params, searchParams }: Props) {
   if (!preview) query.eq('status', 'published');
   const { data: course, error } = await query.single();
 
-  if (error || !course) notFound();
+  if (error || !course) {
+    const { data: redirectRow } = await supabase
+      .from('course_slug_redirects')
+      .select('course_id')
+      .eq('old_slug', params.slug)
+      .maybeSingle();
+
+    if (redirectRow?.course_id) {
+      const redirectedCourseQuery = supabase
+        .from('courses')
+        .select('slug')
+        .eq('id', redirectRow.course_id);
+      if (!preview) redirectedCourseQuery.eq('status', 'published');
+      const { data: redirectedCourse } = await redirectedCourseQuery.maybeSingle();
+      if (redirectedCourse?.slug && redirectedCourse.slug !== params.slug) {
+        redirect(`/courses/${redirectedCourse.slug}${preview ? '?preview=1' : ''}`);
+      }
+    }
+
+    notFound();
+  }
 
   // Sort lectures within each section
   const sectionsWithSortedLectures = (course.sections ?? [])
