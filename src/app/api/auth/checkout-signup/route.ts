@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 import { mintSessionForEmail } from '@/lib/auth-session';
+import { recordLegalAcceptances, requestIpAddress } from '@/lib/legal-acceptance';
 
 export async function POST(req: NextRequest) {
   const { email, password, firstName, lastName, turnstileToken } = await req.json();
@@ -13,9 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
   }
 
-  const remoteIp =
-    req.headers.get('cf-connecting-ip') ??
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  const remoteIp = requestIpAddress(req.headers);
   const valid = await verifyTurnstileToken(turnstileToken, remoteIp);
   if (!valid) {
     return NextResponse.json({ error: 'Invalid security check' }, { status: 400 });
@@ -43,6 +42,14 @@ export async function POST(req: NextRequest) {
     console.error('[checkout-signup]', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  const { error: legalError } = await recordLegalAcceptances({
+    userId: data.user.id,
+    source: 'checkout_signup',
+    ipAddress: remoteIp,
+    userAgent: req.headers.get('user-agent'),
+  });
+  if (legalError) console.error('[checkout-signup] legal acceptance failed:', legalError);
 
   // Mint a session server-side so the client can sign in without captcha/OTP/signup checks.
   const { session, error: sessionError } = await mintSessionForEmail(cleanEmail);

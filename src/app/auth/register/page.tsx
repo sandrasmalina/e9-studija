@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Mail, Lock, User } from 'lucide-react';
 import TurnstileWidget from '@/components/TurnstileWidget';
+import { buildLegalAcceptanceMetadata, getLatestLegalDocumentRefs } from '@/lib/legal-documents';
 
 interface Invitation { email: string; roles: string[] | null; status: string; expires_at: string | null; is_campaign?: boolean; campaign_label?: string | null; use_count?: number; max_uses?: number | null; }
 
@@ -64,13 +65,25 @@ function RegisterForm() {
     if (!turnstileToken) { setError('Please complete the security check.'); return; }
     setSaving(true); setError('');
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+    const { documents: legalDocuments, error: legalError } = await getLatestLegalDocumentRefs(supabase);
+    if (legalError || legalDocuments.length === 0) {
+      setSaving(false);
+      setError(legalError?.message ?? 'Legal documents are not available. Please try again later.');
+      return;
+    }
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
       options: {
         captchaToken: turnstileToken,
         emailRedirectTo: `${window.location.origin}/auth/login?confirmed=1`,
-        data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: fullName, invite_token: token },
+        data: {
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          full_name: fullName,
+          invite_token: token,
+          legal_acceptance: buildLegalAcceptanceMetadata(legalDocuments, 'signup'),
+        },
       },
     });
     setSaving(false);

@@ -4,20 +4,23 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-
-interface LegalDocumentVersion {
-  document_type: 'terms' | 'privacy';
-  version: number;
-  title: string;
-}
+import { getLatestLegalDocumentRefs, type LegalDocumentRef } from '@/lib/legal-documents';
 
 interface LegalAcceptance {
-  document_type: 'terms' | 'privacy';
+  document_type: string;
   version: number;
+}
+
+function canRetryWithLegacyAcceptanceShape(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes('no unique or exclusion constraint matching the on conflict specification')
+    || normalized.includes('document_id')
+    || normalized.includes('source')
+    || normalized.includes('schema cache');
 }
 
 export default function LegalAcceptanceBanner() {
-  const [pendingDocs, setPendingDocs] = useState<LegalDocumentVersion[]>([]);
+  const [pendingDocs, setPendingDocs] = useState<LegalDocumentRef[]>([]);
   const [userId, setUserId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -29,12 +32,8 @@ export default function LegalAcceptanceBanner() {
       if (!user || !active) return;
       setUserId(user.id);
 
-      const [{ data: docs }, { data: acceptances }] = await Promise.all([
-        supabase
-          .from('legal_documents')
-          .select('document_type, version, title')
-          .in('document_type', ['terms', 'privacy'])
-          .order('version', { ascending: false }),
+      const [{ documents: docs, error: docsError }, { data: acceptances }] = await Promise.all([
+        getLatestLegalDocumentRefs(supabase),
         supabase
           .from('legal_acceptances')
           .select('document_type, version')
@@ -42,12 +41,13 @@ export default function LegalAcceptanceBanner() {
       ]);
 
       if (!active) return;
-      const latest = new Map<'terms' | 'privacy', LegalDocumentVersion>();
-      ((docs ?? []) as LegalDocumentVersion[]).forEach(doc => {
-        if (!latest.has(doc.document_type)) latest.set(doc.document_type, doc);
+      if (docsError) { setError(docsError.message); return; }
+
+      const accepted = new Map<string, number>();
+      ((acceptances ?? []) as LegalAcceptance[]).forEach(row => {
+        accepted.set(row.document_type, Math.max(accepted.get(row.document_type) ?? 0, row.version));
       });
-      const accepted = new Map((acceptances ?? []).map((row: LegalAcceptance) => [row.document_type, row.version]));
-      setPendingDocs([...latest.values()].filter(doc => (accepted.get(doc.document_type) ?? 0) < doc.version));
+      setPendingDocs(docs.filter(doc => (accepted.get(doc.document_type) ?? 0) < doc.version));
     };
     load();
     return () => { active = false; };
@@ -57,18 +57,38 @@ export default function LegalAcceptanceBanner() {
     if (!userId || pendingDocs.length === 0) return;
     setSaving(true);
     setError('');
-    const { error: saveError } = await supabase.from('legal_acceptances').upsert(
-      pendingDocs.map(doc => ({
+    const acceptedAt = new Date().toISOString();
+    const rows = pendingDocs.map(doc => ({
         user_id: userId,
+        document_id: doc.id,
         document_type: doc.document_type,
         version: doc.version,
-        accepted_at: new Date().toISOString(),
-      })),
-      { onConflict: 'user_id,document_type' }
+        accepted_at: acceptedAt,
+        source: 'banner',
+      }));
+    let { error: saveError } = await supabase.from('legal_acceptances').upsert(
+      rows,
+      { onConflict: 'user_id,document_type,version', ignoreDuplicates: true }
     );
+
+    if (saveError && canRetryWithLegacyAcceptanceShape(saveError.message)) {
+      const fallbackRows = rows.map(({ document_id, source, ...row }) => row);
+      const { error: fallbackError } = await supabase.from('legal_acceptances').upsert(
+        fallbackRows,
+        { onConflict: 'user_id,document_type' }
+      );
+      saveError = fallbackError;
+    }
+
     setSaving(false);
     if (saveError) { setError(saveError.message); return; }
     setPendingDocs([]);
+  };
+
+  const documentHref = (documentType: string) => {
+    if (documentType === 'terms') return '/terms';
+    if (documentType === 'privacy') return '/privacy';
+    return null;
   };
 
   if (pendingDocs.length === 0) return null;
@@ -82,11 +102,21 @@ export default function LegalAcceptanceBanner() {
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white">Please accept the latest legal documents</p>
           <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-            Terms of Service or Privacy Policy has changed. Review the latest documents and accept them to continue using the app.
+            Review and accept the latest legal documents to continue using the app.
           </p>
           <div className="mt-2 flex flex-wrap gap-3 text-xs">
-            <Link href="/terms" target="_blank" className="text-amber-200 hover:text-white">Terms of Service</Link>
-            <Link href="/privacy" target="_blank" className="text-amber-200 hover:text-white">Privacy Policy</Link>
+            {pendingDocs.map(doc => {
+              const href = documentHref(doc.document_type);
+              return href ? (
+                <Link key={`${doc.document_type}-${doc.version}`} href={href} target="_blank" className="text-amber-200 hover:text-white">
+                  {doc.title ?? doc.document_type} v{doc.version}
+                </Link>
+              ) : (
+                <span key={`${doc.document_type}-${doc.version}`} className="text-zinc-300">
+                  {doc.title ?? doc.document_type} v{doc.version}
+                </span>
+              );
+            })}
           </div>
           {error && <p className="mt-2 text-xs text-red-300">{error}</p>}
         </div>
@@ -97,7 +127,7 @@ export default function LegalAcceptanceBanner() {
         disabled={saving}
         className="mt-4 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-200 disabled:opacity-60 sm:mt-0 sm:w-auto sm:shrink-0"
       >
-        {saving ? 'Saving...' : 'Accept new version'}
+        {saving ? 'Saving...' : 'Accept latest versions'}
       </button>
     </div>
   );

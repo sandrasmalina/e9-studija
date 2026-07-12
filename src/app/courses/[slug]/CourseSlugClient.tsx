@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
 import StarRating from '@/components/courses/StarRating';
 import PriceBadge from '@/components/courses/PriceBadge';
+import { buildLegalAcceptanceMetadata, getLatestLegalDocumentRefs } from '@/lib/legal-documents';
 
 function formatDuration(seconds: number) {
   if (seconds < 60) return `${seconds}s`;
@@ -254,6 +255,20 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
       expires_at: expiresAt,
     }, { onConflict: 'user_id,course_id' });
     if (!error || error.code === '23505') {
+      const { documents: legalDocuments } = await getLatestLegalDocumentRefs(supabase);
+      if (legalDocuments.length > 0) {
+        await supabase.from('legal_acceptances').upsert(
+          legalDocuments.map(document => ({
+            user_id: enrollUserId,
+            document_id: document.id,
+            document_type: document.document_type,
+            version: document.version,
+            accepted_at: new Date().toISOString(),
+            source: 'free_course_enroll',
+          })),
+          { onConflict: 'user_id,document_type,version', ignoreDuplicates: true },
+        );
+      }
       router.push(`/learn/${course.slug}`);
     } else {
       setEnrolling(false);
@@ -301,11 +316,20 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
     setModalError('');
 
     if (course.is_free || course.price === 0) {
+      const { documents: legalDocuments, error: legalError } = await getLatestLegalDocumentRefs(supabase);
+      if (legalError || legalDocuments.length === 0) {
+        setModalError(legalError?.message ?? 'Legal documents are not available. Please try again later.');
+        setModalLoading(false);
+        return;
+      }
       // Free course: send magic link → auto-enroll after confirmation
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          data: { full_name: name },
+          data: {
+            full_name: name,
+            legal_acceptance: buildLegalAcceptanceMetadata(legalDocuments, 'free_course_signup'),
+          },
           emailRedirectTo: `${window.location.origin}/courses/${course.slug}?auto_enroll=1`,
           shouldCreateUser: true,
         },

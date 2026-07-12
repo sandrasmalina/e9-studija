@@ -3,6 +3,8 @@ import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 import { sendAdminEnrollmentNotification, sendCourseEnrollmentEmail, sendCourseInvoiceEmail } from '@/lib/email';
 import { supabaseAdmin } from '@/lib/supabase';
+import { recordLegalAcceptances } from '@/lib/legal-acceptance';
+import { getLegalDocumentRefsByVersions, parseLegalDocumentVersions } from '@/lib/legal-documents';
 
 interface EmailDeliveryResult {
   status: 'sent' | 'skipped';
@@ -149,7 +151,20 @@ export async function POST(req: NextRequest) {
       event.type === 'checkout.session.async_payment_succeeded'
     ) {
       const session = event.data.object as Stripe.Checkout.Session;
-      const { course_id, user_id, course_slug, guest_email, guest_name, guest_first_name, guest_last_name, purchase_language, account_setup_pending } = session.metadata ?? {};
+      const {
+        course_id,
+        user_id,
+        course_slug,
+        guest_email,
+        guest_name,
+        guest_first_name,
+        guest_last_name,
+        purchase_language,
+        account_setup_pending,
+        legal_acceptance_source,
+        legal_accepted_at,
+        legal_document_versions,
+      } = session.metadata ?? {};
 
       if (!course_id) {
         console.error('[webhook] missing course_id in metadata', session.metadata);
@@ -203,6 +218,22 @@ export async function POST(req: NextRequest) {
       if (!resolvedUserId) {
         console.error('[webhook] no user_id or guest_email in metadata', session.metadata);
         return NextResponse.json({ error: 'Missing user info' }, { status: 400 });
+      }
+
+      const acceptedLegalRefs = parseLegalDocumentVersions(legal_document_versions);
+      if (acceptedLegalRefs.length > 0) {
+        const { documents: acceptedLegalDocuments, error: legalDocsError } = await getLegalDocumentRefsByVersions(supabaseAdmin, acceptedLegalRefs);
+        if (legalDocsError) {
+          console.error('[webhook] legal document lookup failed:', legalDocsError);
+        } else if (acceptedLegalDocuments.length > 0) {
+          const { error: legalAcceptanceError } = await recordLegalAcceptances({
+            userId: resolvedUserId,
+            source: legal_acceptance_source || 'checkout',
+            acceptedAt: legal_accepted_at || undefined,
+            documents: acceptedLegalDocuments,
+          });
+          if (legalAcceptanceError) console.error('[webhook] legal acceptance failed:', legalAcceptanceError);
+        }
       }
 
       const { data: course } = await supabaseAdmin

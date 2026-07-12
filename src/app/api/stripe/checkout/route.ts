@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 import { supabase } from '@/lib/supabase';
 import { verifyTurnstileToken } from '@/lib/turnstile';
+import { encodeLegalDocumentVersions, getLatestLegalDocumentRefs } from '@/lib/legal-documents';
 
 export async function POST(req: NextRequest) {
   try {
@@ -72,6 +73,11 @@ export async function POST(req: NextRequest) {
     const platformFeePct = isAdminCourse ? 100 : Math.max(0, Math.min(100, 100 - (instructorProfile?.revenue_share_pct ?? 70)));
     const isSubscription = course.billing_type === 'subscription';
     const purchaseLanguage = language === 'lv' ? 'lv' : 'en';
+    const { documents: legalDocuments, error: legalError } = await getLatestLegalDocumentRefs(supabase);
+    if (legalError || legalDocuments.length === 0) {
+      return NextResponse.json({ error: 'Legal documents are not available' }, { status: 500 });
+    }
+    const legalDocumentVersions = encodeLegalDocumentVersions(legalDocuments);
     let paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData | undefined;
     let subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData | undefined;
 
@@ -105,6 +111,9 @@ export async function POST(req: NextRequest) {
       subscription_interval: isSubscription ? (course.subscription_interval ?? 'month') : '',
       purchase_language: purchaseLanguage,
       account_setup_pending: accountSetupPending ? 'true' : '',
+      legal_acceptance_source: user ? 'checkout' : 'guest_checkout',
+      legal_accepted_at: new Date().toISOString(),
+      legal_document_versions: legalDocumentVersions,
       connect_account_id: stripeAccountId ?? '',
       transfer_status: isAdminCourse ? 'platform_income' : paymentIntentData || subscriptionData ? 'automatic' : 'platform_hold',
       ...(user
