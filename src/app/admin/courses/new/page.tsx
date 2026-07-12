@@ -26,8 +26,11 @@ interface CourseForm {
   promo_video_type: string;
   level: string;
   language: string;
+  delivery_mode: string;
   requirements: string;
+  requirements_lv: string;
   what_you_learn: string;
+  what_you_learn_lv: string;
   target_audience: string;
   target_audience_lv: string;
   price: string;
@@ -62,7 +65,7 @@ interface CourseForm {
 const EMPTY: CourseForm = {
   title_en: '', title_lv: '', slug: '', short_description_en: '', short_description_lv: '',
   description_en: '', description_lv: '', learning_schedule_en: '', learning_schedule_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
-  level: 'beginner', language: 'en', requirements: '', what_you_learn: '', target_audience: '', target_audience_lv: '',
+  level: 'beginner', language: 'en', delivery_mode: 'online', requirements: '', requirements_lv: '', what_you_learn: '', what_you_learn_lv: '', target_audience: '', target_audience_lv: '',
   price: '0', discount_price: '', discount_ends_at: '', billing_type: 'one_time', subscription_interval: 'month', is_free: false, access_duration_months: '', starts_at: '', ends_at: '',
   meta_title: '', meta_description: '', meta_keywords: '', og_title: '', og_description: '', og_image: '', canonical_url: '', no_index: false,
   ai_summary: '', key_takeaways: '', faq_items: '', tags_ai_topics: '', expertise_level: '', industry: '',
@@ -169,8 +172,11 @@ export default function AdminCourseNewPage() {
       promo_video_type: form.promo_video_url.trim() ? form.promo_video_type : null,
       level: form.level,
       language: form.language,
+      delivery_mode: form.delivery_mode,
       requirements: form.requirements.split('\n').map(s => s.trim()).filter(Boolean),
+      requirements_lv: form.requirements_lv.split('\n').map(s => s.trim()).filter(Boolean),
       what_you_learn: form.what_you_learn.split('\n').map(s => s.trim()).filter(Boolean),
+      what_you_learn_lv: form.what_you_learn_lv.split('\n').map(s => s.trim()).filter(Boolean),
       target_audience: form.target_audience.trim() || null,
       target_audience_lv: form.target_audience_lv.trim() || null,
       price: form.is_free ? 0 : Number(form.price) || 0,
@@ -299,6 +305,13 @@ export default function AdminCourseNewPage() {
               </select>
             </Field>
           </div>
+          <Field label="Course Format">
+            <div className="grid grid-cols-3 gap-2">
+              {([['online', 'Online'], ['live', 'Live'], ['hybrid', 'Hybrid']] as const).map(([value, label]) => (
+                <button key={value} type="button" onClick={() => set('delivery_mode', value)} className={`rounded-xl border px-3 py-2 text-sm transition-colors ${form.delivery_mode === value ? 'border-purple-500/40 bg-purple-500/15 text-white' : 'border-zinc-700/50 text-zinc-500 hover:text-white'}`}>{label}</button>
+              ))}
+            </div>
+          </Field>
         </div>
 
         {/* Descriptions */}
@@ -448,12 +461,22 @@ export default function AdminCourseNewPage() {
         {/* Learning outcomes */}
         <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/50 p-6 space-y-4">
           <h2 className="text-white font-semibold">Learning Outcomes</h2>
-          <Field label="What Students Will Learn" hint="One item per line">
-            <textarea value={form.what_you_learn} onChange={e => set('what_you_learn', e.target.value)} rows={5} placeholder={"Build a full-stack app\nDeploy to Vercel"} className={textareaCls} />
-          </Field>
-          <Field label="Requirements" hint="One item per line">
-            <textarea value={form.requirements} onChange={e => set('requirements', e.target.value)} rows={4} placeholder={"Basic JavaScript\nNode.js installed"} className={textareaCls} />
-          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="What Students Will Learn (EN)" hint="One item per line">
+              <textarea value={form.what_you_learn} onChange={e => set('what_you_learn', e.target.value)} rows={5} placeholder={"Build a full-stack app\nDeploy to Vercel"} className={textareaCls} />
+            </Field>
+            <Field label="What Students Will Learn (LV)" hint="One item per line">
+              <textarea value={form.what_you_learn_lv} onChange={e => set('what_you_learn_lv', e.target.value)} rows={5} placeholder={"Izveidot pilnu web aplikāciju\nPublicēt projektu Vercel"} className={textareaCls} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Requirements (EN)" hint="One item per line">
+              <textarea value={form.requirements} onChange={e => set('requirements', e.target.value)} rows={4} placeholder={"Basic JavaScript\nNode.js installed"} className={textareaCls} />
+            </Field>
+            <Field label="Requirements (LV)" hint="One item per line">
+              <textarea value={form.requirements_lv} onChange={e => set('requirements_lv', e.target.value)} rows={4} placeholder={"Pamata JavaScript zināšanas\nUzstādīts Node.js"} className={textareaCls} />
+            </Field>
+          </div>
         </div>
 
         {/* SEO and AI search */}

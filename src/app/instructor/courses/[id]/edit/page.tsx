@@ -64,6 +64,7 @@ function Textarea({ value, onChange, placeholder, rows = 3 }: { value: string; o
 interface CourseForm {
   title_en: string;
   title_lv: string;
+  slug: string;
   short_description_en: string;
   short_description_lv: string;
   description_en: string;
@@ -115,7 +116,7 @@ interface Teacher {
 }
 
 const EMPTY: CourseForm = {
-  title_en: '', title_lv: '', short_description_en: '', short_description_lv: '',
+  title_en: '', title_lv: '', slug: '', short_description_en: '', short_description_lv: '',
   description_en: '', description_lv: '', learning_schedule_en: '', learning_schedule_lv: '', thumbnail_url: '', thumbnail_url_lv: '', promo_video_url: '', promo_video_type: 'youtube',
   level: 'beginner', language: 'en', requirements: '', requirements_lv: '', what_you_learn: '', what_you_learn_lv: '', target_audience: '', target_audience_lv: '', delivery_mode: 'online',
   price: '0', discount_price: '', discount_starts_at: '', discount_ends_at: '', discount_type: 'none', billing_type: 'one_time', subscription_interval: 'month', is_free: false, fake_enrollment_count: '0',
@@ -124,6 +125,15 @@ const EMPTY: CourseForm = {
 
 function serializeCourseEditState(form: CourseForm, teacherIds: string[], groups: AvailabilityGroup[]) {
   return JSON.stringify({ form, teacherIds, groups });
+}
+
+function toSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 export default function CourseEditPage() {
@@ -167,6 +177,7 @@ export default function CourseEditPage() {
       const nextForm: CourseForm = {
         title_en: data.title_en ?? '',
         title_lv: data.title_lv ?? '',
+        slug: data.slug ?? '',
         short_description_en: data.short_description_en ?? '',
         short_description_lv: data.short_description_lv ?? '',
         description_en: data.description_en ?? '',
@@ -275,10 +286,25 @@ export default function CourseEditPage() {
   const handleSave = async () => {
     if (!form.title_en.trim()) { setErr('Title is required'); return; }
     setSaving(true); setErr(''); setSaved(false);
+    const nextSlug = toSlug(form.slug || form.title_en);
+    if (!nextSlug) { setSaving(false); setErr('Course URL slug is required'); return; }
+
+    if (nextSlug !== courseSlug) {
+      const [{ data: existingCourse }, { data: existingRedirect }] = await Promise.all([
+        supabase.from('courses').select('id').eq('slug', nextSlug).neq('id', id).maybeSingle(),
+        supabase.from('course_slug_redirects').select('old_slug').eq('old_slug', nextSlug).maybeSingle(),
+      ]);
+      if (existingCourse || existingRedirect) {
+        setSaving(false);
+        setErr('This course URL slug is already used. Choose a different one.');
+        return;
+      }
+    }
 
     const coursePayload: Record<string, unknown> = {
       title_en: form.title_en.trim(),
       title_lv: form.title_lv.trim() || null,
+      slug: nextSlug,
       short_description_en: form.short_description_en.trim() || null,
       short_description_lv: form.short_description_lv.trim() || null,
       description_en: form.description_en.trim() || null,
@@ -318,6 +344,13 @@ export default function CourseEditPage() {
 
     if (error) { setSaving(false); setErr(error.message); return; }
 
+    if (courseSlug && nextSlug !== courseSlug) {
+      const { error: redirectError } = await supabase
+        .from('course_slug_redirects')
+        .upsert({ old_slug: courseSlug, course_id: id }, { onConflict: 'old_slug' });
+      if (redirectError) { setSaving(false); setErr(redirectError.message); return; }
+    }
+
     if (canManageTeacherAssignments) {
       await supabase.from('course_instructors').delete().eq('course_id', id);
       if (selectedTeacherIds.length > 0) {
@@ -349,10 +382,13 @@ export default function CourseEditPage() {
       if (groupError) { setSaving(false); setErr(groupError.message); return; }
     }
 
+    const savedForm = { ...form, slug: nextSlug };
     setSaving(false);
     setSaved(true);
     setCourseTitle(form.title_en);
-    setSavedSnapshot(serializeCourseEditState(form, selectedTeacherIds, availabilityGroups));
+    setCourseSlug(nextSlug);
+    setForm(savedForm);
+    setSavedSnapshot(serializeCourseEditState(savedForm, selectedTeacherIds, availabilityGroups));
     setTimeout(() => setSaved(false), 3000);
   };
 
@@ -376,8 +412,8 @@ export default function CourseEditPage() {
           <div className="flex items-center gap-3 mt-1">
             <Link href={`/instructor/courses/${id}/curriculum`} className="text-purple-400 text-xs hover:underline">Curriculum →</Link>
             <Link href={`/instructor/courses/${id}/settings`} className="text-purple-400 text-xs hover:underline">Settings →</Link>
-            {courseSlug && (
-              <a href={`/courses/${courseSlug}?preview=1`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-purple-400 text-xs hover:underline">
+            {form.slug && (
+              <a href={`/courses/${form.slug}?preview=1`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-purple-400 text-xs hover:underline">
                 Preview <ExternalLink size={11} />
               </a>
             )}
@@ -402,6 +438,18 @@ export default function CourseEditPage() {
         <Chapter id="basic" title="Basic Information" subtitle="Course identity, level, and language." open={activeChapter === 'basic'} onOpen={() => openChapter('basic')}>
           <Field label="Course Title (English)">
             <Input value={form.title_en} onChange={v => set('title_en', v)} placeholder="e.g. Build AI Apps with Next.js" />
+          </Field>
+          <Field label="Course URL slug" hint="Short readable ending for the course link. Old public course links will redirect after save.">
+            <div className="flex overflow-hidden rounded-xl border border-white/[0.08] bg-[#0b0915] focus-within:border-purple-500/40">
+              <span className="flex items-center border-r border-white/[0.08] px-3 text-xs text-zinc-500">/courses/</span>
+              <input
+                type="text"
+                value={form.slug}
+                onChange={e => set('slug', toSlug(e.target.value))}
+                placeholder="ai-web-app-2-weeks"
+                className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none"
+              />
+            </div>
           </Field>
           <Field label="Title (Latvian)" hint="Optional — shown to Latvian users">
             <Input value={form.title_lv} onChange={v => set('title_lv', v)} placeholder="Latviešu nosaukums" />
