@@ -48,10 +48,7 @@ export default async function CourseSlugPage({ params, searchParams }: Props) {
         instructor:profiles!course_instructors_instructor_id_fkey(id, full_name, avatar_url, bio, bio_lv, website)
       ),
       category:categories!category_id(name_en, name_lv, slug, icon),
-      sections(
-        id, title_en, title_lv, sort_order,
-        lectures(id, title_en, title_lv, video_duration_seconds, is_preview, content_type, sort_order)
-      ),
+      sections(id, title_en, title_lv, sort_order),
       course_availability_groups(id, name_en, name_lv, language, starts_at, ends_at, capacity, sort_order),
       reviews(id, rating, review_text, created_at,
         reviewer:profiles!user_id(full_name, avatar_url)
@@ -84,12 +81,30 @@ export default async function CourseSlugPage({ params, searchParams }: Props) {
     notFound();
   }
 
+  const lectureQuery = preview
+    ? supabase
+        .from('lectures')
+        .select('id, section_id, title_en, title_lv, video_duration_seconds, is_preview, content_type, sort_order')
+        .eq('course_id', course.id)
+    : supabase
+        .from('public_course_lecture_summaries')
+        .select('id, section_id, title_en, title_lv, video_duration_seconds, is_preview, content_type, sort_order')
+        .eq('course_id', course.id);
+
+  const { data: lectures } = await lectureQuery.order('sort_order', { ascending: true });
+  const lecturesBySection = new Map<string, any[]>();
+  for (const lecture of lectures ?? []) {
+    const sectionLectures = lecturesBySection.get(lecture.section_id) ?? [];
+    sectionLectures.push(lecture);
+    lecturesBySection.set(lecture.section_id, sectionLectures);
+  }
+
   // Sort lectures within each section
   const sectionsWithSortedLectures = (course.sections ?? [])
     .sort((a: any, b: any) => a.sort_order - b.sort_order)
     .map((s: any) => ({
       ...s,
-      lectures: (s.lectures ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
+      lectures: (lecturesBySection.get(s.id) ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
     }));
 
   return (
