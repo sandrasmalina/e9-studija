@@ -81,15 +81,10 @@ export default async function CourseSlugPage({ params, searchParams }: Props) {
     notFound();
   }
 
-  const lectureQuery = preview
-    ? supabase
-        .from('lectures')
-        .select('id, section_id, title_en, title_lv, video_duration_seconds, is_preview, content_type, sort_order')
-        .eq('course_id', course.id)
-    : supabase
-        .from('public_course_lecture_summaries')
-        .select('id, section_id, title_en, title_lv, video_duration_seconds, is_preview, content_type, sort_order')
-        .eq('course_id', course.id);
+  const lectureQuery = supabase
+    .from('public_course_lecture_summaries')
+    .select('id, section_id, title_en, title_lv, video_duration_seconds, is_preview, content_type, sort_order')
+    .eq('course_id', course.id);
 
   const { data: lectures } = await lectureQuery.order('sort_order', { ascending: true });
   const lecturesBySection = new Map<string, any[]>();
