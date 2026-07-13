@@ -684,7 +684,26 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem('e9-lang');
-    if (saved === 'lv' || saved === 'en') setLanguageState(saved);
+    if (saved === 'lv' || saved === 'en') {
+      // Explicit user choice always wins.
+      setLanguageState(saved);
+      return;
+    }
+
+    // No saved preference: default to Latvian for visitors from Latvia,
+    // English for everyone else. Falls back to English on any failure.
+    let cancelled = false;
+    fetch('/api/geo')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (cancelled || !data) return;
+        if (data.country === 'LV') setLanguageState('lv');
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const setLanguage = (lang: Language) => {
