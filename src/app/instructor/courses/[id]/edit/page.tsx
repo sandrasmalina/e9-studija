@@ -174,6 +174,7 @@ export default function CourseEditPage() {
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [availabilityGroups, setAvailabilityGroups] = useState<AvailabilityGroup[]>([]);
   const [canManageTeacherAssignments, setCanManageTeacherAssignments] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState('');
   const [categories, setCategories] = useState<{ id: string; name_en: string }[]>([]);
@@ -197,6 +198,7 @@ export default function CourseEditPage() {
         ? await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
         : { data: null };
       setCanManageTeacherAssignments(profile?.role === 'admin' || data.instructor_id === user?.id);
+      setIsAdmin(profile?.role === 'admin');
 
       setCourseTitle(data.title_en);
       setCourseSlug(data.slug ?? '');
@@ -763,12 +765,12 @@ export default function CourseEditPage() {
         </Chapter>
 
         <Chapter id="publish" title="Publish & Category" subtitle="Course status and which category it appears under." open={activeChapter === 'publish'} onOpen={() => openChapter('publish')}>
-          <Field label="Status">
+          <Field label="Status" hint={isAdmin ? undefined : 'You can publish your course. Only an admin can unpublish it.'}>
             <select value={form.status} onChange={e => set('status', e.target.value)} className={inputCls}>
               <option value="draft">Draft</option>
               <option value="review">In review</option>
               <option value="published">Published</option>
-              <option value="unpublished">Unpublished</option>
+              <option value="unpublished" disabled={!isAdmin}>Unpublished{isAdmin ? '' : ' (admin only)'}</option>
             </select>
           </Field>
           <Field label="Category">
