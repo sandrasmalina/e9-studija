@@ -20,6 +20,7 @@ const pageTitles: Record<string, string> = {
   '/admin/categories':  'Categories',
   '/admin/users':       'Students & Users',
   '/admin/instructors': 'Instructor Applications',
+  '/admin/checkout-intents': 'Checkout Funnel',
   '/admin/invitations': 'Invitations',
   '/admin/settings':    'Platform Settings',
 };

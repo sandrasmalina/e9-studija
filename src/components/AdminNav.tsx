@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap, Layers, Newspaper, ChevronDown, PenLine, UserCircle, FileText, MessageCircle, LifeBuoy, X } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, BookOpen, Users, Mail, Share2, LogOut, Home, ChevronRight, Quote, Tag, UserCheck, Send, Settings, GraduationCap, Layers, Newspaper, ChevronDown, PenLine, UserCircle, FileText, MessageCircle, LifeBuoy, TrendingUp, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { DashboardLanguageSwitcher, DashboardSpaces } from '@/components/DashboardControls';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -35,6 +35,7 @@ const navGroups = [
       { href: '/admin/categories',  icon: Tag,         labelKey: 'admin.nav.categories', roles: ['admin'] },
       { href: '/admin/users?role=student', icon: GraduationCap, labelKey: 'admin.nav.students', roles: ['admin'] },
       { href: '/admin/instructors', icon: UserCheck,   labelKey: 'admin.nav.instructorApps', roles: ['admin'] },
+      { href: '/admin/checkout-intents', icon: TrendingUp, labelKey: 'admin.nav.checkoutFunnel', roles: ['admin'] },
       { href: '/admin/settings', icon: Settings, labelKey: 'admin.nav.courseSettings', roles: ['admin'] },
     ],
   },
