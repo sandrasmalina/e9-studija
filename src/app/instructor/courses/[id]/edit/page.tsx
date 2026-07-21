@@ -45,6 +45,7 @@ const CHAPTER_TABS = [
   ['emails', 'Emails'],
   ['media', 'Media'],
   ['availability', 'Availability'],
+  ['questionnaire', 'Questionnaire'],
 ] as const;
 
 type ChapterId = typeof CHAPTER_TABS[number][0];
@@ -660,10 +661,23 @@ export default function CourseEditPage() {
               <p className="text-zinc-600 text-xs">Students receive a certificate when they complete this course.</p>
             </div>
           </label>
+          <Field label="Lecturers / Teachers" hint={canManageTeacherAssignments ? 'Select one or several teachers. The first selected teacher is the lead instructor.' : 'Only admins and the lead instructor can change teacher assignments.'}>
+            <div className="grid grid-cols-2 gap-2">
+              {teachers.map(teacher => (
+                <label key={teacher.id} className={`flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[#0b0915] px-3 py-2 text-sm text-zinc-300 ${canManageTeacherAssignments ? '' : 'opacity-70'}`}>
+                  <input type="checkbox" checked={selectedTeacherIds.includes(teacher.id)} disabled={!canManageTeacherAssignments} onChange={() => toggleTeacher(teacher.id)} className="h-4 w-4 rounded accent-purple-500 disabled:opacity-50" />
+                  <span className="truncate">{teacher.full_name || teacher.id}</span>
+                </label>
+              ))}
+            </div>
+          </Field>
+        </Chapter>
+
+        <Chapter id="questionnaire" title="Questionnaire" subtitle="Optional &ldquo;Is this for you?&rdquo; self-assessment shown on the course page." open={activeChapter === 'questionnaire'} onOpen={() => openChapter('questionnaire')}>
           <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-white/[0.06] bg-[#0b0915] p-4">
             <input type="checkbox" checked={form.questionnaire_enabled} onChange={e => set('questionnaire_enabled', e.target.checked)} className="w-4 h-4 rounded border-white/20 bg-[#0b0915] accent-purple-500" />
             <div>
-              <p className="text-white text-sm font-medium">Self-assessment questionnaire</p>
+              <p className="text-white text-sm font-medium">Enable questionnaire</p>
               <p className="text-zinc-600 text-xs">Adds a &ldquo;Is this for you?&rdquo; section on the course page. Optional — leave off to hide it.</p>
             </div>
           </label>
@@ -686,16 +700,6 @@ export default function CourseEditPage() {
               </Field>
             </>
           )}
-          <Field label="Lecturers / Teachers" hint={canManageTeacherAssignments ? 'Select one or several teachers. The first selected teacher is the lead instructor.' : 'Only admins and the lead instructor can change teacher assignments.'}>
-            <div className="grid grid-cols-2 gap-2">
-              {teachers.map(teacher => (
-                <label key={teacher.id} className={`flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[#0b0915] px-3 py-2 text-sm text-zinc-300 ${canManageTeacherAssignments ? '' : 'opacity-70'}`}>
-                  <input type="checkbox" checked={selectedTeacherIds.includes(teacher.id)} disabled={!canManageTeacherAssignments} onChange={() => toggleTeacher(teacher.id)} className="h-4 w-4 rounded accent-purple-500 disabled:opacity-50" />
-                  <span className="truncate">{teacher.full_name || teacher.id}</span>
-                </label>
-              ))}
-            </div>
-          </Field>
         </Chapter>
 
         {err && <p className="text-red-400 text-sm">{err}</p>}
