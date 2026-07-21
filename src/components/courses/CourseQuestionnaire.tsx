@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle2, HelpCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { QUESTIONNAIRE_QUESTIONS as QUESTIONS, type QuestionnaireQuestion as Question } from '@/lib/questionnaire';
@@ -38,6 +38,16 @@ export default function CourseQuestionnaire({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadName, setLeadName] = useState('');
+  const [leadSaving, setLeadSaving] = useState(false);
+  const [leadSaved, setLeadSaved] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user)));
+  }, []);
 
   const isLv = language === 'lv';
   const total = QUESTIONS.length;
@@ -46,7 +56,7 @@ export default function CourseQuestionnaire({
     setSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      await fetch('/api/questionnaire', {
+      const res = await fetch('/api/questionnaire', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -59,10 +69,29 @@ export default function CourseQuestionnaire({
           salesAssistShown: outcome === 'call_offered',
         }),
       });
+      const data = await res.json().catch(() => null);
+      if (data?.sessionId) setSessionId(data.sessionId as string);
     } catch {
       // Non-blocking: recording failure should not affect the visitor.
     } finally {
       setSaving(false);
+    }
+  };
+
+  const submitLead = async () => {
+    if (!sessionId || (!leadEmail.trim() && !leadName.trim())) return;
+    setLeadSaving(true);
+    try {
+      await fetch('/api/questionnaire', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, leadEmail: leadEmail.trim(), leadName: leadName.trim() }),
+      });
+      setLeadSaved(true);
+    } catch {
+      // Non-blocking.
+    } finally {
+      setLeadSaving(false);
     }
   };
 
@@ -80,7 +109,7 @@ export default function CourseQuestionnaire({
     void record(nextAnswers, outcome);
   };
 
-  const restart = () => { setAnswers({}); setStep(0); setDone(false); };
+  const restart = () => { setAnswers({}); setStep(0); setDone(false); setSessionId(null); setLeadEmail(''); setLeadName(''); setLeadSaved(false); };
 
   const question = QUESTIONS[step];
   const wantsCall = answers.preference === 'talk' && salesAssistEnabled;
@@ -131,6 +160,18 @@ export default function CourseQuestionnaire({
           {wantsCall ? (
             <div className="mt-5">
               <p className="mb-3 text-sm font-medium text-white">{isLv ? 'Rezervē bezmaksas 20 minūšu sarunu' : 'Book a free 20-minute call'}</p>
+              {!signedIn && !leadSaved && (
+                <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                  <input value={leadName} onChange={e => setLeadName(e.target.value)} placeholder={isLv ? 'Vārds (nav obligāts)' : 'Name (optional)'} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" />
+                  <input type="email" value={leadEmail} onChange={e => setLeadEmail(e.target.value)} placeholder={isLv ? 'E-pasts' : 'Email'} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" />
+                  <button type="button" onClick={submitLead} disabled={leadSaving || !leadEmail.trim()} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50 transition-colors">
+                    {leadSaving ? <Loader2 size={14} className="animate-spin" /> : (isLv ? 'Saglabāt' : 'Save')}
+                  </button>
+                </div>
+              )}
+              {leadSaved && (
+                <p className="mb-4 text-xs text-emerald-300">{isLv ? 'Paldies! Mēs sazināsimies.' : "Thanks! We'll be in touch."}</p>
+              )}
               {salesAssistCalendarUrl ? (
                 <div className="overflow-hidden rounded-xl border border-white/10 bg-white">
                   <iframe

@@ -16,13 +16,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'courseId required' }, { status: 400 });
     }
 
-    // Resolve the visitor if they happen to be signed in (optional).
+    // Resolve the visitor if they happen to be signed in (optional) and capture contact.
     let userId: string | null = null;
+    let leadEmail: string | null = typeof body.leadEmail === 'string' && body.leadEmail.trim() ? body.leadEmail.trim().toLowerCase() : null;
+    let leadName: string | null = typeof body.leadName === 'string' && body.leadName.trim() ? body.leadName.trim() : null;
     const authHeader = req.headers.get('authorization') ?? '';
     const token = authHeader.replace('Bearer ', '');
     if (token) {
       const { data } = await supabase.auth.getUser(token);
-      userId = data.user?.id ?? null;
+      const authUser = data.user;
+      if (authUser) {
+        userId = authUser.id;
+        leadEmail = leadEmail ?? authUser.email ?? null;
+        if (!leadName) {
+          const { data: profile } = await supabaseAdmin.from('profiles').select('full_name').eq('id', authUser.id).maybeSingle();
+          leadName = profile?.full_name ?? (authUser.user_metadata?.full_name as string | undefined) ?? null;
+        }
+      }
     }
 
     const { data: session, error: sessionError } = await supabaseAdmin
@@ -32,6 +42,8 @@ export async function POST(req: NextRequest) {
         user_id: userId,
         outcome,
         sales_assist_shown: salesAssistShown,
+        lead_email: leadEmail,
+        lead_name: leadName,
         completed_at: new Date().toISOString(),
       })
       .select('id')
@@ -54,6 +66,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, sessionId: session.id });
   } catch (err) {
     console.error('[questionnaire]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// Attach/update a lead contact for an existing session (anonymous "talk to someone" path).
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const sessionId: string | undefined = body.sessionId;
+    const leadEmail = typeof body.leadEmail === 'string' && body.leadEmail.trim() ? body.leadEmail.trim().toLowerCase() : null;
+    const leadName = typeof body.leadName === 'string' && body.leadName.trim() ? body.leadName.trim() : null;
+
+    if (!sessionId) {
+      return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
+    }
+    if (!leadEmail && !leadName) {
+      return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
+    }
+
+    const updates: Record<string, string> = {};
+    if (leadEmail) updates.lead_email = leadEmail;
+    if (leadName) updates.lead_name = leadName;
+
+    const { error } = await supabaseAdmin.from('questionnaire_sessions').update(updates).eq('id', sessionId);
+    if (error) {
+      console.error('[questionnaire] lead update failed:', error);
+      return NextResponse.json({ error: 'Could not save contact' }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('[questionnaire] PATCH', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -12,6 +12,8 @@ interface SessionRow {
   sales_assist_shown: boolean;
   completed_at: string | null;
   started_at: string;
+  lead_email: string | null;
+  lead_name: string | null;
   answers: AnswerRow[];
 }
 
@@ -35,7 +37,7 @@ export default function CourseQuestionnaireResponses({ courseId }: { courseId: s
     setError('');
     const { data, error: loadError } = await supabase
       .from('questionnaire_sessions')
-      .select('id, outcome, sales_assist_shown, completed_at, started_at, questionnaire_answers(question_key, answer_value)')
+      .select('id, outcome, sales_assist_shown, completed_at, started_at, lead_email, lead_name, questionnaire_answers(question_key, answer_value)')
       .eq('course_id', courseId)
       .order('started_at', { ascending: false })
       .limit(200);
@@ -51,6 +53,8 @@ export default function CourseQuestionnaireResponses({ courseId }: { courseId: s
       sales_assist_shown: Boolean(row.sales_assist_shown),
       completed_at: (row.completed_at as string) ?? null,
       started_at: row.started_at as string,
+      lead_email: (row.lead_email as string) ?? null,
+      lead_name: (row.lead_name as string) ?? null,
       answers: ((row.questionnaire_answers as AnswerRow[]) ?? []),
     })) as SessionRow[];
     setSessions(rows);
@@ -96,6 +100,12 @@ export default function CourseQuestionnaireResponses({ courseId }: { courseId: s
                   {session.outcome && (
                     <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${OUTCOME_STYLE[session.outcome] ?? 'bg-zinc-800 text-zinc-400 border-zinc-700'}`}>
                       {session.outcome === 'call_offered' ? 'Call offered' : 'Pointed to pricing'}
+                    </span>
+                  )}
+                  {(session.lead_name || session.lead_email) && (
+                    <span className="text-xs text-zinc-300">
+                      {session.lead_name ? session.lead_name : ''}{session.lead_name && session.lead_email ? ' · ' : ''}
+                      {session.lead_email && <a href={`mailto:${session.lead_email}`} className="text-accent hover:underline">{session.lead_email}</a>}
                     </span>
                   )}
                 </div>
