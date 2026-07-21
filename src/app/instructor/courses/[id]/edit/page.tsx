@@ -94,6 +94,9 @@ interface CourseForm {
   starts_at: string;
   ends_at: string;
   certificate_enabled: boolean;
+  questionnaire_enabled: boolean;
+  sales_assist_enabled: boolean;
+  sales_assist_calendar_url: string;
 }
 
 interface AvailabilityGroup {
@@ -118,6 +121,7 @@ const EMPTY: CourseForm = {
   level: 'beginner', language: 'en', requirements: '', requirements_lv: '', what_you_learn: '', what_you_learn_lv: '', target_audience: '', target_audience_lv: '', delivery_mode: 'online',
   price: '0', discount_price: '', discount_starts_at: '', discount_ends_at: '', discount_type: 'none', billing_type: 'one_time', subscription_interval: 'month', is_free: false, fake_enrollment_count: '0',
   access_duration_months: '', starts_at: '', ends_at: '', certificate_enabled: true,
+  questionnaire_enabled: false, sales_assist_enabled: false, sales_assist_calendar_url: '',
 };
 
 function serializeCourseEditState(form: CourseForm, teacherIds: string[], groups: AvailabilityGroup[]) {
@@ -154,7 +158,7 @@ export default function CourseEditPage() {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error: courseError } = await supabase.from('courses')
-        .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, learning_schedule_en, learning_schedule_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, billing_type, subscription_interval, is_free, fake_enrollment_count, access_duration_months, starts_at, ends_at, certificate_enabled')
+        .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, learning_schedule_en, learning_schedule_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, billing_type, subscription_interval, is_free, fake_enrollment_count, access_duration_months, starts_at, ends_at, certificate_enabled, questionnaire_enabled, sales_assist_enabled, sales_assist_calendar_url')
         .eq('id', id)
         .maybeSingle();
 
@@ -207,6 +211,9 @@ export default function CourseEditPage() {
         starts_at: data.starts_at ? data.starts_at.slice(0, 16) : '',
         ends_at: data.ends_at ? data.ends_at.slice(0, 16) : '',
         certificate_enabled: data.certificate_enabled ?? true,
+        questionnaire_enabled: data.questionnaire_enabled ?? false,
+        sales_assist_enabled: data.sales_assist_enabled ?? false,
+        sales_assist_calendar_url: data.sales_assist_calendar_url ?? '',
       };
       setForm(nextForm);
 
@@ -330,6 +337,9 @@ export default function CourseEditPage() {
       starts_at: form.starts_at || null,
       ends_at: form.ends_at || null,
       certificate_enabled: form.certificate_enabled,
+      questionnaire_enabled: form.questionnaire_enabled,
+      sales_assist_enabled: form.sales_assist_enabled,
+      sales_assist_calendar_url: form.sales_assist_calendar_url.trim() || null,
       updated_at: new Date().toISOString(),
     };
     if (canManageTeacherAssignments) coursePayload.instructor_id = selectedTeacherIds[0] || null;
@@ -649,6 +659,29 @@ export default function CourseEditPage() {
               <p className="text-zinc-600 text-xs">Students receive a certificate when they complete this course.</p>
             </div>
           </label>
+          <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-white/[0.06] bg-[#0b0915] p-4">
+            <input type="checkbox" checked={form.questionnaire_enabled} onChange={e => set('questionnaire_enabled', e.target.checked)} className="w-4 h-4 rounded border-white/20 bg-[#0b0915] accent-purple-500" />
+            <div>
+              <p className="text-white text-sm font-medium">Self-assessment questionnaire</p>
+              <p className="text-zinc-600 text-xs">Adds a &ldquo;Is this for you?&rdquo; section on the course page. Optional — leave off to hide it.</p>
+            </div>
+          </label>
+          {form.questionnaire_enabled && (
+            <>
+              <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-white/[0.06] bg-[#0b0915] p-4">
+                <input type="checkbox" checked={form.sales_assist_enabled} onChange={e => set('sales_assist_enabled', e.target.checked)} className="w-4 h-4 rounded border-white/20 bg-[#0b0915] accent-purple-500" />
+                <div>
+                  <p className="text-white text-sm font-medium">Offer a call (sales assist)</p>
+                  <p className="text-zinc-600 text-xs">When a visitor chooses &ldquo;talk it through&rdquo;, show a booking calendar instead of pointing to pricing.</p>
+                </div>
+              </label>
+              {form.sales_assist_enabled && (
+                <Field label="Booking calendar embed URL" hint="TidyCal (or any provider) embed URL shown inline in the questionnaire result.">
+                  <Input value={form.sales_assist_calendar_url} onChange={v => set('sales_assist_calendar_url', v)} placeholder="https://tidycal.com/…" type="url" />
+                </Field>
+              )}
+            </>
+          )}
           <Field label="Lecturers / Teachers" hint={canManageTeacherAssignments ? 'Select one or several teachers. The first selected teacher is the lead instructor.' : 'Only admins and the lead instructor can change teacher assignments.'}>
             <div className="grid grid-cols-2 gap-2">
               {teachers.map(teacher => (

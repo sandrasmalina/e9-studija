@@ -16,6 +16,7 @@ import Button from '@/components/Button';
 import StarRating from '@/components/courses/StarRating';
 import PriceBadge from '@/components/courses/PriceBadge';
 import CoursePricingSelector, { type PricingSelection } from '@/components/courses/CoursePricingSelector';
+import CourseQuestionnaire from '@/components/courses/CourseQuestionnaire';
 import { normalizeServiceModels, type ServiceModel } from '@/lib/pricing';
 import { buildLegalAcceptanceMetadata, getLatestLegalDocumentRefs } from '@/lib/legal-documents';
 
@@ -133,6 +134,9 @@ interface Course {
   rating_avg: number;
   rating_count: number;
   certificate_enabled: boolean;
+  questionnaire_enabled?: boolean | null;
+  sales_assist_enabled?: boolean | null;
+  sales_assist_calendar_url?: string | null;
   requirements: string[] | null;
   requirements_lv: string[] | null;
   what_you_learn: string[] | null;
@@ -196,6 +200,9 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   const hasSelector = !course.is_free && course.price > 0 && pricingModels.length > 0;
   const handleSelectionChange = useCallback((next: PricingSelection | null) => setSelection(next), []);
   const checkoutHref = `/checkout/${course.slug}${selection ? `?sm=${selection.serviceModelId}&pp=${selection.paymentPlanId}` : ''}`;
+  const scrollToPricing = useCallback(() => {
+    document.getElementById('course-pricing')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   // Review state
   const [localReviews, setLocalReviews] = useState<Review[]>(course.reviews ?? []);
@@ -532,6 +539,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
 
             {/* Right: sticky buy card */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              id="course-pricing"
               className="rounded-2xl border border-white/10 bg-[#16122a] overflow-hidden shadow-2xl shadow-black/10 lg:fixed lg:right-6 lg:top-24 lg:z-30 lg:w-[360px] xl:w-[404px] 2xl:right-[calc((100vw-80rem)/2+1.5rem)]">
               {/* Thumbnail / promo */}
               <div className="relative aspect-video bg-bg-secondary overflow-hidden">
@@ -700,6 +708,16 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
       {/* Body */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 sm:py-10 lg:pr-[444px] xl:pr-[488px]">
         <div className="max-w-4xl space-y-10">
+
+            {course.questionnaire_enabled && enrollState !== 'enrolled' && (
+              <CourseQuestionnaire
+                courseId={course.id}
+                salesAssistEnabled={!!course.sales_assist_enabled}
+                salesAssistCalendarUrl={course.sales_assist_calendar_url ?? null}
+                language={language === 'lv' ? 'lv' : 'en'}
+                onSeePricing={scrollToPricing}
+              />
+            )}
 
             {((requirements && requirements.length > 0) || targetAudience.length > 0) && (
               <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] shadow-2xl shadow-black/5">
