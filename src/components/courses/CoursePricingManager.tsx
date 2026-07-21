@@ -18,6 +18,7 @@ interface EditablePlan {
   installment_amount: string;
   interval: '' | PaymentPlanInterval;
   is_default: boolean;
+  is_active: boolean;
 }
 
 interface EditableModel {
@@ -28,6 +29,7 @@ interface EditableModel {
   description_en: string;
   description_lv: string;
   is_default: boolean;
+  is_active: boolean;
   plans: EditablePlan[];
 }
 
@@ -40,11 +42,11 @@ function newKey() {
 }
 
 function emptyPlan(isDefault = false): EditablePlan {
-  return { _key: newKey(), type: 'one_time', label_en: 'Pay in full', label_lv: '', total_price: '', original_price: '', upfront_amount: '', installment_count: '', installment_amount: '', interval: '', is_default: isDefault };
+  return { _key: newKey(), type: 'one_time', label_en: 'Pay in full', label_lv: '', total_price: '', original_price: '', upfront_amount: '', installment_count: '', installment_amount: '', interval: '', is_default: isDefault, is_active: true };
 }
 
 function emptyModel(isDefault = false): EditableModel {
-  return { _key: newKey(), name_en: '', name_lv: '', description_en: '', description_lv: '', is_default: isDefault, plans: [emptyPlan(true)] };
+  return { _key: newKey(), name_en: '', name_lv: '', description_en: '', description_lv: '', is_default: isDefault, is_active: true, plans: [emptyPlan(true)] };
 }
 
 export default function CoursePricingManager({ courseId }: { courseId: string }) {
@@ -60,7 +62,7 @@ export default function CoursePricingManager({ courseId }: { courseId: string })
     (async () => {
       const { data } = await supabase
         .from('service_models')
-        .select('id, name_en, name_lv, description_en, description_lv, sort_order, is_default, payment_plans(id, type, label_en, label_lv, total_price, original_price, upfront_amount, installment_count, installment_amount, interval, sort_order, is_default)')
+        .select('id, name_en, name_lv, description_en, description_lv, sort_order, is_default, is_active, payment_plans(id, type, label_en, label_lv, total_price, original_price, upfront_amount, installment_count, installment_amount, interval, sort_order, is_default, is_active)')
         .eq('course_id', courseId)
         .order('sort_order');
 
@@ -82,6 +84,7 @@ export default function CoursePricingManager({ courseId }: { courseId: string })
             installment_amount: plan.installment_amount != null ? String(plan.installment_amount) : '',
             interval: ((plan.interval as PaymentPlanInterval) ?? '') as '' | PaymentPlanInterval,
             is_default: Boolean(plan.is_default),
+            is_active: plan.is_active == null ? true : Boolean(plan.is_active),
           }));
         return {
           _key: newKey(),
@@ -91,6 +94,7 @@ export default function CoursePricingManager({ courseId }: { courseId: string })
           description_en: (row.description_en as string) ?? '',
           description_lv: (row.description_lv as string) ?? '',
           is_default: Boolean(row.is_default),
+          is_active: row.is_active == null ? true : Boolean(row.is_active),
           plans: plans.length > 0 ? plans : [emptyPlan(true)],
         };
       });
@@ -127,10 +131,16 @@ export default function CoursePricingManager({ courseId }: { courseId: string })
   const validate = (): string | null => {
     if (models.length === 0) return 'Add at least one service model.';
     if (!models.some(m => m.is_default)) return 'Mark one service model as default.';
+    if (!models.some(m => m.is_active)) return 'Keep at least one active service model.';
+    const defaultModel = models.find(m => m.is_default);
+    if (defaultModel && !defaultModel.is_active) return 'The default service model must be active.';
     for (const model of models) {
       if (!model.name_en.trim()) return 'Every service model needs an English name.';
       if (model.plans.length === 0) return `"${model.name_en}" needs at least one payment plan.`;
       if (!model.plans.some(p => p.is_default)) return `Mark one default payment plan in "${model.name_en}".`;
+      if (model.is_active && !model.plans.some(p => p.is_active)) return `"${model.name_en}" needs at least one active payment plan.`;
+      const defaultPlan = model.plans.find(p => p.is_default);
+      if (model.is_active && defaultPlan && !defaultPlan.is_active) return `The default payment plan in "${model.name_en}" must be active.`;
       for (const plan of model.plans) {
         if (!plan.label_en.trim()) return 'Every payment plan needs an English label.';
         if (plan.type === 'installments') {
@@ -165,7 +175,7 @@ export default function CoursePricingManager({ courseId }: { courseId: string })
           description_lv: model.description_lv.trim() || null,
           sort_order: mi,
           is_default: model.is_default,
-          is_active: true,
+          is_active: model.is_active,
         };
         let modelId = model.id;
         if (modelId) {
@@ -194,7 +204,7 @@ export default function CoursePricingManager({ courseId }: { courseId: string })
             interval: (plan.type === 'subscription' || plan.type === 'installments') && plan.interval ? plan.interval : null,
             sort_order: pi,
             is_default: plan.is_default,
-            is_active: true,
+            is_active: plan.is_active,
           };
           let planId = plan.id;
           if (planId) {
@@ -261,10 +271,14 @@ export default function CoursePricingManager({ courseId }: { courseId: string })
       </p>
 
       {models.map((model, mi) => (
-        <div key={model._key} className="rounded-xl border border-white/[0.08] bg-[#0b0915] p-4 space-y-3">
+        <div key={model._key} className={`rounded-xl border border-white/[0.08] bg-[#0b0915] p-4 space-y-3 ${model.is_active ? '' : 'opacity-60'}`}>
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Service model {mi + 1}</span>
+            <span className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Service model {mi + 1}{model.is_active ? '' : ' · inactive'}</span>
             <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-zinc-400">
+                <input type="checkbox" checked={model.is_active} onChange={e => updateModel(model._key, { is_active: e.target.checked })} className="accent-purple-500" />
+                Active
+              </label>
               <label className="flex items-center gap-1.5 text-xs text-zinc-400">
                 <input type="radio" name="default-model" checked={model.is_default} onChange={() => setDefaultModel(model._key)} className="accent-purple-500" />
                 Default
@@ -285,7 +299,7 @@ export default function CoursePricingManager({ courseId }: { courseId: string })
 
           <div className="space-y-2 border-t border-white/[0.06] pt-3">
             {model.plans.map(plan => (
-              <div key={plan._key} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 space-y-2">
+              <div key={plan._key} className={`rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 space-y-2 ${plan.is_active ? '' : 'opacity-60'}`}>
                 <div className="flex items-center justify-between gap-3">
                   <select value={plan.type} onChange={e => updatePlan(model._key, plan._key, { type: e.target.value as PaymentPlanType })} className={`${inputCls} max-w-[180px]`}>
                     <option value="one_time">One-time</option>
@@ -293,6 +307,10 @@ export default function CoursePricingManager({ courseId }: { courseId: string })
                     <option value="subscription">Subscription</option>
                   </select>
                   <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 text-xs text-zinc-400">
+                      <input type="checkbox" checked={plan.is_active} onChange={e => updatePlan(model._key, plan._key, { is_active: e.target.checked })} className="accent-purple-500" />
+                      Active
+                    </label>
                     <label className="flex items-center gap-1.5 text-xs text-zinc-400">
                       <input type="radio" name={`default-plan-${model._key}`} checked={plan.is_default} onChange={() => setDefaultPlan(model._key, plan._key)} className="accent-purple-500" />
                       Default
