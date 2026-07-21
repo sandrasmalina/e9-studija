@@ -1,8 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { sendQuestionnaireLeadNotification } from '@/lib/email';
+import { answerLabel, questionLabel, QUESTIONNAIRE_QUESTIONS } from '@/lib/questionnaire';
 
 const VALID_OUTCOMES = ['call_offered', 'pricing_pointed'] as const;
 type Outcome = (typeof VALID_OUTCOMES)[number];
+
+// Notify admin + course instructor when a call lead has a contact. Non-blocking.
+async function notifyLead(sessionId: string) {
+  try {
+    const { data: session } = await supabaseAdmin
+      .from('questionnaire_sessions')
+      .select('id, course_id, outcome, lead_email, lead_name, questionnaire_answers(question_key, answer_value)')
+      .eq('id', sessionId)
+      .maybeSingle();
+
+    if (!session || session.outcome !== 'call_offered' || !session.lead_email) return;
+
+    const { data: course } = await supabaseAdmin
+      .from('courses')
+      .select('title_en, slug, instructor_id')
+      .eq('id', session.course_id)
+      .maybeSingle();
+
+    const recipients: string[] = [];
+    const adminEmail = process.env.E9_ADMIN_EMAIL || process.env.ADMIN_NOTIFICATION_EMAIL;
+    if (adminEmail) recipients.push(adminEmail);
+    if (course?.instructor_id) {
+      const { data: instructor } = await supabaseAdmin.auth.admin.getUserById(course.instructor_id);
+      if (instructor.user?.email) recipients.push(instructor.user.email);
+    }
+    if (recipients.length === 0) return;
+
+    const answersMap = new Map(((session.questionnaire_answers as Array<{ question_key: string; answer_value: string }>) ?? []).map(a => [a.question_key, a.answer_value]));
+    const answerLines = QUESTIONNAIRE_QUESTIONS
+      .filter(q => answersMap.has(q.key))
+      .map(q => `${questionLabel(q.key, 'en')}: ${answerLabel(q.key, answersMap.get(q.key) as string, 'en')}`);
+
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv').replace(/\/$/, '');
+    await sendQuestionnaireLeadNotification({
+      to: recipients,
+      courseTitle: course?.title_en ?? 'E9 Studija course',
+      courseUrl: course?.slug ? `${siteUrl}/courses/${course.slug}` : null,
+      leadName: session.lead_name as string | null,
+      leadEmail: session.lead_email as string | null,
+      answerLines,
+    });
+  } catch (err) {
+    console.error('[questionnaire] lead notification failed:', err);
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -63,6 +110,11 @@ export async function POST(req: NextRequest) {
       if (answersError) console.error('[questionnaire] answers insert failed:', answersError);
     }
 
+    // Signed-in call leads already have contact — notify right away.
+    if (outcome === 'call_offered' && leadEmail) {
+      await notifyLead(session.id);
+    }
+
     return NextResponse.json({ ok: true, sessionId: session.id });
   } catch (err) {
     console.error('[questionnaire]', err);
@@ -94,6 +146,8 @@ export async function PATCH(req: NextRequest) {
       console.error('[questionnaire] lead update failed:', error);
       return NextResponse.json({ error: 'Could not save contact' }, { status: 500 });
     }
+    // Anonymous call lead just added contact — notify now.
+    await notifyLead(sessionId);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[questionnaire] PATCH', err);

@@ -372,6 +372,50 @@ export async function sendCourseEnrollmentEmail(input: CourseEnrollmentEmailInpu
   return { status: 'sent' as const, id: result.data?.id ?? null, subject };
 }
 
+export async function sendQuestionnaireLeadNotification(input: {
+  to: string[];
+  courseTitle: string;
+  courseUrl?: string | null;
+  leadName?: string | null;
+  leadEmail?: string | null;
+  answerLines: string[];
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = getResendFromAddress();
+  const recipients = Array.from(new Set(input.to.filter(Boolean)));
+  if (!apiKey || recipients.length === 0) return { status: 'skipped' as const };
+
+  const resend = new Resend(apiKey);
+  const answersHtml = input.answerLines.map(line => `<li style="margin:0 0 4px;">${escapeHtml(line)}</li>`).join('');
+  const content = `
+    <p style="margin:0 0 8px;font-size:18px;font-weight:600;color:#26215C;">New call request</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#4b5563;">Someone asked to talk about <strong>${escapeHtml(input.courseTitle)}</strong>.</p>
+    <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>Name:</strong> ${escapeHtml(input.leadName || '—')}</p>
+    <p style="margin:0 0 16px;font-size:14px;color:#374151;"><strong>Email:</strong> ${input.leadEmail ? `<a href="mailto:${escapeHtml(input.leadEmail)}" style="color:#a855f7;">${escapeHtml(input.leadEmail)}</a>` : '—'}</p>
+    <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#7c3aed;text-transform:uppercase;letter-spacing:1px;">Their answers</p>
+    <ul style="margin:0 0 16px;padding-left:18px;font-size:14px;color:#4b5563;">${answersHtml}</ul>
+    ${input.courseUrl ? `<p style="margin:0;font-size:13px;color:#9ca3af;">Course: <a href="${escapeHtml(input.courseUrl)}" style="color:#a855f7;">${escapeHtml(input.courseUrl)}</a></p>` : ''}
+  `;
+  const result = await resend.emails.send({
+    from,
+    to: recipients,
+    subject: `New call request: ${input.courseTitle}`,
+    ...(input.leadEmail ? { replyTo: input.leadEmail } : {}),
+    text: [
+      `New call request for ${input.courseTitle}`,
+      `Name: ${input.leadName || '—'}`,
+      `Email: ${input.leadEmail || '—'}`,
+      '',
+      'Answers:',
+      ...input.answerLines,
+      input.courseUrl ? `\nCourse: ${input.courseUrl}` : '',
+    ].filter(Boolean).join('\n'),
+    html: wrapEmailHtml(content, 'en', `New call request: ${input.courseTitle}`),
+  });
+  if (result.error) throw result.error;
+  return { status: 'sent' as const, id: result.data?.id ?? null };
+}
+
 export async function sendAdminEnrollmentNotification(input: CourseEnrollmentEmailInput) {
   const adminEmail = process.env.E9_ADMIN_EMAIL || process.env.ADMIN_NOTIFICATION_EMAIL;
   const apiKey = process.env.RESEND_API_KEY;
