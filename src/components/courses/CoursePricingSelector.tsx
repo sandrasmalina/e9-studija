@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  normalizeServiceModels, pickDefaultModel, pickDefaultPlan, modelStartingPrice,
+  normalizeServiceModels, modelStartingPrice,
   type PaymentPlan, type ServiceModel,
 } from '@/lib/pricing';
 
@@ -37,10 +37,11 @@ export default function CoursePricingSelector({
   const [planId, setPlanId] = useState<string>('');
 
   useEffect(() => {
-    const defaultModel = pickDefaultModel(models);
-    const defaultPlan = pickDefaultPlan(defaultModel);
-    setModelId(defaultModel?.id ?? '');
-    setPlanId(defaultPlan?.id ?? '');
+    // Default to the first option (first service model, first payment plan).
+    const firstModel = models[0] ?? null;
+    const firstPlan = firstModel?.payment_plans[0] ?? null;
+    setModelId(firstModel?.id ?? '');
+    setPlanId(firstPlan?.id ?? '');
   }, [models]);
 
   const activeModel = models.find(m => m.id === modelId) ?? null;
@@ -62,7 +63,7 @@ export default function CoursePricingSelector({
 
   const chooseModel = (model: ServiceModel) => {
     setModelId(model.id);
-    setPlanId((pickDefaultPlan(model) ?? model.payment_plans[0]).id);
+    setPlanId(model.payment_plans[0].id);
   };
 
   const planPriceLine = (plan: PaymentPlan) => {
