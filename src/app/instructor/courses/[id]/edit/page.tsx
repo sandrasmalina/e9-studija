@@ -9,6 +9,7 @@ import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { ArrowLeft, ExternalLink, ImageIcon, Save, Upload, X } from 'lucide-react';
 import CourseEmailTemplateEditor from '@/components/courses/CourseEmailTemplateEditor';
 import CoursePricingManager from '@/components/courses/CoursePricingManager';
+import CourseQuestionnaireResponses from '@/components/courses/CourseQuestionnaireResponses';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
@@ -680,6 +681,9 @@ export default function CourseEditPage() {
                   <Input value={form.sales_assist_calendar_url} onChange={v => set('sales_assist_calendar_url', v)} placeholder="https://tidycal.com/…" type="url" />
                 </Field>
               )}
+              <Field label="Questionnaire responses" hint="Visible to the course instructor and admins.">
+                <CourseQuestionnaireResponses courseId={id} />
+              </Field>
             </>
           )}
           <Field label="Lecturers / Teachers" hint={canManageTeacherAssignments ? 'Select one or several teachers. The first selected teacher is the lead instructor.' : 'Only admins and the lead instructor can change teacher assignments.'}>
