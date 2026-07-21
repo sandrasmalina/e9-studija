@@ -21,7 +21,6 @@ const NAV = [
   { href: '/instructor/students', icon: Users,           labelKey: 'instructor.nav.students' },
   { href: '/instructor/earnings', icon: TrendingUp,      labelKey: 'instructor.nav.earnings' },
   { href: '/instructor/stripe-connect', icon: CreditCard, labelKey: 'instructor.nav.stripeConnect' },
-  { href: '/support',             icon: LifeBuoy,        labelKey: 'nav.support' },
 ];
 
 const COURSE_PATH_RE = /^\/instructor\/courses\/([0-9a-f-]{36})(\/.*)?$/;
@@ -231,6 +230,11 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   // ── Shared sidebar footer ────────────────────────────────────────────────
   const SidebarFooter = () => (
     <div className="px-3 py-3 border-t border-zinc-900 space-y-0.5 shrink-0">
+      <Link href="/support"
+        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all group">
+        <LifeBuoy size={16} className="group-hover:text-zinc-300 transition-colors" />
+        {t('nav.support')}
+      </Link>
       <button onClick={handleLogout}
         className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-zinc-500 hover:text-red-400 hover:bg-red-950/20 transition-all group">
         <LogOut size={16} className="group-hover:text-red-400 transition-colors" />

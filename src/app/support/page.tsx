@@ -22,6 +22,12 @@ export default function SupportPage() {
   const [ticketNumber, setTicketNumber] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('e9-admin-theme');
+    if (saved === 'light' || saved === 'dark') setTheme(saved);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -32,6 +38,17 @@ export default function SupportPage() {
       if (profile?.full_name) setName(profile.full_name);
     })();
   }, []);
+
+  const isLight = theme === 'light';
+  const pageBg = isLight ? 'bg-[#f6f4ef]' : 'bg-bg';
+  const cardCls = isLight ? 'border-black/10 bg-white' : 'border-white/8 bg-bg-card';
+  const headingCls = isLight ? 'text-zinc-900' : 'text-white';
+  const subTextCls = isLight ? 'text-zinc-600' : 'text-neutral-400';
+  const mutedCls = isLight ? 'text-zinc-500' : 'text-neutral-500';
+  const labelCls = isLight ? 'text-zinc-600' : 'text-neutral-400';
+  const inputCls = isLight
+    ? 'bg-white border-black/10 text-zinc-900 placeholder:text-zinc-400 focus:border-accent/50'
+    : 'bg-bg border-white/8 text-white placeholder:text-neutral-600 focus:border-accent/50';
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -71,16 +88,16 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg pt-28 pb-24">
+    <div className={`min-h-screen ${pageBg} pt-28 pb-24`}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <motion.div initial="hidden" animate="visible" variants={stagger} className="text-center mb-14">
           <motion.p variants={fadeUp} className="text-accent text-sm font-medium tracking-widest uppercase mb-3">
             {language === 'lv' ? 'ATBALSTS' : 'SUPPORT'}
           </motion.p>
-          <motion.h1 variants={fadeUp} className="text-4xl md:text-6xl font-bold text-white mb-4">
+          <motion.h1 variants={fadeUp} className={`text-4xl md:text-6xl font-bold mb-4 ${headingCls}`}>
             {language === 'lv' ? 'Izveidot atbalsta pieteikumu' : 'Raise a Support Ticket'}
           </motion.h1>
-          <motion.p variants={fadeUp} className="text-neutral-400 max-w-2xl mx-auto">
+          <motion.p variants={fadeUp} className={`max-w-2xl mx-auto ${subTextCls}`}>
             {language === 'lv'
               ? 'Aprakstiet problēmu vai jautājumu, un mēs nosūtīsim jums pieteikuma numuru e-pastā.'
               : 'Tell us what happened and we will email you a ticket number automatically.'}
@@ -88,43 +105,43 @@ export default function SupportPage() {
         </motion.div>
 
         <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <div className="p-6 rounded-2xl border border-white/8 bg-bg-card flex items-start gap-4">
+          <div className={`p-6 rounded-2xl border flex items-start gap-4 ${cardCls}`}>
             <div className="p-2.5 rounded-lg bg-accent/10"><TicketCheck size={16} className="text-accent" /></div>
             <div>
-              <p className="text-xs text-neutral-500 uppercase tracking-widest mb-1">{language === 'lv' ? 'Pieteikums' : 'Ticket'}</p>
-              <p className="text-white text-sm font-medium">{language === 'lv' ? 'Automātisks numurs' : 'Automatic number'}</p>
+              <p className={`text-xs uppercase tracking-widest mb-1 ${mutedCls}`}>{language === 'lv' ? 'Pieteikums' : 'Ticket'}</p>
+              <p className={`text-sm font-medium ${headingCls}`}>{language === 'lv' ? 'Automātisks numurs' : 'Automatic number'}</p>
             </div>
           </div>
-          <div className="p-6 rounded-2xl border border-white/8 bg-bg-card flex items-start gap-4">
+          <div className={`p-6 rounded-2xl border flex items-start gap-4 ${cardCls}`}>
             <div className="p-2.5 rounded-lg bg-accent/10"><Mail size={16} className="text-accent" /></div>
             <div>
-              <p className="text-xs text-neutral-500 uppercase tracking-widest mb-1">Email</p>
-              <p className="text-white text-sm font-medium">e9studija@gmail.com</p>
+              <p className={`text-xs uppercase tracking-widest mb-1 ${mutedCls}`}>Email</p>
+              <p className={`text-sm font-medium ${headingCls}`}>e9studija@gmail.com</p>
             </div>
           </div>
-          <div className="p-6 rounded-2xl border border-white/8 bg-bg-card flex items-start gap-4">
+          <div className={`p-6 rounded-2xl border flex items-start gap-4 ${cardCls}`}>
             <div className="p-2.5 rounded-lg bg-accent/10"><MessageCircle size={16} className="text-accent" /></div>
             <div>
-              <p className="text-xs text-neutral-500 uppercase tracking-widest mb-1">{language === 'lv' ? 'Atbilde' : 'Response'}</p>
-              <p className="text-white text-sm font-medium">{language === 'lv' ? 'E-pastā' : 'By email'}</p>
+              <p className={`text-xs uppercase tracking-widest mb-1 ${mutedCls}`}>{language === 'lv' ? 'Atbilde' : 'Response'}</p>
+              <p className={`text-sm font-medium ${headingCls}`}>{language === 'lv' ? 'E-pastā' : 'By email'}</p>
             </div>
           </div>
         </div>
 
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="max-w-2xl mx-auto p-5 sm:p-8 rounded-2xl border border-white/8 bg-bg-card">
+          className={`max-w-2xl mx-auto p-5 sm:p-8 rounded-2xl border ${cardCls}`}>
           {status === 'success' ? (
             <div className="text-center py-8">
               <div className="w-14 h-14 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
                 <TicketCheck size={24} className="text-accent" />
               </div>
-              <h3 className="text-white font-bold text-xl mb-2">
+              <h3 className={`font-bold text-xl mb-2 ${headingCls}`}>
                 {language === 'lv' ? 'Pieteikums izveidots' : 'Ticket Created'}
               </h3>
-              <p className="text-neutral-400">
-                {language === 'lv' ? 'Jūsu pieteikuma numurs:' : 'Your ticket number:'} <span className="text-white font-semibold">{ticketNumber}</span>
+              <p className={subTextCls}>
+                {language === 'lv' ? 'Jūsu pieteikuma numurs:' : 'Your ticket number:'} <span className={`font-semibold ${headingCls}`}>{ticketNumber}</span>
               </p>
-              <p className="text-neutral-500 text-sm mt-2">
+              <p className={`text-sm mt-2 ${mutedCls}`}>
                 {language === 'lv' ? 'Mēs nosūtījām apstiprinājumu uz jūsu e-pastu.' : 'We sent the confirmation to your email.'}
               </p>
               <Button type="button" className="mt-6" onClick={() => setStatus('idle')}>
@@ -134,24 +151,24 @@ export default function SupportPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-neutral-400 text-sm mb-2">{t('contact.name')}</label>
-                <input value={name} onChange={event => { setName(event.target.value); setErrorMsg(''); }} placeholder={t('contact.name.placeholder')} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none transition-colors" />
+                <label className={`block text-sm mb-2 ${labelCls}`}>{t('contact.name')}</label>
+                <input value={name} onChange={event => { setName(event.target.value); setErrorMsg(''); }} placeholder={t('contact.name.placeholder')} className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors ${inputCls}`} />
               </div>
               <div>
-                <label className="block text-neutral-400 text-sm mb-2">{t('contact.email')}</label>
-                <input type="email" value={email} onChange={event => { setEmail(event.target.value); setErrorMsg(''); }} placeholder={t('contact.email.placeholder')} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none transition-colors" />
+                <label className={`block text-sm mb-2 ${labelCls}`}>{t('contact.email')}</label>
+                <input type="email" value={email} onChange={event => { setEmail(event.target.value); setErrorMsg(''); }} placeholder={t('contact.email.placeholder')} className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors ${inputCls}`} />
               </div>
               <div>
-                <label className="block text-neutral-400 text-sm mb-2">{t('contact.phone')}</label>
-                <input type="tel" value={phone} onChange={event => { setPhone(event.target.value); setErrorMsg(''); }} placeholder={t('contact.phone.placeholder')} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none transition-colors" />
+                <label className={`block text-sm mb-2 ${labelCls}`}>{t('contact.phone')}</label>
+                <input type="tel" value={phone} onChange={event => { setPhone(event.target.value); setErrorMsg(''); }} placeholder={t('contact.phone.placeholder')} className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors ${inputCls}`} />
               </div>
               <div>
-                <label className="block text-neutral-400 text-sm mb-2">{language === 'lv' ? 'Tēma' : 'Subject'}</label>
-                <input value={subject} onChange={event => { setSubject(event.target.value); setErrorMsg(''); }} placeholder={language === 'lv' ? 'Īsi aprakstiet jautājumu' : 'Short summary of the issue'} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none transition-colors" />
+                <label className={`block text-sm mb-2 ${labelCls}`}>{language === 'lv' ? 'Tēma' : 'Subject'}</label>
+                <input value={subject} onChange={event => { setSubject(event.target.value); setErrorMsg(''); }} placeholder={language === 'lv' ? 'Īsi aprakstiet jautājumu' : 'Short summary of the issue'} className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors ${inputCls}`} />
               </div>
               <div>
-                <label className="block text-neutral-400 text-sm mb-2">{t('contact.message')}</label>
-                <textarea value={message} onChange={event => { setMessage(event.target.value); setErrorMsg(''); }} rows={5} placeholder={language === 'lv' ? 'Aprakstiet problēmu vai jautājumu...' : 'Describe the issue or question...'} className="w-full bg-bg border border-white/8 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none transition-colors resize-none" />
+                <label className={`block text-sm mb-2 ${labelCls}`}>{t('contact.message')}</label>
+                <textarea value={message} onChange={event => { setMessage(event.target.value); setErrorMsg(''); }} rows={5} placeholder={language === 'lv' ? 'Aprakstiet problēmu vai jautājumu...' : 'Describe the issue or question...'} className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors resize-none ${inputCls}`} />
               </div>
               <TurnstileWidget
                 onVerify={(token) => { setTurnstileToken(token); setErrorMsg(''); }}

@@ -17,7 +17,6 @@ const NAV = [
   { href: '/dashboard/billing',     icon: CreditCard,      labelKey: 'dashboard.nav.billing' },
   { href: '/dashboard/wishlist',    icon: Heart,           labelKey: 'dashboard.nav.wishlist' },
   { href: '/dashboard/certificates',icon: Award,           labelKey: 'dashboard.nav.certificates' },
-  { href: '/support',               icon: LifeBuoy,        labelKey: 'nav.support' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -144,6 +143,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-zinc-600 hover:text-red-400 hover:bg-red-900/10 text-sm transition-all">
             <LogOut size={14} /> {t('dashboard.nav.signOut')}
           </button>
+          <Link href="/support"
+            className="mt-1 flex items-center gap-2 w-full px-3 py-2 rounded-xl text-zinc-600 hover:text-purple-300 hover:bg-purple-900/10 text-sm transition-all">
+            <LifeBuoy size={14} /> {t('nav.support')}
+          </Link>
           <Link href="/profile"
             className="mt-1 flex items-center gap-2 w-full px-3 py-2 rounded-xl text-zinc-600 hover:text-purple-300 hover:bg-purple-900/10 text-sm transition-all">
             <UserCircle size={14} /> {t('dashboard.nav.profile')}
