@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, Lock, Loader2, ShieldCheck, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import TurnstileWidget from '@/components/TurnstileWidget';
+import { normalizeServiceModels, pickDefaultModel, pickDefaultPlan, planInitialCharge, type PaymentPlan, type ServiceModel } from '@/lib/pricing';
 
 interface CourseSummary {
   id: string;
@@ -23,10 +24,16 @@ interface CourseSummary {
   is_free: boolean;
   billing_type: string | null;
   subscription_interval: string | null;
+  service_models?: ServiceModel[] | null;
+}
+
+function fmt(amount: number, currency: string) {
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency.toUpperCase() }).format(amount);
 }
 
 export default function CheckoutClient({ course }: { course: CourseSummary }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { language } = useLanguage();
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [firstName, setFirstName] = useState('');
@@ -40,8 +47,34 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
   const title = (language === 'lv' && course.title_lv) ? course.title_lv : course.title_en;
   const useLatvianThumbnail = course.language === 'lv' || (course.language === 'both' && language === 'lv');
   const thumbnailUrl = useLatvianThumbnail && course.thumbnail_url_lv ? course.thumbnail_url_lv : course.thumbnail_url;
-  const displayPrice = course.discount_price ?? course.price;
-  const intervalLabel = course.billing_type === 'subscription' ? `/${course.subscription_interval === 'year' ? 'year' : 'month'}` : '';
+
+  // Resolve the selected service model + payment plan from the URL (?sm=&pp=).
+  const models = normalizeServiceModels((course.service_models ?? []) as ServiceModel[]);
+  const smId = searchParams.get('sm');
+  const ppId = searchParams.get('pp');
+  const selectedModel = models.find(m => m.id === smId) ?? pickDefaultModel(models);
+  const selectedPlan: PaymentPlan | null = selectedModel?.payment_plans.find(p => p.id === ppId) ?? pickDefaultPlan(selectedModel);
+  const currency = (selectedPlan?.currency ?? course.currency).toUpperCase();
+
+  const planSummary = (plan: PaymentPlan | null): string => {
+    if (!plan) {
+      const legacy = course.discount_price ?? course.price;
+      const suffix = course.billing_type === 'subscription' ? `/${course.subscription_interval === 'year' ? 'year' : 'month'}` : '';
+      return `${fmt(legacy, currency)}${suffix}`;
+    }
+    if (plan.type === 'installments') {
+      const per = Number(plan.installment_amount ?? 0);
+      return `${plan.installment_count ?? 0}× ${fmt(per, currency)}`;
+    }
+    if (plan.type === 'subscription') {
+      const rec = plan.total_price != null ? `${fmt(Number(plan.total_price), currency)}/${plan.interval === 'yearly' ? 'year' : plan.interval === 'weekly' ? 'week' : 'month'}` : '';
+      const up = plan.upfront_amount ? `${fmt(Number(plan.upfront_amount), currency)} now + ` : '';
+      return `${up}${rec}`;
+    }
+    return fmt(Number(plan.total_price ?? 0), currency);
+  };
+  const headline = planSummary(selectedPlan);
+  const initialCharge = selectedPlan ? planInitialCharge(selectedPlan) : (course.discount_price ?? course.price);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -61,7 +94,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
         'Content-Type': 'application/json',
         ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
       },
-      body: JSON.stringify({ courseSlug: course.slug, language, ...input }),
+      body: JSON.stringify({ courseSlug: course.slug, language, serviceModelId: selectedModel?.id, paymentPlanId: selectedPlan?.id, ...input }),
     });
 
     const data = await res.json();
@@ -118,11 +151,12 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
             )}
             <div className="min-w-0">
               <p className="text-white font-medium text-sm truncate">{title}</p>
-              <p className="text-2xl font-bold text-white mt-1">
-                {displayPrice === 0 ? 'Free' : `${displayPrice} ${course.currency.toUpperCase()}${intervalLabel}`}
-              </p>
-              {course.discount_price !== null && course.discount_price < course.price && (
-                <p className="text-neutral-500 text-xs line-through">{course.price} {course.currency.toUpperCase()}</p>
+              {selectedModel && models.length > 1 && (
+                <p className="text-neutral-400 text-xs mt-0.5">{(language === 'lv' && selectedModel.name_lv) ? selectedModel.name_lv : selectedModel.name_en}</p>
+              )}
+              <p className="text-2xl font-bold text-white mt-1">{headline}</p>
+              {selectedPlan?.type === 'one_time' && selectedPlan.original_price != null && Number(selectedPlan.original_price) > Number(selectedPlan.total_price ?? 0) && (
+                <p className="text-neutral-500 text-xs line-through">{fmt(Number(selectedPlan.original_price), currency)}</p>
               )}
             </div>
           </div>
@@ -148,7 +182,7 @@ export default function CheckoutClient({ course }: { course: CourseSummary }) {
               >
                 {loading
                   ? <><Loader2 size={18} className="animate-spin" /> Redirecting to payment&hellip;</>
-                  : <>Pay {displayPrice} {course.currency.toUpperCase()} &rarr;</>
+                  : <>Pay {fmt(initialCharge, currency)} &rarr;</>
                 }
               </button>
             ) : (

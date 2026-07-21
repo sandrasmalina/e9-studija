@@ -50,6 +50,10 @@ export default async function CourseSlugPage({ params, searchParams }: Props) {
       category:categories!category_id(name_en, name_lv, slug, icon),
       sections(id, title_en, title_lv, sort_order),
       course_availability_groups(id, name_en, name_lv, language, starts_at, ends_at, capacity, sort_order),
+      service_models(
+        id, course_id, name_en, name_lv, description_en, description_lv, sort_order, is_default, is_active,
+        payment_plans(id, service_model_id, type, label_en, label_lv, currency, total_price, original_price, upfront_amount, installment_count, installment_amount, interval, provider_price_id, sort_order, is_default, is_active)
+      ),
       reviews(id, rating, review_text, created_at,
         reviewer:profiles!user_id(full_name, avatar_url)
       )

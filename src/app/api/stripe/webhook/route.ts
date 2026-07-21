@@ -31,7 +31,7 @@ async function getLeadTeacherName(courseId: string, fallback?: string | null) {
   return instructor?.full_name?.trim() || fallback || null;
 }
 
-async function enrollStudent(courseId: string, userId: string, amountPaid: number, currency: string, accessDurationMonths: number | null, stripeSubscriptionId: string | null, stripeCustomerId: string | null) {
+async function enrollStudent(courseId: string, userId: string, amountPaid: number, currency: string, accessDurationMonths: number | null, stripeSubscriptionId: string | null, stripeCustomerId: string | null, serviceModelId: string | null, paymentPlanId: string | null) {
   const expiresAt = accessDurationMonths ? addMonths(new Date(), accessDurationMonths).toISOString() : null;
   const { data, error } = await supabaseAdmin.from('enrollments').upsert(
     {
@@ -43,6 +43,8 @@ async function enrollStudent(courseId: string, userId: string, amountPaid: numbe
       expires_at: expiresAt,
       stripe_subscription_id: stripeSubscriptionId,
       stripe_customer_id: stripeCustomerId,
+      service_model_id: serviceModelId,
+      payment_plan_id: paymentPlanId,
     },
     { onConflict: 'user_id,course_id' }
   ).select('id').single();
@@ -210,6 +212,10 @@ export async function POST(req: NextRequest) {
         legal_acceptance_source,
         legal_accepted_at,
         legal_document_versions,
+        service_model_id,
+        payment_plan_id,
+        plan_type,
+        installment_count,
       } = session.metadata ?? {};
 
       if (!course_id) {
@@ -304,7 +310,7 @@ export async function POST(req: NextRequest) {
       const stripeSubscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id ?? null;
       const stripeCustomerId = typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null;
 
-      const enrollmentId = await enrollStudent(course_id, resolvedUserId, amountPaid, currency, course?.access_duration_months ?? null, stripeSubscriptionId, stripeCustomerId);
+      const enrollmentId = await enrollStudent(course_id, resolvedUserId, amountPaid, currency, course?.access_duration_months ?? null, stripeSubscriptionId, stripeCustomerId, service_model_id ?? null, payment_plan_id ?? null);
 
       await updateCheckoutIntentBySessionId(session.id, {
         status: 'paid',
@@ -324,6 +330,53 @@ export async function POST(req: NextRequest) {
         .update({ stripe_session_id: session.id } as Record<string, unknown>)
         .eq('user_id', resolvedUserId)
         .eq('course_id', course_id);
+
+      // Installments: cap the Stripe subscription to N charges and record the ledger.
+      if (plan_type === 'installments' && payment_plan_id) {
+        try {
+          const { data: planRow } = await supabaseAdmin
+            .from('payment_plans')
+            .select('installment_count, installment_amount, currency')
+            .eq('id', payment_plan_id)
+            .maybeSingle();
+          const count = Number(planRow?.installment_count ?? installment_count ?? 0);
+          const per = Number(planRow?.installment_amount ?? amountPaid);
+          const planCurrency = String(planRow?.currency ?? currency).toUpperCase();
+
+          if (stripeSubscriptionId && count >= 2) {
+            try {
+              const schedule = await stripe.subscriptionSchedules.create({ from_subscription: stripeSubscriptionId });
+              const phase = schedule.phases[0];
+              await stripe.subscriptionSchedules.update(schedule.id, {
+                end_behavior: 'cancel',
+                phases: [{
+                  items: phase.items.map(item => ({
+                    price: typeof item.price === 'string' ? item.price : item.price.id,
+                    quantity: item.quantity ?? 1,
+                  })),
+                  iterations: count,
+                  start_date: phase.start_date,
+                }],
+              } as unknown as Stripe.SubscriptionScheduleUpdateParams);
+            } catch (scheduleErr) {
+              console.error('[webhook] installment schedule failed:', scheduleErr);
+            }
+          }
+
+          const ledgerRows = Array.from({ length: Math.max(count, 1) }, (_, index) => ({
+            enrollment_id: enrollmentId,
+            payment_plan_id,
+            sequence: index + 1,
+            amount: per,
+            currency: planCurrency,
+            status: index === 0 ? 'paid' : 'scheduled',
+            paid_at: index === 0 ? new Date().toISOString() : null,
+          }));
+          await supabaseAdmin.from('payment_plan_charges').insert(ledgerRows);
+        } catch (ledgerErr) {
+          console.error('[webhook] installment ledger failed:', ledgerErr);
+        }
+      }
 
       const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(resolvedUserId);
       const recipientEmail = authUser.user?.email ?? guest_email ?? session.customer_details?.email ?? null;

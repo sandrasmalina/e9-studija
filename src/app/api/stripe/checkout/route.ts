@@ -42,7 +42,7 @@ async function storeGuestCheckoutIntent(input: {
 export async function POST(req: NextRequest) {
   try {
     const stripe = getStripe();
-    const { courseSlug, guestEmail, guestName, language, turnstileToken } = await req.json();
+    const { courseSlug, guestEmail, guestName, language, turnstileToken, serviceModelId, paymentPlanId } = await req.json();
     if (!courseSlug) {
       return NextResponse.json({ error: 'courseSlug required' }, { status: 400 });
     }
@@ -95,17 +95,66 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const now = Date.now();
-    const discountStarts = course.discount_starts_at ? new Date(course.discount_starts_at).getTime() : null;
-    const discountEnds = course.discount_ends_at ? new Date(course.discount_ends_at).getTime() : null;
-    const discountActive = course.discount_price !== null && course.discount_price < course.price && (!discountStarts || discountStarts <= now) && (!discountEnds || discountEnds >= now);
-    const unitAmount = Math.round((discountActive ? course.discount_price : course.price) * 100);
+    // Resolve the selected payment plan (multi-pricing). Falls back to legacy course price.
+    let plan: {
+      id: string; service_model_id: string; type: string; currency: string | null;
+      total_price: number | null; original_price: number | null; upfront_amount: number | null;
+      installment_count: number | null; installment_amount: number | null; interval: string | null;
+    } | null = null;
+    let resolvedServiceModelId: string | null = serviceModelId ?? null;
+    if (paymentPlanId) {
+      const { data: planRow } = await supabase
+        .from('payment_plans')
+        .select('id, service_model_id, type, currency, total_price, original_price, upfront_amount, installment_count, installment_amount, interval, is_active, service_models!inner(course_id)')
+        .eq('id', paymentPlanId)
+        .maybeSingle();
+      const smJoin = planRow ? (Array.isArray(planRow.service_models) ? planRow.service_models[0] : planRow.service_models) as { course_id?: string } | null : null;
+      if (planRow && planRow.is_active && smJoin?.course_id === course.id) {
+        plan = {
+          id: planRow.id as string,
+          service_model_id: planRow.service_model_id as string,
+          type: planRow.type as string,
+          currency: planRow.currency as string | null,
+          total_price: planRow.total_price as number | null,
+          original_price: planRow.original_price as number | null,
+          upfront_amount: planRow.upfront_amount as number | null,
+          installment_count: planRow.installment_count as number | null,
+          installment_amount: planRow.installment_amount as number | null,
+          interval: planRow.interval as string | null,
+        };
+        resolvedServiceModelId = planRow.service_model_id as string;
+      }
+    }
+
+    const planType = plan?.type ?? (course.billing_type === 'subscription' ? 'subscription' : 'one_time');
+    const isSubscription = planType === 'subscription';
+    const isInstallments = planType === 'installments';
+    const useSubscriptionMode = isSubscription || isInstallments;
+    const stripeInterval: 'week' | 'month' | 'year' =
+      plan?.interval === 'yearly' ? 'year' : plan?.interval === 'weekly' ? 'week' : (course.subscription_interval === 'year' ? 'year' : 'month');
+
+    // Amount charged on the recurring/one-time Stripe line (server-derived — never trust the client).
+    let unitAmount: number;
+    if (plan) {
+      if (isInstallments) unitAmount = Math.round(Number(plan.installment_amount ?? plan.total_price ?? 0) * 100);
+      else unitAmount = Math.round(Number(plan.total_price ?? 0) * 100);
+    } else {
+      const now = Date.now();
+      const discountStarts = course.discount_starts_at ? new Date(course.discount_starts_at).getTime() : null;
+      const discountEnds = course.discount_ends_at ? new Date(course.discount_ends_at).getTime() : null;
+      const discountActive = course.discount_price !== null && course.discount_price < course.price && (!discountStarts || discountStarts <= now) && (!discountEnds || discountEnds >= now);
+      unitAmount = Math.round((discountActive ? course.discount_price : course.price) * 100);
+    }
+    if (!unitAmount || unitAmount <= 0) {
+      return NextResponse.json({ error: 'Selected plan has no price' }, { status: 400 });
+    }
+
+    const currency = (plan?.currency ?? course.currency ?? 'EUR').toLowerCase();
     const origin = req.headers.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
     const instructorProfile = Array.isArray(course.profiles) ? course.profiles[0] : course.profiles;
     const isAdminCourse = instructorProfile?.role === 'admin';
     const stripeAccountId = isAdminCourse ? null : instructorProfile?.stripe_account_id;
     const platformFeePct = isAdminCourse ? 100 : Math.max(0, Math.min(100, 100 - (instructorProfile?.revenue_share_pct ?? 70)));
-    const isSubscription = course.billing_type === 'subscription';
     const purchaseLanguage = language === 'lv' ? 'lv' : 'en';
     const { documents: legalDocuments, error: legalError } = await getLatestLegalDocumentRefs(supabase);
     if (legalError || legalDocuments.length === 0) {
@@ -119,7 +168,7 @@ export async function POST(req: NextRequest) {
       try {
         const account = await stripe.accounts.retrieve(stripeAccountId);
         if (!account.deleted && account.charges_enabled && account.payouts_enabled) {
-          if (isSubscription) {
+          if (useSubscriptionMode) {
             subscriptionData = {
               application_fee_percent: platformFeePct,
               transfer_data: { destination: stripeAccountId },
@@ -141,8 +190,12 @@ export async function POST(req: NextRequest) {
       course_slug: course.slug,
       instructor_id: course.instructor_id ?? '',
       platform_fee_pct: String(platformFeePct),
-      billing_type: isSubscription ? 'subscription' : 'one_time',
-      subscription_interval: isSubscription ? (course.subscription_interval ?? 'month') : '',
+      billing_type: useSubscriptionMode ? 'subscription' : 'one_time',
+      plan_type: planType,
+      service_model_id: resolvedServiceModelId ?? '',
+      payment_plan_id: plan?.id ?? '',
+      installment_count: isInstallments ? String(plan?.installment_count ?? '') : '',
+      subscription_interval: useSubscriptionMode ? stripeInterval : '',
       purchase_language: purchaseLanguage,
       legal_acceptance_source: user ? 'checkout' : 'guest_checkout',
       legal_accepted_at: new Date().toISOString(),
@@ -161,7 +214,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
-      mode: isSubscription ? 'subscription' : 'payment',
+      mode: useSubscriptionMode ? 'subscription' : 'payment',
       payment_method_types: ['card'],
       ...(isGuest
         ? { customer_email: guestEmail }  // prefill email for guest
@@ -169,9 +222,9 @@ export async function POST(req: NextRequest) {
       line_items: [
         {
           price_data: {
-            currency: course.currency.toLowerCase(),
+            currency,
             unit_amount: unitAmount,
-            ...(isSubscription ? { recurring: { interval: course.subscription_interval === 'year' ? 'year' : 'month' } } : {}),
+            ...(useSubscriptionMode ? { recurring: { interval: stripeInterval } } : {}),
             product_data: {
               name: course.title_en,
               ...(course.thumbnail_url ? { images: [course.thumbnail_url] } : {}),
@@ -182,8 +235,8 @@ export async function POST(req: NextRequest) {
       ],
       metadata: checkoutMetadata,
       ...(paymentIntentData ? { payment_intent_data: paymentIntentData } : {}),
-      ...(isSubscription ? { subscription_data: { ...(subscriptionData ?? {}), metadata: checkoutMetadata } } : {}),
-      ...(!isSubscription ? { invoice_creation: { enabled: true, invoice_data: { metadata: checkoutMetadata } } } : {}),
+      ...(useSubscriptionMode ? { subscription_data: { ...(subscriptionData ?? {}), metadata: checkoutMetadata } } : {}),
+      ...(!useSubscriptionMode ? { invoice_creation: { enabled: true, invoice_data: { metadata: checkoutMetadata } } } : {}),
       success_url: `${origin}/checkout/${course.slug}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/courses/${course.slug}`,
     });

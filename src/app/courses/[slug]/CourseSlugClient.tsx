@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -15,6 +15,8 @@ import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
 import StarRating from '@/components/courses/StarRating';
 import PriceBadge from '@/components/courses/PriceBadge';
+import CoursePricingSelector, { type PricingSelection } from '@/components/courses/CoursePricingSelector';
+import { normalizeServiceModels, type ServiceModel } from '@/lib/pricing';
 import { buildLegalAcceptanceMetadata, getLatestLegalDocumentRefs } from '@/lib/legal-documents';
 
 function formatDuration(seconds: number) {
@@ -144,6 +146,7 @@ interface Course {
   course_instructors: CourseInstructor[] | null;
   category: { name_en: string; name_lv: string | null; slug: string; icon: string | null } | null;
   course_availability_groups: AvailabilityGroup[] | null;
+  service_models?: ServiceModel[] | null;
   sections: Section[];
   reviews: Review[];
 }
@@ -186,6 +189,13 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
   const [modalSuccess, setModalSuccess] = useState(false);
   const [enrollUserId, setEnrollUserId] = useState<string | null>(null);
   const [enrolling, setEnrolling] = useState(false);
+
+  // Multi service-model / payment-plan pricing selection
+  const [selection, setSelection] = useState<PricingSelection | null>(null);
+  const pricingModels = useMemo(() => normalizeServiceModels((course.service_models ?? []) as ServiceModel[]), [course.service_models]);
+  const hasSelector = !course.is_free && course.price > 0 && pricingModels.length > 0;
+  const handleSelectionChange = useCallback((next: PricingSelection | null) => setSelection(next), []);
+  const checkoutHref = `/checkout/${course.slug}${selection ? `?sm=${selection.serviceModelId}&pp=${selection.paymentPlanId}` : ''}`;
 
   // Review state
   const [localReviews, setLocalReviews] = useState<Review[]>(course.reviews ?? []);
@@ -549,16 +559,24 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
 
               <div className="p-5">
                 {enrollState !== 'enrolled' && (
-                  <PriceBadge
-                    price={Number(course.price)}
-                    discountPrice={course.discount_price ? Number(course.discount_price) : null}
-                    discountStartsAt={course.discount_starts_at}
-                    discountEndsAt={course.discount_ends_at}
-                    currency={course.currency}
-                    isFree={course.is_free}
-                    billingType={course.billing_type}
-                    subscriptionInterval={course.subscription_interval}
-                  />
+                  hasSelector ? (
+                    <CoursePricingSelector
+                      serviceModels={pricingModels}
+                      language={language}
+                      onChange={handleSelectionChange}
+                    />
+                  ) : (
+                    <PriceBadge
+                      price={Number(course.price)}
+                      discountPrice={course.discount_price ? Number(course.discount_price) : null}
+                      discountStartsAt={course.discount_starts_at}
+                      discountEndsAt={course.discount_ends_at}
+                      currency={course.currency}
+                      isFree={course.is_free}
+                      billingType={course.billing_type}
+                      subscriptionInterval={course.subscription_interval}
+                    />
+                  )
                 )}
                 {enrollState === 'enrolled' && (
                   <div className="flex items-center gap-2 rounded-xl border border-green-500/25 bg-green-500/10 px-4 py-3 text-sm font-medium text-green-300">
@@ -590,7 +608,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                     </Button>
                   )}
                   {!isPreview && enrollState === 'not-enrolled' && !course.is_free && course.price > 0 && (
-                    <Link href={`/checkout/${course.slug}`}>
+                    <Link href={checkoutHref}>
                       <Button className="w-full text-base py-3">{course.billing_type === 'subscription' ? (language === 'lv' ? 'Abonēt kursu' : 'Subscribe') : (t('courses.enroll.paid') || 'Buy Course')}</Button>
                     </Link>
                   )}
@@ -600,7 +618,7 @@ export default function CourseSlugClient({ course, isPreview = false }: { course
                     </Button>
                   )}
                   {!isPreview && enrollState === 'not-authed' && !course.is_free && course.price > 0 && (
-                    <Link href={`/checkout/${course.slug}`}>
+                    <Link href={checkoutHref}>
                       <Button className="w-full text-base py-3">{course.billing_type === 'subscription' ? (language === 'lv' ? 'Abonēt kursu' : 'Subscribe') : (t('courses.enroll.paid') || 'Buy Course')}</Button>
                     </Link>
                   )}

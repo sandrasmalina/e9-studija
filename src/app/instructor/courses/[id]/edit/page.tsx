@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { ArrowLeft, ExternalLink, ImageIcon, Save, Upload, X } from 'lucide-react';
 import CourseEmailTemplateEditor from '@/components/courses/CourseEmailTemplateEditor';
+import CoursePricingManager from '@/components/courses/CoursePricingManager';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
@@ -515,46 +516,9 @@ export default function CourseEditPage() {
             </div>
           </label>
           {!form.is_free && (
-            <>
-              <Field label="Pricing Model">
-                <div className="grid grid-cols-2 gap-2">
-                  {([['one_time', 'Single purchase'], ['subscription', 'Subscription']] as const).map(([value, label]) => (
-                    <button key={value} type="button" onClick={() => set('billing_type', value)} className={`rounded-xl border px-3 py-2 text-sm transition-colors ${form.billing_type === value ? 'border-purple-500/40 bg-purple-500/15 text-white' : 'border-white/[0.08] text-zinc-500 hover:text-white'}`}>{label}</button>
-                  ))}
-                </div>
-              </Field>
-              {form.billing_type === 'subscription' && (
-                <Field label="Billing Interval">
-                  <select value={form.subscription_interval} onChange={e => set('subscription_interval', e.target.value)} className={inputCls}>
-                    <option value="month">Monthly</option>
-                    <option value="year">Yearly</option>
-                  </select>
-                </Field>
-              )}
-              <Field label="Price (€)">
-                <Input type="number" value={form.price} onChange={v => set('price', v)} placeholder="0.00" />
-              </Field>
-              <Field label="Discount Setup">
-                <div className="grid grid-cols-3 gap-2">
-                  {([['none', 'No discount'], ['permanent', 'Permanent'], ['period', 'Specific period']] as const).map(([value, label]) => (
-                    <button key={value} type="button" onClick={() => set('discount_type', value)} className={`rounded-xl border px-3 py-2 text-sm transition-colors ${form.discount_type === value ? 'border-purple-500/40 bg-purple-500/15 text-white' : 'border-white/[0.08] text-zinc-500 hover:text-white'}`}>{label}</button>
-                  ))}
-                </div>
-              </Field>
-              {form.discount_type !== 'none' && (
-                <div className="grid grid-cols-3 gap-4">
-                  <Field label="Discount Price (€)">
-                    <Input type="number" value={form.discount_price} onChange={v => set('discount_price', v)} placeholder="Optional" />
-                  </Field>
-                  {form.discount_type === 'period' && (
-                    <>
-                      <Field label="Discount Starts"><input type="datetime-local" value={form.discount_starts_at} onChange={e => set('discount_starts_at', e.target.value)} className={`${inputCls} [color-scheme:dark]`} /></Field>
-                      <Field label="Discount Ends"><input type="datetime-local" value={form.discount_ends_at} onChange={e => set('discount_ends_at', e.target.value)} className={`${inputCls} [color-scheme:dark]`} /></Field>
-                    </>
-                  )}
-                </div>
-              )}
-            </>
+            <Field label="Service models & payment plans" hint="Define what students get and how they pay. This replaces the old single price.">
+              <CoursePricingManager courseId={id} />
+            </Field>
           )}
           <Field label="Display Students" hint="Fake/display students added to real enrolled students on public course pages. Does not reduce group spots.">
             <Input type="number" value={form.fake_enrollment_count} onChange={v => set('fake_enrollment_count', v)} placeholder="0" />
