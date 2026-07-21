@@ -46,6 +46,8 @@ const CHAPTER_TABS = [
   ['media', 'Media'],
   ['availability', 'Availability'],
   ['questionnaire', 'Questionnaire'],
+  ['publish', 'Publish'],
+  ['seo', 'SEO'],
 ] as const;
 
 type ChapterId = typeof CHAPTER_TABS[number][0];
@@ -99,6 +101,22 @@ interface CourseForm {
   questionnaire_enabled: boolean;
   sales_assist_enabled: boolean;
   sales_assist_calendar_url: string;
+  status: string;
+  category_id: string;
+  meta_title: string;
+  meta_description: string;
+  meta_keywords: string;
+  og_title: string;
+  og_description: string;
+  og_image: string;
+  canonical_url: string;
+  no_index: boolean;
+  ai_summary: string;
+  key_takeaways: string;
+  faq_items: string;
+  tags_ai_topics: string;
+  expertise_level: string;
+  industry: string;
 }
 
 interface AvailabilityGroup {
@@ -124,6 +142,9 @@ const EMPTY: CourseForm = {
   price: '0', discount_price: '', discount_starts_at: '', discount_ends_at: '', discount_type: 'none', billing_type: 'one_time', subscription_interval: 'month', is_free: false, fake_enrollment_count: '0',
   access_duration_months: '', starts_at: '', ends_at: '', certificate_enabled: true,
   questionnaire_enabled: false, sales_assist_enabled: false, sales_assist_calendar_url: '',
+  status: 'draft', category_id: '',
+  meta_title: '', meta_description: '', meta_keywords: '', og_title: '', og_description: '', og_image: '', canonical_url: '', no_index: false,
+  ai_summary: '', key_takeaways: '', faq_items: '', tags_ai_topics: '', expertise_level: '', industry: '',
 };
 
 function serializeCourseEditState(form: CourseForm, teacherIds: string[], groups: AvailabilityGroup[]) {
@@ -155,12 +176,14 @@ export default function CourseEditPage() {
   const [canManageTeacherAssignments, setCanManageTeacherAssignments] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState('');
+  const [categories, setCategories] = useState<{ id: string; name_en: string }[]>([]);
+  const [initialStatus, setInitialStatus] = useState('draft');
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error: courseError } = await supabase.from('courses')
-        .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, learning_schedule_en, learning_schedule_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, billing_type, subscription_interval, is_free, fake_enrollment_count, access_duration_months, starts_at, ends_at, certificate_enabled, questionnaire_enabled, sales_assist_enabled, sales_assist_calendar_url')
+        .select('slug, instructor_id, title_en, title_lv, short_description_en, short_description_lv, description_en, description_lv, learning_schedule_en, learning_schedule_lv, thumbnail_url, thumbnail_url_lv, promo_video_url, promo_video_type, level, language, requirements, requirements_lv, what_you_learn, what_you_learn_lv, target_audience, target_audience_lv, delivery_mode, price, discount_price, discount_starts_at, discount_ends_at, billing_type, subscription_interval, is_free, fake_enrollment_count, access_duration_months, starts_at, ends_at, certificate_enabled, questionnaire_enabled, sales_assist_enabled, sales_assist_calendar_url, status, category_id, meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url, no_index, ai_summary, key_takeaways, faq_items, tags_ai_topics, expertise_level, industry')
         .eq('id', id)
         .maybeSingle();
 
@@ -216,14 +239,33 @@ export default function CourseEditPage() {
         questionnaire_enabled: data.questionnaire_enabled ?? false,
         sales_assist_enabled: data.sales_assist_enabled ?? false,
         sales_assist_calendar_url: data.sales_assist_calendar_url ?? '',
+        status: data.status ?? 'draft',
+        category_id: data.category_id ?? '',
+        meta_title: data.meta_title ?? '',
+        meta_description: data.meta_description ?? '',
+        meta_keywords: data.meta_keywords ?? '',
+        og_title: data.og_title ?? '',
+        og_description: data.og_description ?? '',
+        og_image: data.og_image ?? '',
+        canonical_url: data.canonical_url ?? '',
+        no_index: data.no_index ?? false,
+        ai_summary: data.ai_summary ?? '',
+        key_takeaways: data.key_takeaways ?? '',
+        faq_items: data.faq_items ?? '',
+        tags_ai_topics: data.tags_ai_topics ?? '',
+        expertise_level: data.expertise_level ?? '',
+        industry: data.industry ?? '',
       };
       setForm(nextForm);
+      setInitialStatus(data.status ?? 'draft');
 
-      const [{ data: groupRows }, { data: teacherRows }, { data: instructorRows }] = await Promise.all([
+      const [{ data: groupRows }, { data: teacherRows }, { data: instructorRows }, { data: categoryRows }] = await Promise.all([
       supabase.from('course_availability_groups').select('id,name_en,name_lv,language,starts_at,ends_at,capacity,sort_order').eq('course_id', id).order('sort_order'),
       supabase.from('profiles').select('id, full_name, role').in('role', ['instructor', 'admin']).order('full_name'),
       supabase.from('course_instructors').select('instructor_id, sort_order').eq('course_id', id).order('sort_order'),
+      supabase.from('categories').select('id, name_en').order('name_en'),
       ]);
+      setCategories((categoryRows ?? []) as { id: string; name_en: string }[]);
 
       const nextTeacherIds = (instructorRows ?? []).length > 0
         ? (instructorRows ?? []).map(row => row.instructor_id)
@@ -342,8 +384,25 @@ export default function CourseEditPage() {
       questionnaire_enabled: form.questionnaire_enabled,
       sales_assist_enabled: form.sales_assist_enabled,
       sales_assist_calendar_url: form.sales_assist_calendar_url.trim() || null,
+      status: form.status,
+      category_id: form.category_id || null,
+      meta_title: form.meta_title.trim() || null,
+      meta_description: form.meta_description.trim() || null,
+      meta_keywords: form.meta_keywords.trim() || null,
+      og_title: form.og_title.trim() || null,
+      og_description: form.og_description.trim() || null,
+      og_image: form.og_image.trim() || null,
+      canonical_url: form.canonical_url.trim() || null,
+      no_index: form.no_index,
+      ai_summary: form.ai_summary.trim() || null,
+      key_takeaways: form.key_takeaways.trim() || null,
+      faq_items: form.faq_items.trim() || null,
+      tags_ai_topics: form.tags_ai_topics.trim() || null,
+      expertise_level: form.expertise_level.trim() || null,
+      industry: form.industry.trim() || null,
       updated_at: new Date().toISOString(),
     };
+    if (form.status === 'published' && initialStatus !== 'published') coursePayload.published_at = new Date().toISOString();
     if (canManageTeacherAssignments) coursePayload.instructor_id = selectedTeacherIds[0] || null;
 
     const { error } = await supabase.from('courses').update(coursePayload).eq('id', id);
@@ -393,6 +452,7 @@ export default function CourseEditPage() {
     setSaved(true);
     setCourseTitle(form.title_en);
     setCourseSlug(nextSlug);
+    setInitialStatus(form.status);
     setForm(savedForm);
     setSavedSnapshot(serializeCourseEditState(savedForm, selectedTeacherIds, availabilityGroups));
     setTimeout(() => setSaved(false), 3000);
@@ -700,6 +760,65 @@ export default function CourseEditPage() {
               </Field>
             </>
           )}
+        </Chapter>
+
+        <Chapter id="publish" title="Publish & Category" subtitle="Course status and which category it appears under." open={activeChapter === 'publish'} onOpen={() => openChapter('publish')}>
+          <Field label="Status">
+            <select value={form.status} onChange={e => set('status', e.target.value)} className={inputCls}>
+              <option value="draft">Draft</option>
+              <option value="review">In review</option>
+              <option value="published">Published</option>
+              <option value="unpublished">Unpublished</option>
+            </select>
+          </Field>
+          <Field label="Category">
+            <select value={form.category_id} onChange={e => set('category_id', e.target.value)} className={inputCls}>
+              <option value="">No category</option>
+              {categories.map(category => (
+                <option key={category.id} value={category.id}>{category.name_en}</option>
+              ))}
+            </select>
+          </Field>
+        </Chapter>
+
+        <Chapter id="seo" title="SEO & Metadata" subtitle="Search/social metadata and AI discovery fields." open={activeChapter === 'seo'} onOpen={() => openChapter('seo')}>
+          <Field label="Meta Title" hint="Defaults to the course title if left empty.">
+            <Input value={form.meta_title} onChange={v => set('meta_title', v)} placeholder={form.title_en || 'Course title'} />
+          </Field>
+          <Field label="Meta Description">
+            <Textarea value={form.meta_description} onChange={v => set('meta_description', v)} placeholder="Shown in search results (max ~160 chars)" rows={2} />
+          </Field>
+          <Field label="Meta Keywords" hint="Comma-separated (optional).">
+            <Input value={form.meta_keywords} onChange={v => set('meta_keywords', v)} placeholder="ai, web app, no-code" />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="OG Title"><Input value={form.og_title} onChange={v => set('og_title', v)} placeholder="Social share title" /></Field>
+            <Field label="OG Image URL"><Input value={form.og_image} onChange={v => set('og_image', v)} placeholder="https://.../share.jpg" type="url" /></Field>
+          </div>
+          <Field label="OG Description">
+            <Textarea value={form.og_description} onChange={v => set('og_description', v)} placeholder="Social share description" rows={2} />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Canonical URL"><Input value={form.canonical_url} onChange={v => set('canonical_url', v)} placeholder={`/courses/${form.slug || 'slug'}`} /></Field>
+            <Field label=" ">
+              <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-white/[0.06] bg-[#0b0915] px-4 py-2.5">
+                <input type="checkbox" checked={form.no_index} onChange={e => set('no_index', e.target.checked)} className="w-4 h-4 rounded border-white/20 bg-[#0b0915] accent-purple-500" />
+                <span className="text-white text-sm">Hide from search engines (no-index)</span>
+              </label>
+            </Field>
+          </div>
+          <Field label="AI Summary" hint="Short machine-readable summary for AI discovery.">
+            <Textarea value={form.ai_summary} onChange={v => set('ai_summary', v)} placeholder="One-paragraph summary" rows={3} />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Key Takeaways" hint="One per line."><Textarea value={form.key_takeaways} onChange={v => set('key_takeaways', v)} placeholder={"Build a full app\nDeploy to production"} rows={3} /></Field>
+            <Field label="FAQ Items" hint="One per line."><Textarea value={form.faq_items} onChange={v => set('faq_items', v)} placeholder={"Do I need coding? No."} rows={3} /></Field>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="AI Topics / Tags"><Input value={form.tags_ai_topics} onChange={v => set('tags_ai_topics', v)} placeholder="ai, saas" /></Field>
+            <Field label="Expertise Level"><Input value={form.expertise_level} onChange={v => set('expertise_level', v)} placeholder="beginner" /></Field>
+            <Field label="Industry"><Input value={form.industry} onChange={v => set('industry', v)} placeholder="technology" /></Field>
+          </div>
         </Chapter>
 
         {err && <p className="text-red-400 text-sm">{err}</p>}
