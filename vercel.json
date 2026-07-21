@@ -4,6 +4,10 @@
     {
       "path": "/api/email/send-scheduled-course-emails",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/email/send-abandoned-cart-reminders",
+      "schedule": "0 * * * *"
     }
   ]
 }

@@ -1,14 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 import { encodeLegalDocumentVersions, getLatestLegalDocumentRefs } from '@/lib/legal-documents';
+
+async function storeGuestCheckoutIntent(input: {
+  session: Stripe.Checkout.Session;
+  courseId: string;
+  courseSlug: string;
+  guestEmail: string;
+  guestName: string;
+  purchaseLanguage: 'en' | 'lv';
+}) {
+  const payload = {
+    stripe_checkout_session_id: input.session.id,
+    stripe_payment_intent_id: typeof input.session.payment_intent === 'string' ? input.session.payment_intent : input.session.payment_intent?.id ?? null,
+    stripe_customer_id: typeof input.session.customer === 'string' ? input.session.customer : input.session.customer?.id ?? null,
+    course_id: input.courseId,
+    course_slug: input.courseSlug,
+    guest_email: input.guestEmail,
+    guest_name: input.guestName,
+    purchase_language: input.purchaseLanguage,
+    status: 'open',
+    checkout_url: input.session.url,
+    amount_total: ((input.session.amount_total ?? 0) / 100) || null,
+    currency: input.session.currency?.toUpperCase() ?? null,
+    metadata: input.session.metadata ?? {},
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabaseAdmin
+    .from('checkout_intents')
+    .upsert(payload, { onConflict: 'stripe_checkout_session_id' });
+
+  if (error) {
+    console.error('[stripe/checkout] failed to upsert checkout intent:', error);
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
     const stripe = getStripe();
-    const { courseSlug, guestEmail, guestName, language, accountSetupPending, turnstileToken } = await req.json();
+    const { courseSlug, guestEmail, guestName, language, turnstileToken } = await req.json();
     if (!courseSlug) {
       return NextResponse.json({ error: 'courseSlug required' }, { status: 400 });
     }
@@ -110,7 +144,6 @@ export async function POST(req: NextRequest) {
       billing_type: isSubscription ? 'subscription' : 'one_time',
       subscription_interval: isSubscription ? (course.subscription_interval ?? 'month') : '',
       purchase_language: purchaseLanguage,
-      account_setup_pending: accountSetupPending ? 'true' : '',
       legal_acceptance_source: user ? 'checkout' : 'guest_checkout',
       legal_accepted_at: new Date().toISOString(),
       legal_document_versions: legalDocumentVersions,
@@ -154,6 +187,17 @@ export async function POST(req: NextRequest) {
       success_url: `${origin}/checkout/${course.slug}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/courses/${course.slug}`,
     });
+
+    if (isGuest && guestEmail) {
+      await storeGuestCheckoutIntent({
+        session,
+        courseId: course.id,
+        courseSlug: course.slug,
+        guestEmail: guestEmail.trim().toLowerCase(),
+        guestName: (guestName ?? '').trim(),
+        purchaseLanguage,
+      });
+    }
 
     return NextResponse.json({ url: session.url });
   } catch (err) {

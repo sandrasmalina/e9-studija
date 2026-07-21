@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
-import { sendAdminEnrollmentNotification, sendCourseEnrollmentEmail, sendCourseInvoiceEmail } from '@/lib/email';
+import { sendAccountSetupEmail, sendAdminEnrollmentNotification, sendCourseEnrollmentEmail, sendCourseInvoiceEmail } from '@/lib/email';
 import { supabaseAdmin } from '@/lib/supabase';
 import { recordLegalAcceptances } from '@/lib/legal-acceptance';
 import { getLegalDocumentRefsByVersions, parseLegalDocumentVersions } from '@/lib/legal-documents';
@@ -127,6 +127,47 @@ async function subscriptionMetadata(stripe: Stripe, subscriptionId: string | nul
   return subscription.metadata ?? {};
 }
 
+function checkoutRecoveryUrl(session: Stripe.Checkout.Session) {
+  const afterExpiration = (session as unknown as { after_expiration?: { recovery?: { url?: string | null } | null } | null }).after_expiration;
+  return afterExpiration?.recovery?.url ?? null;
+}
+
+async function updateCheckoutIntentBySessionId(sessionId: string, updates: Record<string, unknown>) {
+  const { error } = await supabaseAdmin
+    .from('checkout_intents')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('stripe_checkout_session_id', sessionId);
+
+  if (error) {
+    console.error('[webhook] checkout_intents update failed:', error);
+  }
+}
+
+async function findAuthUserByEmail(email: string) {
+  let page = 1;
+  const perPage = 1000;
+  while (page <= 10) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      console.error('[webhook] listUsers failed while resolving guest user:', error);
+      return null;
+    }
+    const found = data.users.find(user => user.email?.toLowerCase() === email.toLowerCase());
+    if (found) return found;
+    if (data.users.length < perPage) return null;
+    page += 1;
+  }
+  return null;
+}
+
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    endpoint: '/api/stripe/webhook',
+    webhookSecretConfigured: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
+  });
+}
+
 export async function POST(req: NextRequest) {
   const stripe = getStripe();
   const rawBody = await req.text();
@@ -134,7 +175,10 @@ export async function POST(req: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!sig || !webhookSecret) {
-    return NextResponse.json({ error: 'Missing signature or secret' }, { status: 400 });
+    return NextResponse.json({
+      error: 'Missing Stripe signature or webhook secret is not configured',
+      webhookSecretConfigured: Boolean(webhookSecret),
+    }, { status: 400 });
   }
 
   let event: Stripe.Event;
@@ -142,7 +186,10 @@ export async function POST(req: NextRequest) {
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err) {
     console.error('[webhook] signature verification failed:', err);
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    return NextResponse.json({
+      error: 'Invalid Stripe signature',
+      webhookSecretConfigured: Boolean(webhookSecret),
+    }, { status: 400 });
   }
 
   try {
@@ -160,7 +207,6 @@ export async function POST(req: NextRequest) {
         guest_first_name,
         guest_last_name,
         purchase_language,
-        account_setup_pending,
         legal_acceptance_source,
         legal_accepted_at,
         legal_document_versions,
@@ -182,36 +228,49 @@ export async function POST(req: NextRequest) {
       // Resolve userId: logged-in user OR guest (find/create by email)
       let resolvedUserId = user_id ?? null;
       let isNewGuestUser = false;
+      let accountSetupLink: string | null = null;
 
       if (!resolvedUserId && guest_email) {
-        // Find existing user by email, or invite them (creates account + sends welcome email)
-        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000, page: 1 });
-        const existing = users.find(u => u.email?.toLowerCase() === guest_email.toLowerCase());
+        const existing = await findAuthUserByEmail(guest_email);
 
         if (existing) {
           resolvedUserId = existing.id;
           console.log(`[webhook] found existing user ${existing.id} for guest email ${guest_email}`);
         } else {
-          // Create account and send invitation email so they can set a password
-          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv';
-          const { data: inviteData, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-            guest_email,
-            {
-              data: {
-                full_name: guest_name ?? '',
-                first_name: guest_first_name ?? (guest_name ?? '').split(' ')[0] ?? '',
-                last_name: guest_last_name ?? (guest_name ?? '').split(' ').slice(1).join(' '),
-              },
-              redirectTo: `${siteUrl}/auth/reset-password?redirect=/learn/${course_slug ?? ''}`,
-            }
-          );
-          if (inviteErr || !inviteData?.user) {
-            console.error('[webhook] failed to create guest user:', inviteErr);
+          // Create account only after confirmed payment.
+          const firstName = guest_first_name ?? (guest_name ?? '').split(' ')[0] ?? '';
+          const lastName = guest_last_name ?? (guest_name ?? '').split(' ').slice(1).join(' ');
+          const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+          const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.createUser({
+            email: guest_email.toLowerCase(),
+            email_confirm: true,
+            user_metadata: {
+              full_name: fullName,
+              first_name: firstName,
+              last_name: lastName,
+            },
+          });
+          if (userErr || !userData?.user) {
+            console.error('[webhook] failed to create guest user after payment:', userErr);
             return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
           }
-          resolvedUserId = inviteData.user.id;
+          resolvedUserId = userData.user.id;
           isNewGuestUser = true;
           console.log(`[webhook] created new user ${resolvedUserId} for guest email ${guest_email}`);
+
+          // Generate a password setup link and deliver it through Resend.
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.e9studija.lv';
+          const redirectTo = `${siteUrl}/auth/reset-password?redirect=/learn/${course_slug ?? ''}`;
+          const { data: recoveryData, error: recoveryErr } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'recovery',
+            email: guest_email.toLowerCase(),
+            options: { redirectTo },
+          });
+          if (recoveryErr) {
+            console.error('[webhook] failed to generate password setup link:', recoveryErr);
+          } else {
+            accountSetupLink = recoveryData?.properties?.action_link ?? null;
+          }
         }
       }
 
@@ -246,6 +305,16 @@ export async function POST(req: NextRequest) {
       const stripeCustomerId = typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null;
 
       const enrollmentId = await enrollStudent(course_id, resolvedUserId, amountPaid, currency, course?.access_duration_months ?? null, stripeSubscriptionId, stripeCustomerId);
+
+      await updateCheckoutIntentBySessionId(session.id, {
+        status: 'paid',
+        paid_at: new Date().toISOString(),
+        converted_user_id: resolvedUserId,
+        converted_enrollment_id: enrollmentId,
+        stripe_customer_id: stripeCustomerId,
+        amount_total: amountPaid,
+        currency: currency.toUpperCase(),
+      });
 
       console.log(`[webhook] enrolled user ${resolvedUserId} in course ${course_slug ?? course_id}`);
 
@@ -309,7 +378,7 @@ export async function POST(req: NextRequest) {
           supportEmail: process.env.E9_SUPPORT_EMAIL ?? process.env.E9_ADMIN_EMAIL ?? null,
           template: template ?? null,
           attachments: invoiceAttachment ? [invoiceAttachment] : undefined,
-          accountConfirmationRequired: isNewGuestUser || account_setup_pending === 'true',
+          accountConfirmationRequired: isNewGuestUser,
         };
 
         const emailResults = await Promise.allSettled([
@@ -344,6 +413,20 @@ export async function POST(req: NextRequest) {
         }
         const adminEmailResult = emailResults[1];
         if (adminEmailResult.status === 'rejected') console.error('[webhook] admin enrollment email failed:', adminEmailResult.reason);
+
+        if (isNewGuestUser && accountSetupLink) {
+          try {
+            await sendAccountSetupEmail({
+              to: recipientEmail,
+              setupUrl: accountSetupLink,
+              studentName: recipientName,
+              courseTitle: course.title_en ?? null,
+              language: preferredLanguage,
+            });
+          } catch (error) {
+            console.error('[webhook] account setup email failed:', error);
+          }
+        }
       }
     }
 
@@ -404,7 +487,19 @@ export async function POST(req: NextRequest) {
     if (event.type === 'checkout.session.async_payment_failed') {
       const session = event.data.object as Stripe.Checkout.Session;
       console.warn('[webhook] async payment failed for session', session.id);
-      // Could notify user here via email in future
+      await updateCheckoutIntentBySessionId(session.id, {
+        status: 'failed',
+        failed_at: new Date().toISOString(),
+      });
+    }
+
+    if (event.type === 'checkout.session.expired') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      await updateCheckoutIntentBySessionId(session.id, {
+        status: 'expired',
+        expired_at: new Date().toISOString(),
+        recovery_url: checkoutRecoveryUrl(session),
+      });
     }
 
     if (event.type === 'customer.subscription.deleted') {

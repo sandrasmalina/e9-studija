@@ -189,6 +189,107 @@ export async function sendLoginCodeEmail(input: { to: string; code: string; lang
   return { status: 'sent' as const, id: result.data?.id ?? null };
 }
 
+export async function sendAccountSetupEmail(input: {
+  to: string;
+  setupUrl: string;
+  studentName?: string | null;
+  courseTitle?: string | null;
+  language?: 'en' | 'lv' | string | null;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = getResendFromAddress();
+  if (!apiKey) {
+    console.warn('[email] RESEND_API_KEY missing; skipping account setup email');
+    return { status: 'skipped' as const };
+  }
+
+  const isLv = input.language === 'lv';
+  const subject = isLv ? 'Iestatiet savu E9 Studija paroli' : 'Set your E9 Studija password';
+  const greeting = isLv
+    ? (input.studentName ? `Sveiki, ${escapeHtml(input.studentName)}!` : 'Sveiki!')
+    : (input.studentName ? `Hi ${escapeHtml(input.studentName)},` : 'Hi,');
+  const body = isLv
+    ? `Maksājums ir saņemts${input.courseTitle ? ` par kursu <strong>${escapeHtml(input.courseTitle)}</strong>` : ''}. Lai piekļūtu kursam, iestatiet paroli.`
+    : `Your payment is confirmed${input.courseTitle ? ` for <strong>${escapeHtml(input.courseTitle)}</strong>` : ''}. Set your password to access the course.`;
+  const button = isLv ? 'Iestatīt paroli' : 'Set password';
+  const footer = isLv
+    ? 'Ja šo pieprasījumu neveicāt jūs, ignorējiet šo e-pastu.'
+    : 'If you did not request this, you can ignore this email.';
+
+  const html = `
+    <p style="margin:0 0 8px;font-size:18px;font-weight:600;line-height:1.35;color:#26215C;">${greeting}</p>
+    <p style="margin:0 0 24px;font-size:15px;color:#4b5563;line-height:1.6;">${body}</p>
+    <p style="margin:24px 0;text-align:center;">
+      <a href="${escapeHtml(input.setupUrl)}" style="display:inline-block;background:linear-gradient(135deg,#e879f9,#a855f7);background-color:#a855f7;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 34px;border-radius:50px;letter-spacing:0.3px;">${button}</a>
+    </p>
+    <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">${footer}</p>
+  `;
+
+  const resend = new Resend(apiKey);
+  const result = await resend.emails.send({
+    from,
+    to: input.to,
+    subject,
+    text: `${isLv ? 'Iestatiet savu paroli' : 'Set your password'}: ${input.setupUrl}`,
+    html: wrapEmailHtml(html, isLv ? 'lv' : 'en', subject),
+  });
+
+  if (result.error) throw result.error;
+  return { status: 'sent' as const, id: result.data?.id ?? null, subject };
+}
+
+export async function sendAbandonedCheckoutReminderEmail(input: {
+  to: string;
+  courseTitle: string;
+  checkoutUrl: string;
+  studentName?: string | null;
+  language?: 'en' | 'lv' | string | null;
+  reminderNumber: 1 | 2;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = getResendFromAddress();
+  if (!apiKey) {
+    console.warn('[email] RESEND_API_KEY missing; skipping abandoned checkout reminder');
+    return { status: 'skipped' as const };
+  }
+
+  const isLv = input.language === 'lv';
+  const subject = isLv
+    ? `Jūsu kursa rezervācija gaida: ${input.courseTitle}`
+    : `Your checkout is waiting: ${input.courseTitle}`;
+  const greeting = isLv
+    ? (input.studentName ? `Sveiki, ${escapeHtml(input.studentName)}!` : 'Sveiki!')
+    : (input.studentName ? `Hi ${escapeHtml(input.studentName)},` : 'Hi,');
+  const body = isLv
+    ? `Jūs sākāt pieteikšanos kursam <strong>${escapeHtml(input.courseTitle)}</strong>, bet apmaksa vēl nav pabeigta.`
+    : `You started checkout for <strong>${escapeHtml(input.courseTitle)}</strong>, but payment has not been completed yet.`;
+  const urgency = isLv
+    ? (input.reminderNumber === 1 ? 'Ja vēlaties turpināt, varat pabeigt apmaksu ar vienu klikšķi.' : 'Atgādinām vēlreiz: pabeidziet apmaksu, lai saņemtu piekļuvi kursam.')
+    : (input.reminderNumber === 1 ? 'If you still want access, you can complete payment in one click.' : 'Final reminder: complete payment to unlock your course access.');
+  const button = isLv ? 'Pabeigt apmaksu' : 'Complete checkout';
+
+  const html = `
+    <p style="margin:0 0 8px;font-size:18px;font-weight:600;line-height:1.35;color:#26215C;">${greeting}</p>
+    <p style="margin:0 0 10px;font-size:15px;color:#4b5563;line-height:1.6;">${body}</p>
+    <p style="margin:0 0 24px;font-size:15px;color:#4b5563;line-height:1.6;">${urgency}</p>
+    <p style="margin:24px 0;text-align:center;">
+      <a href="${escapeHtml(input.checkoutUrl)}" style="display:inline-block;background:linear-gradient(135deg,#e879f9,#a855f7);background-color:#a855f7;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 34px;border-radius:50px;letter-spacing:0.3px;">${button}</a>
+    </p>
+  `;
+
+  const resend = new Resend(apiKey);
+  const result = await resend.emails.send({
+    from,
+    to: input.to,
+    subject,
+    text: `${stripHtml(greeting)}\n\n${stripHtml(body)}\n${stripHtml(urgency)}\n\n${input.checkoutUrl}`,
+    html: wrapEmailHtml(html, isLv ? 'lv' : 'en', subject),
+  });
+
+  if (result.error) throw result.error;
+  return { status: 'sent' as const, id: result.data?.id ?? null, subject };
+}
+
 function buildCourseVariables(input: CourseEnrollmentEmailInput, price: string): RenderVariables {
   return {
     student_name: input.studentName ?? '',
