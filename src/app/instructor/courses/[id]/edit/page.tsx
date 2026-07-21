@@ -21,31 +21,27 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-function Chapter({ id, title, subtitle, children, open, onOpen }: { id: string; title: string; subtitle?: string; children: React.ReactNode; open: boolean; onOpen: () => void }) {
+function Chapter({ id, title, subtitle, children, open }: { id: string; title: string; subtitle?: string; children: React.ReactNode; open: boolean; onOpen?: () => void }) {
+  if (!open) return null;
   return (
-    <details id={id} open={open} className="scroll-mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-      <summary onClick={event => { event.preventDefault(); onOpen(); }} className="cursor-pointer list-none">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-white font-semibold">{title}</h2>
-            {subtitle && <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>}
-          </div>
-          <span className="rounded-full border border-white/[0.08] px-2 py-0.5 text-xs text-zinc-500">{open ? 'Open' : 'Closed'}</span>
-        </div>
-      </summary>
-      {open && <div className="mt-5 space-y-4">{children}</div>}
-    </details>
+    <section id={id} className="scroll-mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+      <div className="mb-5">
+        <h2 className="text-white font-semibold">{title}</h2>
+        {subtitle && <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>}
+      </div>
+      <div className="space-y-4">{children}</div>
+    </section>
   );
 }
 
 const CHAPTER_TABS = [
   ['basic', 'Basic'],
+  ['outcomes', 'Outcomes'],
   ['descriptions', 'Descriptions'],
   ['schedule', 'Schedule'],
   ['pricing', 'Pricing'],
   ['emails', 'Emails'],
   ['media', 'Media'],
-  ['outcomes', 'Outcomes'],
   ['availability', 'Availability'],
 ] as const;
 
@@ -145,7 +141,7 @@ export default function CourseEditPage() {
   const [err, setErr] = useState('');
   const [courseTitle, setCourseTitle] = useState('');
   const [courseSlug, setCourseSlug] = useState('');
-  const [activeChapter, setActiveChapter] = useState<ChapterId | null>('basic');
+  const [activeChapter, setActiveChapter] = useState<ChapterId>('basic');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [availabilityGroups, setAvailabilityGroups] = useState<AvailabilityGroup[]>([]);
@@ -244,11 +240,8 @@ export default function CourseEditPage() {
 
   const set = (k: keyof CourseForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
   const openChapter = (chapterId: ChapterId) => {
-    setActiveChapter(current => {
-      if (current === chapterId) return null;
-      window.requestAnimationFrame(() => document.getElementById(chapterId)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-      return chapterId;
-    });
+    setActiveChapter(chapterId);
+    window.requestAnimationFrame(() => document.getElementById('course-editor-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
   const setAvailability = (index: number, key: keyof AvailabilityGroup, value: string) => setAvailabilityGroups(groups => groups.map((group, groupIndex) => groupIndex === index ? { ...group, [key]: value } : group));
   const addAvailability = () => setAvailabilityGroups(groups => [...groups, { name_en: '', name_lv: '', language: 'both', starts_at: '', ends_at: '', capacity: '' }]);
@@ -400,6 +393,10 @@ export default function CourseEditPage() {
     return <p className="text-red-400 text-sm">{err}</p>;
   }
 
+  const currentChapterIndex = CHAPTER_TABS.findIndex(([chapterId]) => chapterId === activeChapter);
+  const prevChapter = currentChapterIndex > 0 ? CHAPTER_TABS[currentChapterIndex - 1] : null;
+  const nextChapter = currentChapterIndex < CHAPTER_TABS.length - 1 ? CHAPTER_TABS[currentChapterIndex + 1] : null;
+
   return (
     <div className="w-full max-w-[1280px]">
       {/* Header */}
@@ -421,7 +418,7 @@ export default function CourseEditPage() {
         </div>
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-2">
+      <div id="course-editor-top" className="mb-5 flex flex-wrap gap-2">
         {CHAPTER_TABS.map(([chapterId, label]) => (
           <button key={chapterId} type="button" onClick={() => openChapter(chapterId)} className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
             activeChapter === chapterId
@@ -702,16 +699,31 @@ export default function CourseEditPage() {
 
         {err && <p className="text-red-400 text-sm">{err}</p>}
 
-        <div className="flex items-center gap-4 pb-8">
+        <div className="flex flex-wrap items-center gap-3 pb-8">
           <button onClick={handleSave} disabled={saving}
             className="flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors">
             <Save size={14} /> {saving ? 'Saving…' : 'Save Changes'}
           </button>
           {saved && <span className="text-green-400 text-sm">✓ Saved</span>}
-          <Link href={`/instructor/courses/${id}/curriculum`}
-            className="ml-auto text-zinc-500 hover:text-white text-sm transition-colors">
-            Next: Curriculum →
-          </Link>
+          <div className="ml-auto flex items-center gap-2">
+            {prevChapter && (
+              <button type="button" onClick={() => openChapter(prevChapter[0])}
+                className="inline-flex items-center gap-1 rounded-xl border border-white/[0.08] px-4 py-2.5 text-sm text-zinc-400 hover:border-purple-500/30 hover:text-white transition-colors">
+                ← {prevChapter[1]}
+              </button>
+            )}
+            {nextChapter ? (
+              <button type="button" onClick={() => openChapter(nextChapter[0])}
+                className="inline-flex items-center gap-1 rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-2.5 text-sm text-purple-200 hover:bg-purple-500/20 transition-colors">
+                {nextChapter[1]} →
+              </button>
+            ) : (
+              <Link href={`/instructor/courses/${id}/curriculum`}
+                className="inline-flex items-center gap-1 rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-2.5 text-sm text-purple-200 hover:bg-purple-500/20 transition-colors">
+                Next: Curriculum →
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </div>
